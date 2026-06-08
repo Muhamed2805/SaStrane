@@ -1,24 +1,3 @@
-# SaStrane
-
-SaStrane is a two-sided marketplace for local side-hustle jobs 
-(lawn mowing, moving, small IT tasks, etc).
-
-## Tech Stack
-
-### Frontend
-- Next.js
-- TypeScript
-- TailwindCSS
-- Zustand
-
-### Backend
-- NestJS
-- Prisma ORM
-- PostgreSQL (Neon)
-- JWT Authentication
-
----
-
 ## Project Structure
 # SaStrane
 
