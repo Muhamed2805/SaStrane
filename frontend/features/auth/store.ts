@@ -1,29 +1,71 @@
-import { create } from "zustand";
-
-type User = {
-  id: string;
-  email: string;
-  name: string;
-};
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { authApi, type AuthUser, type LoginPayload, type RegisterPayload } from './api';
 
 type AuthState = {
-  user: User | null;
+  user: AuthUser | null;
+  token: string | null;
+  isLoading: boolean;
+  error: string | null;
   isAuthModalOpen: boolean;
+
   openAuthModal: () => void;
   closeAuthModal: () => void;
-  loginMock: (email: string) => void;
+
+  login: (payload: LoginPayload) => Promise<void>;
+  register: (payload: RegisterPayload) => Promise<void>;
   logout: () => void;
+  restoreSession: () => Promise<void>;
 };
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  isAuthModalOpen: false,
-  openAuthModal: () => set({ isAuthModalOpen: true }),
-  closeAuthModal: () => set({ isAuthModalOpen: false }),
-  loginMock: (email: string) =>
-    set({
-      user: { id: "u1", email, name: "Tarik" },
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set, get) => ({
+      user: null,
+      token: null,
+      isLoading: false,
+      error: null,
       isAuthModalOpen: false,
+
+      openAuthModal: () => set({ isAuthModalOpen: true, error: null }),
+      closeAuthModal: () => set({ isAuthModalOpen: false, error: null }),
+
+      login: async (payload) => {
+        set({ isLoading: true, error: null });
+        try {
+          const { user, accessToken } = await authApi.login(payload);
+          set({ user, token: accessToken, isLoading: false, isAuthModalOpen: false });
+        } catch (err) {
+          set({ error: (err as Error).message, isLoading: false });
+        }
+      },
+
+      register: async (payload) => {
+        set({ isLoading: true, error: null });
+        try {
+          const { user, accessToken } = await authApi.register(payload);
+          set({ user, token: accessToken, isLoading: false, isAuthModalOpen: false });
+        } catch (err) {
+          set({ error: (err as Error).message, isLoading: false });
+        }
+      },
+
+      logout: () => set({ user: null, token: null }),
+
+      restoreSession: async () => {
+        const token = get().token;
+        if (!token) return;
+        try {
+          const user = await authApi.me(token);
+          set({ user });
+        } catch {
+          set({ user: null, token: null });
+        }
+      },
     }),
-  logout: () => set({ user: null }),
-}));
+    {
+      name: 'auth-storage',
+      partialize: (state) => ({ token: state.token }),
+    }
+  )
+);
