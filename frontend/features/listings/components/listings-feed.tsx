@@ -1,29 +1,36 @@
-"use client";
+'use client';
 
-import { useMemo, useState } from "react";
-import { MOCK_LISTINGS } from "../mock";
-import { ListingCard } from "./listing-card";
+import { useEffect, useState } from 'react';
+import { listingsApi, type ListingFromApi } from '../api';
+import { ListingCard } from './listing-card';
 
-const CATEGORIES = ["Sve", "Košenje trave", "Pranje auta", "Selidbe", "IT pomoć"];
-const LOCATIONS = ["Sve", "Sarajevo", "Ilidža", "Stup", "Vogošća"];
+const CATEGORIES = ['Sve', 'Košenje trave', 'Pranje auta', 'Selidbe', 'IT pomoć'];
+const LOCATIONS = ['Sve', 'Sarajevo', 'Ilidža', 'Stup', 'Vogošća'];
 
 export function ListingsFeed() {
-  const [q, setQ] = useState("");
-  const [category, setCategory] = useState("Sve");
-  const [location, setLocation] = useState("Sve");
+  const [listings, setListings] = useState<ListingFromApi[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filtered = useMemo(() => {
-    return MOCK_LISTINGS.filter((x) => {
-      const matchesQ =
-        q.trim().length === 0 ||
-        x.title.toLowerCase().includes(q.trim().toLowerCase());
+  const [q, setQ] = useState('');
+  const [category, setCategory] = useState('Sve');
+  const [location, setLocation] = useState('Sve');
 
-      const matchesCategory = category === "Sve" || x.category === category;
-      const matchesLocation = location === "Sve" || x.location === location;
+  useEffect(() => {
+    listingsApi
+      .getAll()
+      .then(setListings)
+      .catch((err) => setError(err.message))
+      .finally(() => setIsLoading(false));
+  }, []);
 
-      return matchesQ && matchesCategory && matchesLocation;
-    });
-  }, [q, category, location]);
+  const filtered = listings.filter((x) => {
+    const matchesQ =
+      q.trim().length === 0 || x.title.toLowerCase().includes(q.trim().toLowerCase());
+    const matchesCategory = category === 'Sve' || x.category === category;
+    const matchesLocation = location === 'Sve' || x.location === location;
+    return matchesQ && matchesCategory && matchesLocation;
+  });
 
   return (
     <div className="space-y-4">
@@ -60,17 +67,31 @@ export function ListingsFeed() {
         </select>
       </div>
 
-      <div className="space-y-3">
-        {filtered.length === 0 ? (
-          <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-            Nema oglasa za ove filtere.
-          </div>
-        ) : (
-          filtered.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} />
-          ))
-        )}
-      </div>
+      {isLoading && (
+        <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+          Učitavanje oglasa...
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+          Greška: {error}
+        </div>
+      )}
+
+      {!isLoading && !error && (
+        <div className="space-y-3">
+          {filtered.length === 0 ? (
+            <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+              Nema oglasa za ove filtere.
+            </div>
+          ) : (
+            filtered.map((listing) => (
+              <ListingCard key={listing.id} listing={listing} />
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

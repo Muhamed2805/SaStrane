@@ -1,5 +1,5 @@
-import { MOCK_LISTINGS } from "@/features/listings/mock";
-import { ListingActions } from "@/features/listings/components/listing-actions";
+import { listingsApi } from '@/features/listings/api';
+import { ListingActions } from '@/features/listings/components/listing-actions';
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -8,14 +8,13 @@ type PageProps = {
 export default async function ListingDetailsPage({ params }: PageProps) {
   const { id } = await params;
 
-  const listing = MOCK_LISTINGS.find(
-    (x) => String(x.id) === String(id)
-  );
-
-  if (!listing) {
+  let listing;
+  try {
+    listing = await listingsApi.getById(id);
+  } catch {
     return (
       <div className="rounded-lg border p-4 text-sm">
-        Oglas nije pronađen. (id: {String(id)})
+        Oglas nije pronađen.
       </div>
     );
   }
@@ -28,27 +27,29 @@ export default async function ListingDetailsPage({ params }: PageProps) {
         <p className="mt-1 text-sm text-muted-foreground">
           {listing.category} · {listing.location}
         </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Objavio: {listing.client.fullName}
+        </p>
       </div>
 
       {/* Budget */}
-      {listing.budgetText ? (
+      {listing.budget ? (
         <div className="rounded-lg border p-4">
           <div className="text-sm text-muted-foreground">Budžet</div>
-          <div className="mt-1 font-medium">{listing.budgetText}</div>
+          <div className="mt-1 font-medium">{listing.budget}</div>
         </div>
       ) : null}
 
       {/* Description */}
-      <div className="rounded-lg border p-4">
-        <div className="text-sm text-muted-foreground">Opis</div>
-        <p className="mt-2 text-sm">
-          (MVP) Ovdje će doći opis oglasa. Za sada koristimo mock data.
-        </p>
-      </div>
+      {listing.description ? (
+        <div className="rounded-lg border p-4">
+          <div className="text-sm text-muted-foreground">Opis</div>
+          <p className="mt-2 text-sm">{listing.description}</p>
+        </div>
+      ) : null}
 
       {/* Actions */}
-      
-        <ListingActions listingId={String(listing.id)} />
+      <ListingActions listingId={listing.id} />
     </div>
   );
 }

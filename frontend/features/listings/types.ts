@@ -3,6 +3,11 @@ export type Listing = {
   title: string;
   category: string;
   location: string;
-  budgetText?: string;
-  createdAt: string; // ISO string
+  budget: string | null;
+  description?: string | null;
+  createdAt: string;
+  client: {
+    id: string;
+    fullName: string;
+  };
 };

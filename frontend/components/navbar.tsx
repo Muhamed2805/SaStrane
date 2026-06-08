@@ -27,6 +27,7 @@ export function Navbar() {
 
           {user ? (
             <div className="flex items-center gap-3">
+              <NavLink href="/listings/create" label="+ Novi oglas" />
               <span className="text-sm text-muted-foreground">{user.fullName}</span>
               <button
                 className="text-sm text-muted-foreground hover:text-foreground"
