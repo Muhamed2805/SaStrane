@@ -1,4 +1,3 @@
-## Project Structure
 # SaStrane
 
 SaStrane is a two-sided marketplace for local side-hustle jobs 
