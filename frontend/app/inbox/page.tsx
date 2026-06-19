@@ -1,3 +1,5 @@
+import { InboxView } from "@/features/applications/components/inbox-view";
+
 export default function InboxPage() {
-  return <div>Inbox (uskoro)</div>;
+  return <InboxView />;
 }
