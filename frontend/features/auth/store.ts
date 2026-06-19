@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useApplicationsStore } from '@/features/applications/store';
 import { authApi, type AuthUser, type LoginPayload, type RegisterPayload } from './api';
 
 type AuthState = {
@@ -50,7 +51,10 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      logout: () => set({ user: null, token: null }),
+      logout: () => {
+        useApplicationsStore.getState().reset();
+        set({ user: null, token: null });
+      },
 
       restoreSession: async () => {
         const token = get().token;

@@ -3,23 +3,29 @@
 import { useAuthStore } from "@/features/auth/store";
 import { useApplicationsStore } from "@/features/applications/store";
 
-export function ListingActions({ listingId }: { listingId: string }) {
+type ListingActionsProps = {
+  listingId: string;
+  clientId: string;
+};
+
+export function ListingActions({ listingId, clientId }: ListingActionsProps) {
   const { user, openAuthModal } = useAuthStore();
   const { openApply, hasApplied } = useApplicationsStore();
 
+  const isOwner = user?.id === clientId;
   const applied = hasApplied(listingId);
 
   return (
     <div className="flex gap-3">
       <button
         className="rounded-md bg-black px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
-        disabled={applied}
+        disabled={applied || isOwner}
         onClick={() => {
           if (!user) openAuthModal();
           else openApply(listingId);
         }}
       >
-        {applied ? "Prijavljen ✅" : "Prijavi se za posao"}
+        {isOwner ? "Tvoj oglas" : applied ? "Prijavljen ✅" : "Prijavi se za posao"}
       </button>
 
       <button
