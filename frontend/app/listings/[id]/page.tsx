@@ -49,7 +49,7 @@ export default async function ListingDetailsPage({ params }: PageProps) {
       ) : null}
 
       {/* Actions */}
-      <ListingActions listingId={listing.id} />
+      <ListingActions listingId={listing.id} clientId={listing.client.id} />
     </div>
   );
 }

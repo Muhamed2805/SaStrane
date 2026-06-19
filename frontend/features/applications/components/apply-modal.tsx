@@ -1,24 +1,49 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAuthStore } from "@/features/auth/store";
+import { listingsApi } from "@/features/listings/api";
 import { useApplicationsStore } from "../store";
-import { MOCK_LISTINGS } from "@/features/listings/mock";
 
 export function ApplyModal() {
-  const { isApplyOpen, activeListingId, closeApply, submitMock, hasApplied } =
-    useApplicationsStore();
+  const { token } = useAuthStore();
+  const {
+    isApplyOpen,
+    activeListingId,
+    closeApply,
+    submitApplication,
+    hasApplied,
+    isSubmitting,
+    error,
+  } = useApplicationsStore();
 
-  const listing = useMemo(() => {
-    if (!activeListingId) return null;
-    return MOCK_LISTINGS.find((x) => String(x.id) === String(activeListingId)) ?? null;
-  }, [activeListingId]);
-
+  const [listingTitle, setListingTitle] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [price, setPrice] = useState("");
 
+  useEffect(() => {
+    if (!activeListingId) {
+      setListingTitle(null);
+      return;
+    }
+
+    listingsApi
+      .getById(activeListingId)
+      .then((listing) => setListingTitle(listing.title))
+      .catch(() => setListingTitle(null));
+  }, [activeListingId]);
+
+  const alreadyApplied = useMemo(() => {
+    if (!activeListingId) return false;
+    return hasApplied(activeListingId);
+  }, [activeListingId, hasApplied]);
+
   if (!isApplyOpen || !activeListingId) return null;
 
-  const alreadyApplied = hasApplied(activeListingId);
+  const handleSubmit = async () => {
+    if (!token) return;
+    await submitApplication(activeListingId, message, price, token);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -28,7 +53,7 @@ export function ApplyModal() {
         <div className="mb-4">
           <div className="text-lg font-semibold">Prijava na oglas</div>
           <div className="text-sm text-muted-foreground">
-            {listing ? listing.title : `Oglas #${activeListingId}`}
+            {listingTitle ?? `Oglas #${activeListingId}`}
           </div>
         </div>
 
@@ -52,12 +77,18 @@ export function ApplyModal() {
               onChange={(e) => setPrice(e.target.value)}
             />
 
+            {error && (
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+                {error}
+              </div>
+            )}
+
             <button
               className="h-10 w-full rounded-md bg-black text-sm text-white hover:opacity-90 disabled:opacity-50"
-              disabled={message.trim().length < 10}
-              onClick={() => submitMock({ listingId: activeListingId, message, proposedPrice: price })}
+              disabled={isSubmitting || message.trim().length < 10}
+              onClick={handleSubmit}
             >
-              Pošalji prijavu
+              {isSubmitting ? "Šaljem..." : "Pošalji prijavu"}
             </button>
           </div>
         )}
