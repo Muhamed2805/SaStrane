@@ -4,6 +4,8 @@ import { useEffect } from 'react';
 import { useAuthStore } from '@/features/auth/store';
 import { useApplicationsStore } from '@/features/applications/store';
 
+const SILENT_REFRESH_INTERVAL_MS = 10 * 60 * 1000; // access token expires after 15m
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const restoreSession = useAuthStore((state) => state.restoreSession);
   const user = useAuthStore((state) => state.user);
@@ -22,6 +24,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resetApplications();
     }
   }, [user, token, syncAppliedIds, resetApplications]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    const interval = setInterval(() => {
+      useAuthStore.getState().refreshAccessToken().catch(() => {
+        // refresh token is invalid/expired — clear the session
+        useAuthStore.getState().logout();
+      });
+    }, SILENT_REFRESH_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [token]);
 
   return <>{children}</>;
 }
