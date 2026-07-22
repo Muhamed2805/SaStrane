@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/features/auth/store";
 import { listingsApi } from "@/features/listings/api";
+import { formatDate } from "@/lib/format-date";
 import { applicationsApi, type ApplicationFromApi } from "../api";
 import { ApplicationStatusBadge } from "./application-status-badge";
 import { ApplicationCardSkeleton } from "./application-card-skeleton";
@@ -14,14 +15,6 @@ type ReceivedApplication = ApplicationFromApi & {
   listingCategory: string;
   listingLocation: string;
 };
-
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString("bs-BA", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 export function InboxView() {
   const { user, token, openAuthModal } = useAuthStore();

@@ -28,7 +28,9 @@ export function Navbar() {
           {user ? (
             <div className="flex items-center gap-3">
               <NavLink href="/listings/create" label="+ Novi oglas" />
-              <span className="text-sm text-muted-foreground">{user.fullName}</span>
+              <Link href="/profile" className="text-sm text-muted-foreground hover:text-foreground">
+                {user.fullName}
+              </Link>
               <button
                 className="text-sm text-muted-foreground hover:text-foreground"
                 onClick={logout}
