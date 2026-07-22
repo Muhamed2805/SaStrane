@@ -7,6 +7,7 @@ import { useAuthStore } from "@/features/auth/store";
 import { listingsApi } from "@/features/listings/api";
 import { applicationsApi, type ApplicationFromApi } from "../api";
 import { ApplicationStatusBadge } from "./application-status-badge";
+import { ApplicationCardSkeleton } from "./application-card-skeleton";
 
 type ReceivedApplication = ApplicationFromApi & {
   listingTitle: string;
@@ -119,9 +120,23 @@ export function InboxView() {
       </div>
 
       {isLoading && (
-        <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-          Učitavanje...
-        </div>
+        <>
+          <section className="space-y-4">
+            <h2 className="text-lg font-semibold">Moje prijave</h2>
+            <div className="space-y-3">
+              <ApplicationCardSkeleton />
+              <ApplicationCardSkeleton />
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <h2 className="text-lg font-semibold">Primljene prijave</h2>
+            <div className="space-y-3">
+              <ApplicationCardSkeleton />
+              <ApplicationCardSkeleton />
+            </div>
+          </section>
+        </>
       )}
 
       {error && (
