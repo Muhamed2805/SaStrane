@@ -7,10 +7,14 @@ import { ListingCardSkeleton } from './listing-card-skeleton';
 
 const CATEGORIES = ['Sve', 'Košenje trave', 'Pranje auta', 'Selidbe', 'IT pomoć'];
 const LOCATIONS = ['Sve', 'Sarajevo', 'Ilidža', 'Stup', 'Vogošća'];
+const PAGE_SIZE = 10;
 
 export function ListingsFeed() {
   const [listings, setListings] = useState<ListingFromApi[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [q, setQ] = useState('');
@@ -19,11 +23,29 @@ export function ListingsFeed() {
 
   useEffect(() => {
     listingsApi
-      .getAll()
-      .then(setListings)
+      .getAll({ page: 1, limit: PAGE_SIZE })
+      .then((res) => {
+        setListings(res.items);
+        setPage(res.page);
+        setTotalPages(res.totalPages);
+      })
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
   }, []);
+
+  const loadMore = async () => {
+    setIsLoadingMore(true);
+    try {
+      const res = await listingsApi.getAll({ page: page + 1, limit: PAGE_SIZE });
+      setListings((prev) => [...prev, ...res.items]);
+      setPage(res.page);
+      setTotalPages(res.totalPages);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
 
   const filtered = listings.filter((x) => {
     const matchesQ =
@@ -83,17 +105,27 @@ export function ListingsFeed() {
       )}
 
       {!isLoading && !error && (
-        <div className="space-y-3">
-          {filtered.length === 0 ? (
-            <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-              Nema oglasa za ove filtere.
-            </div>
-          ) : (
-            filtered.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
-            ))
+        <>
+          <div className="space-y-3">
+            {filtered.length === 0 ? (
+              <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+                Nema oglasa za ove filtere.
+              </div>
+            ) : (
+              filtered.map((listing) => <ListingCard key={listing.id} listing={listing} />)
+            )}
+          </div>
+
+          {page < totalPages && (
+            <button
+              className="h-10 w-full rounded-md border text-sm hover:bg-muted disabled:opacity-50"
+              onClick={loadMore}
+              disabled={isLoadingMore}
+            >
+              {isLoadingMore ? 'Učitavam...' : 'Učitaj još'}
+            </button>
           )}
-        </div>
+        </>
       )}
     </div>
   );

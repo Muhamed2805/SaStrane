@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateListingDto } from './dto/create-listing.dto';
+import { ListingsQueryDto } from './dto/listings-query.dto';
 import { ListingsService } from './listings.service';
 
 @Controller('listings')
@@ -9,8 +10,8 @@ export class ListingsController {
   constructor(private readonly listings: ListingsService) {}
 
   @Get()
-  getAll() {
-    return this.listings.getAll();
+  getAll(@Query() query: ListingsQueryDto) {
+    return this.listings.getAll(query);
   }
 
   @Get(':id')
