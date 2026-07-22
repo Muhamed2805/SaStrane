@@ -1,7 +1,21 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useApplicationsStore } from '@/features/applications/store';
-import { authApi, type AuthUser, type LoginPayload, type RegisterPayload } from './api';
+import { ApiError, authApi, type AuthUser, type LoginPayload, type RegisterPayload } from './api';
+
+// Only a genuine 401 means the token is actually invalid. Anything else
+// (rate limiting, a network blip, a 5xx) is transient and must not wipe
+// an otherwise-valid session.
+function isUnauthorized(err: unknown) {
+  return err instanceof ApiError && err.status === 401;
+}
+
+function authErrorMessage(err: unknown) {
+  if (err instanceof ApiError && err.status === 429) {
+    return 'Previše pokušaja. Sačekaj malo pa pokušaj ponovo.';
+  }
+  return (err as Error).message;
+}
 
 type AuthState = {
   user: AuthUser | null;
@@ -45,7 +59,7 @@ export const useAuthStore = create<AuthState>()(
           const { user, accessToken, refreshToken } = await authApi.login(payload);
           set({ user, token: accessToken, refreshToken, isLoading: false, isAuthModalOpen: false });
         } catch (err) {
-          set({ error: (err as Error).message, isLoading: false });
+          set({ error: authErrorMessage(err), isLoading: false });
         }
       },
 
@@ -55,7 +69,7 @@ export const useAuthStore = create<AuthState>()(
           const { user, accessToken, refreshToken } = await authApi.register(payload);
           set({ user, token: accessToken, refreshToken, isLoading: false, isAuthModalOpen: false });
         } catch (err) {
-          set({ error: (err as Error).message, isLoading: false });
+          set({ error: authErrorMessage(err), isLoading: false });
         }
       },
 
@@ -76,8 +90,9 @@ export const useAuthStore = create<AuthState>()(
           const user = await authApi.me(token);
           set({ user });
           return;
-        } catch {
-          // access token may have expired — fall through to a refresh attempt
+        } catch (err) {
+          if (!isUnauthorized(err)) return; // transient failure — keep the session, try again later
+          // access token has genuinely expired — fall through to a refresh attempt
         }
 
         if (refreshToken) {
@@ -86,8 +101,9 @@ export const useAuthStore = create<AuthState>()(
             const user = await authApi.me(get().token!);
             set({ user });
             return;
-          } catch {
-            // refresh token is also invalid/expired
+          } catch (err) {
+            if (!isUnauthorized(err)) return; // transient failure — keep the session, try again later
+            // refresh token is also genuinely invalid/expired
           }
         }
 
