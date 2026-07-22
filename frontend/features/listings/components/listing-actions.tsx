@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useAuthStore } from "@/features/auth/store";
 import { useApplicationsStore } from "@/features/applications/store";
 import { listingsApi } from "@/features/listings/api";
@@ -16,38 +17,40 @@ export function ListingActions({ listingId, clientId }: ListingActionsProps) {
   const { user, token, openAuthModal } = useAuthStore();
   const { openApply, hasApplied } = useApplicationsStore();
   const [isDeleting, setIsDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const isOwner = user?.id === clientId;
   const applied = hasApplied(listingId);
 
-  const handleDelete = async () => {
+  const performDelete = async () => {
     if (!token) return;
-    if (!confirm("Sigurno želiš obrisati ovaj oglas? Ova radnja se ne može poništiti.")) return;
-
     setIsDeleting(true);
-    setError(null);
     try {
       await listingsApi.delete(listingId, token);
+      toast.success("Oglas je obrisan.");
       router.push("/");
     } catch (err) {
-      setError((err as Error).message);
+      toast.error((err as Error).message);
       setIsDeleting(false);
     }
   };
 
+  const handleDelete = () => {
+    toast("Obrisati ovaj oglas?", {
+      description: "Ova radnja se ne može poništiti.",
+      action: { label: "Obriši", onClick: performDelete },
+      cancel: { label: "Otkaži", onClick: () => {} },
+    });
+  };
+
   if (isOwner) {
     return (
-      <div className="space-y-2">
-        <button
-          className="rounded-md border border-red-600 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
-          disabled={isDeleting}
-          onClick={handleDelete}
-        >
-          {isDeleting ? "Brišem..." : "Obriši oglas"}
-        </button>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-      </div>
+      <button
+        className="rounded-md border border-red-600 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+        disabled={isDeleting}
+        onClick={handleDelete}
+      >
+        {isDeleting ? "Brišem..." : "Obriši oglas"}
+      </button>
     );
   }
 
@@ -68,7 +71,7 @@ export function ListingActions({ listingId, clientId }: ListingActionsProps) {
         className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
         onClick={() => {
           if (!user) openAuthModal();
-          else alert("✅ Chat (uskoro)");
+          else toast.info("Chat dolazi uskoro 💬");
         }}
       >
         Pošalji poruku

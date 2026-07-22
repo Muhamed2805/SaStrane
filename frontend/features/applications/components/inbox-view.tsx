@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useAuthStore } from "@/features/auth/store";
 import { listingsApi } from "@/features/listings/api";
 import { applicationsApi, type ApplicationFromApi } from "../api";
@@ -82,8 +83,10 @@ export function InboxView() {
     setUpdatingId(id);
     try {
       await applicationsApi.updateStatus(id, { status }, token);
+      toast.success(status === "ACCEPTED" ? "Prijava je prihvaćena." : "Prijava je odbijena.");
       await loadInbox();
     } catch (err) {
+      toast.error((err as Error).message);
       setError((err as Error).message);
     } finally {
       setUpdatingId(null);
