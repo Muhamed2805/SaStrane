@@ -14,6 +14,20 @@ export type ListingFromApi = {
   };
 };
 
+export type ListingsPage = {
+  items: ListingFromApi[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+export type GetAllListingsParams = {
+  page?: number;
+  limit?: number;
+  clientId?: string;
+};
+
 export type CreateListingPayload = {
   title: string;
   category: string;
@@ -40,7 +54,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const listingsApi = {
-  getAll: () => request<ListingFromApi[]>('/listings'),
+  getAll: (params: GetAllListingsParams = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.page) searchParams.set('page', String(params.page));
+    if (params.limit) searchParams.set('limit', String(params.limit));
+    if (params.clientId) searchParams.set('clientId', params.clientId);
+    const query = searchParams.toString();
+    return request<ListingsPage>(`/listings${query ? `?${query}` : ''}`);
+  },
 
   getById: (id: string) => request<ListingFromApi>(`/listings/${id}`),
 

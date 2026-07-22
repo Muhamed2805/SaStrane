@@ -38,12 +38,12 @@ export function InboxView() {
     setError(null);
 
     try {
-      const [myApps, allListings] = await Promise.all([
+      const [myApps, myListingsPage] = await Promise.all([
         applicationsApi.getMyApplications(token),
-        listingsApi.getAll(),
+        listingsApi.getAll({ clientId: user.id, limit: 100 }),
       ]);
 
-      const myListings = allListings.filter((listing) => listing.client.id === user.id);
+      const myListings = myListingsPage.items;
 
       const receivedGroups = await Promise.all(
         myListings.map(async (listing) => {
