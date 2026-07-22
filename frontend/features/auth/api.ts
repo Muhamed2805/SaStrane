@@ -11,6 +11,12 @@ export type AuthUser = {
 export type AuthResponse = {
   user: AuthUser;
   accessToken: string;
+  refreshToken: string;
+};
+
+export type RefreshResponse = {
+  accessToken: string;
+  refreshToken: string;
 };
 
 export type RegisterPayload = {
@@ -58,6 +64,18 @@ export const authApi = {
   me: (token: string) =>
     request<AuthUser>('/auth/me', {
       method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  refresh: (refreshToken: string) =>
+    request<RefreshResponse>('/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken }),
+    }),
+
+  logout: (token: string) =>
+    request<{ success: boolean }>('/auth/logout', {
+      method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
     }),
 };
