@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { listingsApi, type ListingFromApi } from '../api';
 import { ListingCard } from './listing-card';
+import { ListingCardSkeleton } from './listing-card-skeleton';
 
 const CATEGORIES = ['Sve', 'Košenje trave', 'Pranje auta', 'Selidbe', 'IT pomoć'];
 const LOCATIONS = ['Sve', 'Sarajevo', 'Ilidža', 'Stup', 'Vogošća'];
@@ -68,8 +69,10 @@ export function ListingsFeed() {
       </div>
 
       {isLoading && (
-        <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-          Učitavanje oglasa...
+        <div className="space-y-3">
+          <ListingCardSkeleton />
+          <ListingCardSkeleton />
+          <ListingCardSkeleton />
         </div>
       )}
 
