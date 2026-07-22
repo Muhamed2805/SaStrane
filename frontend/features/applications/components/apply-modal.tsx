@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { useAuthStore } from "@/features/auth/store";
 import { listingsApi } from "@/features/listings/api";
 import { useApplicationsStore } from "../store";
@@ -43,6 +44,9 @@ export function ApplyModal() {
   const handleSubmit = async () => {
     if (!token) return;
     await submitApplication(activeListingId, message, price, token);
+    if (!useApplicationsStore.getState().error) {
+      toast.success("Prijava je poslana!");
+    }
   };
 
   return (

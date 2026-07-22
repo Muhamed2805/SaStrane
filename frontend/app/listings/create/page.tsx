@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store';
 import { listingsApi } from '@/features/listings/api';
 
@@ -39,6 +40,7 @@ export default function CreateListingPage() {
         { title, category, location, budget: budget || undefined, description: description || undefined },
         token,
       );
+      toast.success('Oglas je uspješno objavljen!');
       router.push(`/listings/${listing.id}`);
     } catch (err) {
       setError((err as Error).message);
