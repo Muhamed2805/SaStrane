@@ -1,19 +1,11 @@
-import { API_URL } from '@/lib/api-url';
-
-export class ApiError extends Error {
-  status: number;
-
-  constructor(message: string, status: number) {
-    super(message);
-    this.status = status;
-  }
-}
+import { apiRequest } from "@/lib/api-client";
+export { ApiError } from "@/lib/api-client";
 
 export type AuthUser = {
   id: string;
   email: string;
   fullName: string;
-  role: 'CLIENT' | 'EXECUTOR' | 'BOTH';
+  role: "CLIENT" | "EXECUTOR" | "BOTH";
   createdAt: string;
 };
 
@@ -32,7 +24,7 @@ export type RegisterPayload = {
   email: string;
   password: string;
   fullName: string;
-  role?: 'CLIENT' | 'EXECUTOR' | 'BOTH';
+  role?: "CLIENT" | "EXECUTOR" | "BOTH";
 };
 
 export type LoginPayload = {
@@ -40,51 +32,34 @@ export type LoginPayload = {
   password: string;
 };
 
-async function request<T>(path: string, options: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  });
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: 'Network error' }));
-    throw new ApiError(error.message ?? 'Request failed', res.status);
-  }
-
-  return res.json();
-}
-
 export const authApi = {
   register: (payload: RegisterPayload) =>
-    request<AuthResponse>('/auth/register', {
-      method: 'POST',
+    apiRequest<AuthResponse>("/auth/register", {
+      method: "POST",
       body: JSON.stringify(payload),
     }),
 
   login: (payload: LoginPayload) =>
-    request<AuthResponse>('/auth/login', {
-      method: 'POST',
+    apiRequest<AuthResponse>("/auth/login", {
+      method: "POST",
       body: JSON.stringify(payload),
     }),
 
   me: (token: string) =>
-    request<AuthUser>('/auth/me', {
-      method: 'GET',
+    apiRequest<AuthUser>("/auth/me", {
+      method: "GET",
       headers: { Authorization: `Bearer ${token}` },
     }),
 
   refresh: (refreshToken: string) =>
-    request<RefreshResponse>('/auth/refresh', {
-      method: 'POST',
+    apiRequest<RefreshResponse>("/auth/refresh", {
+      method: "POST",
       body: JSON.stringify({ refreshToken }),
     }),
 
   logout: (token: string) =>
-    request<{ success: boolean }>('/auth/logout', {
-      method: 'POST',
+    apiRequest<{ success: boolean }>("/auth/logout", {
+      method: "POST",
       headers: { Authorization: `Bearer ${token}` },
     }),
 };

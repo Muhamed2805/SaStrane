@@ -1,6 +1,6 @@
-import { API_URL } from '@/lib/api-url';
+import { apiRequest } from "@/lib/api-client";
 
-export type ApplicationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
+export type ApplicationStatus = "PENDING" | "ACCEPTED" | "REJECTED";
 
 export type ApplicationFromApi = {
   id: string;
@@ -28,47 +28,34 @@ export type CreateApplicationPayload = {
 };
 
 export type UpdateApplicationStatusPayload = {
-  status: 'ACCEPTED' | 'REJECTED';
+  status: "ACCEPTED" | "REJECTED";
 };
-
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  });
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: 'Network error' }));
-    throw new Error(error.message ?? 'Request failed');
-  }
-
-  return res.json();
-}
 
 export const applicationsApi = {
   apply: (payload: CreateApplicationPayload, token: string) =>
-    request<ApplicationFromApi>('/applications', {
-      method: 'POST',
+    apiRequest<ApplicationFromApi>("/applications", {
+      method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(payload),
     }),
 
   getMyApplications: (token: string) =>
-    request<ApplicationFromApi[]>('/applications/my', {
+    apiRequest<ApplicationFromApi[]>("/applications/my", {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
   getForListing: (listingId: string, token: string) =>
-    request<ApplicationFromApi[]>(`/applications/listing/${listingId}`, {
+    apiRequest<ApplicationFromApi[]>(`/applications/listing/${listingId}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
-  updateStatus: (id: string, payload: UpdateApplicationStatusPayload, token: string) =>
-    request<ApplicationFromApi>(`/applications/${id}/status`, {
-      method: 'PATCH',
+  updateStatus: (
+    id: string,
+    payload: UpdateApplicationStatusPayload,
+    token: string,
+  ) =>
+    apiRequest<ApplicationFromApi>(`/applications/${id}/status`, {
+      method: "PATCH",
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(payload),
     }),

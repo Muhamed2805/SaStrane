@@ -1,4 +1,4 @@
-import { API_URL } from "@/lib/api-url";
+import { apiRequest } from "@/lib/api-client";
 
 export type ListingFromApi = {
   id: string;
@@ -44,23 +44,6 @@ export type UpdateListingPayload = Partial<{
   description: string | null;
 }>;
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: "Network error" }));
-    throw new Error(error.message ?? "Request failed");
-  }
-
-  return res.json();
-}
-
 export const listingsApi = {
   getAll: (params: GetAllListingsParams = {}) => {
     const searchParams = new URLSearchParams();
@@ -68,28 +51,28 @@ export const listingsApi = {
     if (params.limit) searchParams.set("limit", String(params.limit));
     if (params.clientId) searchParams.set("clientId", params.clientId);
     const query = searchParams.toString();
-    return request<ListingsPage>(`/listings${query ? `?${query}` : ""}`);
+    return apiRequest<ListingsPage>(`/listings${query ? `?${query}` : ""}`);
   },
 
   getById: (id: string) =>
-    request<ListingFromApi>(`/listings/${id}`, { cache: "no-store" }),
+    apiRequest<ListingFromApi>(`/listings/${id}`, { cache: "no-store" }),
 
   create: (payload: CreateListingPayload, token: string) =>
-    request<ListingFromApi>("/listings", {
+    apiRequest<ListingFromApi>("/listings", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(payload),
     }),
 
   update: (id: string, payload: UpdateListingPayload, token: string) =>
-    request<ListingFromApi>(`/listings/${id}`, {
+    apiRequest<ListingFromApi>(`/listings/${id}`, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(payload),
     }),
 
   delete: (id: string, token: string) =>
-    request<void>(`/listings/${id}`, {
+    apiRequest<void>(`/listings/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     }),
