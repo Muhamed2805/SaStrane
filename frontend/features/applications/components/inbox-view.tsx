@@ -4,18 +4,11 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/features/auth/store";
-import { listingsApi } from "@/features/listings/api";
 import { formatDate } from "@/lib/format-date";
 import { applicationsApi, type ApplicationFromApi } from "../api";
 import { ApplicationStatusBadge } from "./application-status-badge";
 import { ApplicationCardSkeleton } from "./application-card-skeleton";
 import { ReceivedApplicationCard } from "./received-application-card";
-
-type ReceivedApplication = ApplicationFromApi & {
-  listingTitle: string;
-  listingCategory: string;
-  listingLocation: string;
-};
 
 export function InboxView() {
   const { user, token, openAuthModal } = useAuthStore();
@@ -23,7 +16,7 @@ export function InboxView() {
     [],
   );
   const [receivedApplications, setReceivedApplications] = useState<
-    ReceivedApplication[]
+    ApplicationFromApi[]
   >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,34 +29,13 @@ export function InboxView() {
     setError(null);
 
     try {
-      const [myApps, myListingsPage] = await Promise.all([
+      const [myApps, receivedApps] = await Promise.all([
         applicationsApi.getMyApplications(token),
-        listingsApi.getAll({ clientId: user.id, limit: 100 }),
+        applicationsApi.getReceivedApplications(token),
       ]);
 
-      const myListings = myListingsPage.items;
-
-      const receivedGroups = await Promise.all(
-        myListings.map(async (listing) => {
-          const apps = await applicationsApi.getForListing(listing.id, token);
-          return apps.map((app) => ({
-            ...app,
-            listingTitle: listing.title,
-            listingCategory: listing.category,
-            listingLocation: listing.location,
-          }));
-        }),
-      );
-
       setMyApplications(myApps);
-      setReceivedApplications(
-        receivedGroups
-          .flat()
-          .sort(
-            (a, b) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-          ),
-      );
+      setReceivedApplications(receivedApps);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -225,11 +197,7 @@ export function InboxView() {
                   <ReceivedApplicationCard
                     key={app.id}
                     application={app}
-                    listing={{
-                      title: app.listingTitle,
-                      category: app.listingCategory,
-                      location: app.listingLocation,
-                    }}
+                    listing={app.listing}
                     isUpdating={updatingId === app.id}
                     onStatusUpdate={handleStatusUpdate}
                   />

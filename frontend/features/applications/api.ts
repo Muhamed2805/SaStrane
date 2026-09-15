@@ -44,6 +44,11 @@ export const applicationsApi = {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
+  getReceivedApplications: (token: string) =>
+    apiRequest<ApplicationFromApi[]>("/applications/received", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
   getForListing: (listingId: string, token: string) =>
     apiRequest<ApplicationFromApi[]>(`/applications/listing/${listingId}`, {
       headers: { Authorization: `Bearer ${token}` },

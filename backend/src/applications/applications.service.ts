@@ -74,6 +74,37 @@ export class ApplicationsService {
     });
   }
 
+  async getReceivedApplications(clientId: string) {
+    return this.prisma.application.findMany({
+      where: {
+        listing: { clientId },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        listingId: true,
+        message: true,
+        proposedPrice: true,
+        status: true,
+        createdAt: true,
+        listing: {
+          select: {
+            title: true,
+            category: true,
+            location: true,
+          },
+        },
+        executor: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+      },
+    });
+  }
+
   async getForListing(listingId: string, userId: string) {
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },

@@ -33,6 +33,13 @@ export class ApplicationsController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('received')
+  getReceived(@Req() req: Request) {
+    const user = req.user as { id: string };
+    return this.applications.getReceivedApplications(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('listing/:listingId')
   getForListing(@Param('listingId') listingId: string, @Req() req: Request) {
     const user = req.user as { id: string };
