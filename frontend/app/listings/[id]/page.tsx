@@ -1,5 +1,6 @@
-import { listingsApi } from '@/features/listings/api';
-import { ListingActions } from '@/features/listings/components/listing-actions';
+import { listingsApi } from "@/features/listings/api";
+import { ListingActions } from "@/features/listings/components/listing-actions";
+import { ListingApplications } from "@/features/applications/components/listing-applications";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -13,9 +14,7 @@ export default async function ListingDetailsPage({ params }: PageProps) {
     listing = await listingsApi.getById(id);
   } catch {
     return (
-      <div className="rounded-lg border p-4 text-sm">
-        Oglas nije pronađen.
-      </div>
+      <div className="rounded-lg border p-4 text-sm">Oglas nije pronađen.</div>
     );
   }
 
@@ -50,6 +49,11 @@ export default async function ListingDetailsPage({ params }: PageProps) {
 
       {/* Actions */}
       <ListingActions listingId={listing.id} clientId={listing.client.id} />
+
+      <ListingApplications
+        listingId={listing.id}
+        clientId={listing.client.id}
+      />
     </div>
   );
 }

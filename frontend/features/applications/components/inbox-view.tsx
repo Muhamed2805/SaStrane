@@ -9,6 +9,7 @@ import { formatDate } from "@/lib/format-date";
 import { applicationsApi, type ApplicationFromApi } from "../api";
 import { ApplicationStatusBadge } from "./application-status-badge";
 import { ApplicationCardSkeleton } from "./application-card-skeleton";
+import { ReceivedApplicationCard } from "./received-application-card";
 
 type ReceivedApplication = ApplicationFromApi & {
   listingTitle: string;
@@ -18,8 +19,12 @@ type ReceivedApplication = ApplicationFromApi & {
 
 export function InboxView() {
   const { user, token, openAuthModal } = useAuthStore();
-  const [myApplications, setMyApplications] = useState<ApplicationFromApi[]>([]);
-  const [receivedApplications, setReceivedApplications] = useState<ReceivedApplication[]>([]);
+  const [myApplications, setMyApplications] = useState<ApplicationFromApi[]>(
+    [],
+  );
+  const [receivedApplications, setReceivedApplications] = useState<
+    ReceivedApplication[]
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -54,7 +59,10 @@ export function InboxView() {
       setReceivedApplications(
         receivedGroups
           .flat()
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+          .sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          ),
       );
     } catch (err) {
       setError((err as Error).message);
@@ -71,14 +79,27 @@ export function InboxView() {
     }
   }, [user, token, loadInbox]);
 
-  const handleStatusUpdate = async (id: string, status: "ACCEPTED" | "REJECTED") => {
+  const handleStatusUpdate = async (
+    id: string,
+    status: "ACCEPTED" | "REJECTED",
+  ) => {
     if (!token) return;
 
     setUpdatingId(id);
     try {
-      await applicationsApi.updateStatus(id, { status }, token);
-      toast.success(status === "ACCEPTED" ? "Prijava je prihvaćena." : "Prijava je odbijena.");
-      await loadInbox();
+      const updated = await applicationsApi.updateStatus(id, { status }, token);
+      setReceivedApplications((current) =>
+        current.map((application) =>
+          application.id === updated.id
+            ? { ...application, ...updated }
+            : application,
+        ),
+      );
+      toast.success(
+        status === "ACCEPTED"
+          ? "Prijava je prihvaćena."
+          : "Prijava je odbijena.",
+      );
     } catch (err) {
       toast.error((err as Error).message);
       setError((err as Error).message);
@@ -174,7 +195,9 @@ export function InboxView() {
                     <p className="mt-3 text-sm">{app.message}</p>
 
                     <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                      {app.proposedPrice && <span>Predložena cijena: {app.proposedPrice}</span>}
+                      {app.proposedPrice && (
+                        <span>Predložena cijena: {app.proposedPrice}</span>
+                      )}
                       <span>Poslano: {formatDate(app.createdAt)}</span>
                     </div>
                   </div>
@@ -189,56 +212,27 @@ export function InboxView() {
             {receivedApplications.length === 0 ? (
               <div className="rounded-lg border p-4 text-sm text-muted-foreground">
                 Nema prijava na tvoje oglase.{" "}
-                <Link href="/listings/create" className="underline hover:text-foreground">
+                <Link
+                  href="/listings/create"
+                  className="underline hover:text-foreground"
+                >
                   Objavi novi oglas
                 </Link>
               </div>
             ) : (
               <div className="space-y-3">
                 {receivedApplications.map((app) => (
-                  <div key={app.id} className="rounded-lg border p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <p className="font-medium">{app.listingTitle}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {app.listingCategory} · {app.listingLocation}
-                        </p>
-                        {app.executor && (
-                          <p className="mt-2 text-sm">
-                            {app.executor.fullName}{" "}
-                            <span className="text-muted-foreground">({app.executor.email})</span>
-                          </p>
-                        )}
-                      </div>
-                      <ApplicationStatusBadge status={app.status} />
-                    </div>
-
-                    <p className="mt-3 text-sm">{app.message}</p>
-
-                    <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                      {app.proposedPrice && <span>Predložena cijena: {app.proposedPrice}</span>}
-                      <span>Primljeno: {formatDate(app.createdAt)}</span>
-                    </div>
-
-                    {app.status === "PENDING" && (
-                      <div className="mt-4 flex gap-2">
-                        <button
-                          className="rounded-md bg-black px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
-                          disabled={updatingId === app.id}
-                          onClick={() => handleStatusUpdate(app.id, "ACCEPTED")}
-                        >
-                          {updatingId === app.id ? "..." : "Prihvati"}
-                        </button>
-                        <button
-                          className="rounded-md border px-4 py-2 text-sm hover:bg-muted disabled:opacity-50"
-                          disabled={updatingId === app.id}
-                          onClick={() => handleStatusUpdate(app.id, "REJECTED")}
-                        >
-                          Odbij
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <ReceivedApplicationCard
+                    key={app.id}
+                    application={app}
+                    listing={{
+                      title: app.listingTitle,
+                      category: app.listingCategory,
+                      location: app.listingLocation,
+                    }}
+                    isUpdating={updatingId === app.id}
+                    onStatusUpdate={handleStatusUpdate}
+                  />
                 ))}
               </div>
             )}
