@@ -1,21 +1,23 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useAuthStore } from '@/features/auth/store';
-import { listingsApi } from '@/features/listings/api';
-import { applicationsApi } from '@/features/applications/api';
-import { formatDate } from '@/lib/format-date';
+import { useEffect, useState } from "react";
+import { useAuthStore } from "@/features/auth/store";
+import { listingsApi } from "@/features/listings/api";
+import { applicationsApi } from "@/features/applications/api";
+import { formatDate } from "@/lib/format-date";
 
 const ROLE_LABEL: Record<string, string> = {
-  CLIENT: 'Klijent',
-  EXECUTOR: 'Izvršilac',
-  BOTH: 'Klijent i izvršilac',
+  CLIENT: "Klijent",
+  EXECUTOR: "Izvršilac",
+  BOTH: "Klijent i izvršilac",
 };
 
 export default function ProfilePage() {
   const { user, token } = useAuthStore();
   const [listingsCount, setListingsCount] = useState<number | null>(null);
-  const [applicationsCount, setApplicationsCount] = useState<number | null>(null);
+  const [applicationsCount, setApplicationsCount] = useState<number | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -23,11 +25,11 @@ export default function ProfilePage() {
 
     Promise.all([
       listingsApi.getAll({ clientId: user.id, limit: 1 }),
-      applicationsApi.getMyApplications(token),
+      applicationsApi.getMyApplications(token, { limit: 1 }),
     ])
-      .then(([listingsPage, applications]) => {
+      .then(([listingsPage, applicationsPage]) => {
         setListingsCount(listingsPage.total);
-        setApplicationsCount(applications.length);
+        setApplicationsCount(applicationsPage.total);
       })
       .catch((err) => setError((err as Error).message));
   }, [user, token]);
@@ -44,7 +46,9 @@ export default function ProfilePage() {
     <div className="mx-auto max-w-lg space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Profil</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Tvoji podaci i aktivnost.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Tvoji podaci i aktivnost.
+        </p>
       </div>
 
       <div className="rounded-lg border p-4">
@@ -78,12 +82,16 @@ export default function ProfilePage() {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-lg border p-4 text-center">
-          <div className="text-2xl font-bold">{listingsCount ?? '—'}</div>
-          <div className="mt-1 text-sm text-muted-foreground">Objavljenih oglasa</div>
+          <div className="text-2xl font-bold">{listingsCount ?? "—"}</div>
+          <div className="mt-1 text-sm text-muted-foreground">
+            Objavljenih oglasa
+          </div>
         </div>
         <div className="rounded-lg border p-4 text-center">
-          <div className="text-2xl font-bold">{applicationsCount ?? '—'}</div>
-          <div className="mt-1 text-sm text-muted-foreground">Poslanih prijava</div>
+          <div className="text-2xl font-bold">{applicationsCount ?? "—"}</div>
+          <div className="mt-1 text-sm text-muted-foreground">
+            Poslanih prijava
+          </div>
         </div>
       </div>
     </div>

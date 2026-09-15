@@ -10,6 +10,19 @@ import { ApplicationStatusBadge } from "./application-status-badge";
 import { ApplicationCardSkeleton } from "./application-card-skeleton";
 import { ReceivedApplicationCard } from "./received-application-card";
 
+const PAGE_SIZE = 10;
+
+function appendUnique(
+  current: ApplicationFromApi[],
+  incoming: ApplicationFromApi[],
+) {
+  const existingIds = new Set(current.map((application) => application.id));
+  return [
+    ...current,
+    ...incoming.filter((application) => !existingIds.has(application.id)),
+  ];
+}
+
 export function InboxView() {
   const { user, token, openAuthModal } = useAuthStore();
   const [myApplications, setMyApplications] = useState<ApplicationFromApi[]>(
@@ -21,6 +34,13 @@ export function InboxView() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [myPage, setMyPage] = useState(1);
+  const [myTotalPages, setMyTotalPages] = useState(1);
+  const [receivedPage, setReceivedPage] = useState(1);
+  const [receivedTotalPages, setReceivedTotalPages] = useState(1);
+  const [loadingMore, setLoadingMore] = useState<"my" | "received" | null>(
+    null,
+  );
 
   const loadInbox = useCallback(async () => {
     if (!user || !token) return;
@@ -29,13 +49,20 @@ export function InboxView() {
     setError(null);
 
     try {
-      const [myApps, receivedApps] = await Promise.all([
-        applicationsApi.getMyApplications(token),
-        applicationsApi.getReceivedApplications(token),
+      const [myPageData, receivedPageData] = await Promise.all([
+        applicationsApi.getMyApplications(token, { page: 1, limit: PAGE_SIZE }),
+        applicationsApi.getReceivedApplications(token, {
+          page: 1,
+          limit: PAGE_SIZE,
+        }),
       ]);
 
-      setMyApplications(myApps);
-      setReceivedApplications(receivedApps);
+      setMyApplications(myPageData.items);
+      setMyPage(myPageData.page);
+      setMyTotalPages(myPageData.totalPages);
+      setReceivedApplications(receivedPageData.items);
+      setReceivedPage(receivedPageData.page);
+      setReceivedTotalPages(receivedPageData.totalPages);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -50,6 +77,46 @@ export function InboxView() {
       setIsLoading(false);
     }
   }, [user, token, loadInbox]);
+
+  const loadMoreMyApplications = async () => {
+    if (!token || myPage >= myTotalPages) return;
+
+    setLoadingMore("my");
+    try {
+      const nextPage = await applicationsApi.getMyApplications(token, {
+        page: myPage + 1,
+        limit: PAGE_SIZE,
+      });
+      setMyApplications((current) => appendUnique(current, nextPage.items));
+      setMyPage(nextPage.page);
+      setMyTotalPages(nextPage.totalPages);
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setLoadingMore(null);
+    }
+  };
+
+  const loadMoreReceivedApplications = async () => {
+    if (!token || receivedPage >= receivedTotalPages) return;
+
+    setLoadingMore("received");
+    try {
+      const nextPage = await applicationsApi.getReceivedApplications(token, {
+        page: receivedPage + 1,
+        limit: PAGE_SIZE,
+      });
+      setReceivedApplications((current) =>
+        appendUnique(current, nextPage.items),
+      );
+      setReceivedPage(nextPage.page);
+      setReceivedTotalPages(nextPage.totalPages);
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setLoadingMore(null);
+    }
+  };
 
   const handleStatusUpdate = async (
     id: string,
@@ -74,7 +141,6 @@ export function InboxView() {
       );
     } catch (err) {
       toast.error((err as Error).message);
-      setError((err as Error).message);
     } finally {
       setUpdatingId(null);
     }
@@ -174,6 +240,16 @@ export function InboxView() {
                     </div>
                   </div>
                 ))}
+                {myPage < myTotalPages && (
+                  <button
+                    className="h-10 w-full rounded-md border text-sm hover:bg-muted disabled:opacity-50"
+                    disabled={loadingMore !== null}
+                    type="button"
+                    onClick={loadMoreMyApplications}
+                  >
+                    {loadingMore === "my" ? "Učitavam..." : "Učitaj još"}
+                  </button>
+                )}
               </div>
             )}
           </section>
@@ -202,6 +278,16 @@ export function InboxView() {
                     onStatusUpdate={handleStatusUpdate}
                   />
                 ))}
+                {receivedPage < receivedTotalPages && (
+                  <button
+                    className="h-10 w-full rounded-md border text-sm hover:bg-muted disabled:opacity-50"
+                    disabled={loadingMore !== null}
+                    type="button"
+                    onClick={loadMoreReceivedApplications}
+                  >
+                    {loadingMore === "received" ? "Učitavam..." : "Učitaj još"}
+                  </button>
+                )}
               </div>
             )}
           </section>

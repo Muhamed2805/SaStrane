@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { applicationsApi } from './api';
+import { create } from "zustand";
+import { applicationsApi } from "./api";
 
 type ApplicationsState = {
   isApplyOpen: boolean;
@@ -10,7 +10,12 @@ type ApplicationsState = {
 
   openApply: (listingId: string) => void;
   closeApply: () => void;
-  submitApplication: (listingId: string, message: string, proposedPrice: string, token: string) => Promise<void>;
+  submitApplication: (
+    listingId: string,
+    message: string,
+    proposedPrice: string,
+    token: string,
+  ) => Promise<void>;
   syncAppliedIds: (token: string) => Promise<void>;
   hasApplied: (listingId: string) => boolean;
   reset: () => void;
@@ -23,8 +28,10 @@ export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
   isSubmitting: false,
   error: null,
 
-  openApply: (listingId) => set({ isApplyOpen: true, activeListingId: listingId, error: null }),
-  closeApply: () => set({ isApplyOpen: false, activeListingId: null, error: null }),
+  openApply: (listingId) =>
+    set({ isApplyOpen: true, activeListingId: listingId, error: null }),
+  closeApply: () =>
+    set({ isApplyOpen: false, activeListingId: null, error: null }),
 
   submitApplication: async (listingId, message, proposedPrice, token) => {
     set({ isSubmitting: true, error: null });
@@ -46,14 +53,17 @@ export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
 
   syncAppliedIds: async (token) => {
     try {
-      const applications = await applicationsApi.getMyApplications(token);
-      const appliedListingIds = applications.reduce<Record<string, true>>((acc, app) => {
-        acc[app.listingId] = true;
-        return acc;
-      }, {});
+      const listingIds = await applicationsApi.getAppliedListingIds(token);
+      const appliedListingIds = listingIds.reduce<Record<string, true>>(
+        (acc, listingId) => {
+          acc[listingId] = true;
+          return acc;
+        },
+        {},
+      );
       set({ appliedListingIds });
     } catch {
-      set({ appliedListingIds: {} });
+      // Keep known IDs on transient failures; logout clears them via reset().
     }
   },
 

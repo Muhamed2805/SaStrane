@@ -31,6 +31,27 @@ export type UpdateApplicationStatusPayload = {
   status: "ACCEPTED" | "REJECTED";
 };
 
+export type ApplicationsPage = {
+  items: ApplicationFromApi[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+export type ApplicationsPageParams = {
+  page?: number;
+  limit?: number;
+};
+
+function pageQuery(params: ApplicationsPageParams): string {
+  const searchParams = new URLSearchParams();
+  if (params.page) searchParams.set("page", String(params.page));
+  if (params.limit) searchParams.set("limit", String(params.limit));
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
 export const applicationsApi = {
   apply: (payload: CreateApplicationPayload, token: string) =>
     apiRequest<ApplicationFromApi>("/applications", {
@@ -39,13 +60,21 @@ export const applicationsApi = {
       body: JSON.stringify(payload),
     }),
 
-  getMyApplications: (token: string) =>
-    apiRequest<ApplicationFromApi[]>("/applications/my", {
+  getAppliedListingIds: (token: string) =>
+    apiRequest<string[]>("/applications/my/listing-ids", {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
-  getReceivedApplications: (token: string) =>
-    apiRequest<ApplicationFromApi[]>("/applications/received", {
+  getMyApplications: (token: string, params: ApplicationsPageParams = {}) =>
+    apiRequest<ApplicationsPage>(`/applications/my${pageQuery(params)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  getReceivedApplications: (
+    token: string,
+    params: ApplicationsPageParams = {},
+  ) =>
+    apiRequest<ApplicationsPage>(`/applications/received${pageQuery(params)}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
