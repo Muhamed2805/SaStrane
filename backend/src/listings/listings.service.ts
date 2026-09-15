@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { ListingsQueryDto } from './dto/listings-query.dto';
@@ -16,7 +17,18 @@ export class ListingsService {
   async getAll(query: ListingsQueryDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
-    const where = query.clientId ? { clientId: query.clientId } : undefined;
+    const where: Prisma.ListingWhereInput = {
+      ...(query.clientId && { clientId: query.clientId }),
+      ...(query.category && { category: query.category }),
+      ...(query.location && { location: query.location }),
+      ...(query.q && {
+        OR: [
+          { title: { contains: query.q, mode: 'insensitive' } },
+          { description: { contains: query.q, mode: 'insensitive' } },
+          { category: { contains: query.q, mode: 'insensitive' } },
+        ],
+      }),
+    };
 
     const [items, total] = await Promise.all([
       this.prisma.listing.findMany({
