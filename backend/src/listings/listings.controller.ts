@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -13,6 +14,7 @@ import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { ListingsQueryDto } from './dto/listings-query.dto';
+import { UpdateListingDto } from './dto/update-listing.dto';
 import { ListingsService } from './listings.service';
 
 @Controller('listings')
@@ -34,6 +36,17 @@ export class ListingsController {
   create(@Body() dto: CreateListingDto, @Req() req: Request) {
     const user = req.user as { id: string };
     return this.listings.create(dto, user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateListingDto,
+    @Req() req: Request,
+  ) {
+    const user = req.user as { id: string };
+    return this.listings.update(id, dto, user.id);
   }
 
   @UseGuards(JwtAuthGuard)

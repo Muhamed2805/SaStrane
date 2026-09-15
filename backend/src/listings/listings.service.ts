@@ -1,11 +1,13 @@
 import {
+  BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { ListingsQueryDto } from './dto/listings-query.dto';
+import { UpdateListingDto } from './dto/update-listing.dto';
 
 @Injectable()
 export class ListingsService {
@@ -82,6 +84,42 @@ export class ListingsService {
         budget: true,
         description: true,
         createdAt: true,
+      },
+    });
+  }
+
+  async update(id: string, dto: UpdateListingDto, userId: string) {
+    if (Object.keys(dto).length === 0) {
+      throw new BadRequestException('At least one field must be provided');
+    }
+
+    const listing = await this.prisma.listing.findUnique({
+      where: { id },
+      select: { clientId: true },
+    });
+
+    if (!listing) throw new NotFoundException('Listing not found');
+    if (listing.clientId !== userId) {
+      throw new ForbiddenException('Not your listing');
+    }
+
+    return this.prisma.listing.update({
+      where: { id },
+      data: dto,
+      select: {
+        id: true,
+        title: true,
+        category: true,
+        location: true,
+        budget: true,
+        description: true,
+        createdAt: true,
+        client: {
+          select: {
+            id: true,
+            fullName: true,
+          },
+        },
       },
     });
   }
