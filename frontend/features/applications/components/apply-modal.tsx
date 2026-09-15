@@ -18,21 +18,38 @@ export function ApplyModal() {
     error,
   } = useApplicationsStore();
 
-  const [listingTitle, setListingTitle] = useState<string | null>(null);
+  const [listingDetails, setListingDetails] = useState<{
+    id: string;
+    title: string | null;
+  } | null>(null);
   const [message, setMessage] = useState("");
   const [price, setPrice] = useState("");
 
   useEffect(() => {
-    if (!activeListingId) {
-      setListingTitle(null);
-      return;
-    }
+    if (!activeListingId) return;
+
+    let cancelled = false;
 
     listingsApi
       .getById(activeListingId)
-      .then((listing) => setListingTitle(listing.title))
-      .catch(() => setListingTitle(null));
+      .then((listing) => {
+        if (!cancelled) {
+          setListingDetails({ id: activeListingId, title: listing.title });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setListingDetails({ id: activeListingId, title: null });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeListingId]);
+
+  const listingTitle =
+    listingDetails?.id === activeListingId ? listingDetails.title : null;
 
   const alreadyApplied = useMemo(() => {
     if (!activeListingId) return false;
