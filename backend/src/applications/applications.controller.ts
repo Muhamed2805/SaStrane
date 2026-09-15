@@ -5,12 +5,14 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ApplicationsService } from './applications.service';
+import { ApplicationsQueryDto } from './dto/applications-query.dto';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { UpdateApplicationStatusDto } from './dto/update-application-status.dto';
 
@@ -26,17 +28,24 @@ export class ApplicationsController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('my')
-  getMy(@Req() req: Request) {
+  @Get('my/listing-ids')
+  getAppliedListingIds(@Req() req: Request) {
     const user = req.user as { id: string };
-    return this.applications.getMyApplications(user.id);
+    return this.applications.getAppliedListingIds(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('my')
+  getMy(@Query() query: ApplicationsQueryDto, @Req() req: Request) {
+    const user = req.user as { id: string };
+    return this.applications.getMyApplications(user.id, query);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('received')
-  getReceived(@Req() req: Request) {
+  getReceived(@Query() query: ApplicationsQueryDto, @Req() req: Request) {
     const user = req.user as { id: string };
-    return this.applications.getReceivedApplications(user.id);
+    return this.applications.getReceivedApplications(user.id, query);
   }
 
   @UseGuards(JwtAuthGuard)

@@ -7,6 +7,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
+import { ApplicationsQueryDto } from './dto/applications-query.dto';
 import { UpdateApplicationStatusDto } from './dto/update-application-status.dto';
 
 @Injectable()
@@ -52,57 +53,86 @@ export class ApplicationsService {
     }
   }
 
-  async getMyApplications(executorId: string) {
-    return this.prisma.application.findMany({
+  async getAppliedListingIds(executorId: string) {
+    const applications = await this.prisma.application.findMany({
       where: { executorId },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        listingId: true,
-        message: true,
-        proposedPrice: true,
-        status: true,
-        createdAt: true,
-        listing: {
-          select: {
-            title: true,
-            category: true,
-            location: true,
-          },
-        },
-      },
+      select: { listingId: true },
     });
+
+    return applications.map((application) => application.listingId);
   }
 
-  async getReceivedApplications(clientId: string) {
-    return this.prisma.application.findMany({
-      where: {
-        listing: { clientId },
-      },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        listingId: true,
-        message: true,
-        proposedPrice: true,
-        status: true,
-        createdAt: true,
-        listing: {
-          select: {
-            title: true,
-            category: true,
-            location: true,
+  async getMyApplications(executorId: string, query: ApplicationsQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const where = { executorId };
+
+    const [items, total] = await Promise.all([
+      this.prisma.application.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          listingId: true,
+          message: true,
+          proposedPrice: true,
+          status: true,
+          createdAt: true,
+          listing: {
+            select: {
+              title: true,
+              category: true,
+              location: true,
+            },
           },
         },
-        executor: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
+      }),
+      this.prisma.application.count({ where }),
+    ]);
+
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async getReceivedApplications(clientId: string, query: ApplicationsQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const where = { listing: { clientId } };
+
+    const [items, total] = await Promise.all([
+      this.prisma.application.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          listingId: true,
+          message: true,
+          proposedPrice: true,
+          status: true,
+          createdAt: true,
+          listing: {
+            select: {
+              title: true,
+              category: true,
+              location: true,
+            },
+          },
+          executor: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+            },
           },
         },
-      },
-    });
+      }),
+      this.prisma.application.count({ where }),
+    ]);
+
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async getForListing(listingId: string, userId: string) {
