@@ -1,5 +1,7 @@
 # SaStrane
 
+[![CI](https://github.com/Muhamed2805/SaStrane/actions/workflows/ci.yml/badge.svg)](https://github.com/Muhamed2805/SaStrane/actions/workflows/ci.yml)
+
 SaStrane is a two-sided marketplace for local side-hustle jobs 
 (lawn mowing, moving, small IT tasks, etc).
 
