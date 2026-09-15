@@ -106,7 +106,11 @@ export class ApplicationsService {
     });
   }
 
-  async updateStatus(id: string, dto: UpdateApplicationStatusDto, userId: string) {
+  async updateStatus(
+    id: string,
+    dto: UpdateApplicationStatusDto,
+    userId: string,
+  ) {
     const application = await this.prisma.application.findUnique({
       where: { id },
       select: {

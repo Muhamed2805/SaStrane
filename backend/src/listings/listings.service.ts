@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { ListingsQueryDto } from './dto/listings-query.dto';
@@ -89,7 +93,8 @@ export class ListingsService {
     });
 
     if (!listing) throw new NotFoundException('Listing not found');
-    if (listing.clientId !== userId) throw new ForbiddenException('Not your listing');
+    if (listing.clientId !== userId)
+      throw new ForbiddenException('Not your listing');
 
     return this.prisma.listing.delete({ where: { id } });
   }
