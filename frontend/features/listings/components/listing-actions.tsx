@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAuthStore } from "@/features/auth/store";
@@ -44,13 +45,21 @@ export function ListingActions({ listingId, clientId }: ListingActionsProps) {
 
   if (isOwner) {
     return (
-      <button
-        className="rounded-md border border-red-600 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
-        disabled={isDeleting}
-        onClick={handleDelete}
-      >
-        {isDeleting ? "Brišem..." : "Obriši oglas"}
-      </button>
+      <div className="flex flex-wrap gap-3">
+        <Link
+          className="rounded-md bg-black px-4 py-2 text-sm text-white hover:opacity-90"
+          href={`/listings/${listingId}/edit`}
+        >
+          Uredi oglas
+        </Link>
+        <button
+          className="rounded-md border border-red-600 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+          disabled={isDeleting}
+          onClick={handleDelete}
+        >
+          {isDeleting ? "Brišem..." : "Obriši oglas"}
+        </button>
+      </div>
     );
   }
 

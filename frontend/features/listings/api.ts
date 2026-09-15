@@ -1,4 +1,4 @@
-import { API_URL } from '@/lib/api-url';
+import { API_URL } from "@/lib/api-url";
 
 export type ListingFromApi = {
   id: string;
@@ -36,18 +36,26 @@ export type CreateListingPayload = {
   description?: string;
 };
 
+export type UpdateListingPayload = Partial<{
+  title: string;
+  category: string;
+  location: string;
+  budget: string | null;
+  description: string | null;
+}>;
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options.headers,
     },
   });
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: 'Network error' }));
-    throw new Error(error.message ?? 'Request failed');
+    const error = await res.json().catch(() => ({ message: "Network error" }));
+    throw new Error(error.message ?? "Request failed");
   }
 
   return res.json();
@@ -56,25 +64,33 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export const listingsApi = {
   getAll: (params: GetAllListingsParams = {}) => {
     const searchParams = new URLSearchParams();
-    if (params.page) searchParams.set('page', String(params.page));
-    if (params.limit) searchParams.set('limit', String(params.limit));
-    if (params.clientId) searchParams.set('clientId', params.clientId);
+    if (params.page) searchParams.set("page", String(params.page));
+    if (params.limit) searchParams.set("limit", String(params.limit));
+    if (params.clientId) searchParams.set("clientId", params.clientId);
     const query = searchParams.toString();
-    return request<ListingsPage>(`/listings${query ? `?${query}` : ''}`);
+    return request<ListingsPage>(`/listings${query ? `?${query}` : ""}`);
   },
 
-  getById: (id: string) => request<ListingFromApi>(`/listings/${id}`),
+  getById: (id: string) =>
+    request<ListingFromApi>(`/listings/${id}`, { cache: "no-store" }),
 
   create: (payload: CreateListingPayload, token: string) =>
-    request<ListingFromApi>('/listings', {
-      method: 'POST',
+    request<ListingFromApi>("/listings", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload),
+    }),
+
+  update: (id: string, payload: UpdateListingPayload, token: string) =>
+    request<ListingFromApi>(`/listings/${id}`, {
+      method: "PATCH",
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(payload),
     }),
 
   delete: (id: string, token: string) =>
     request<void>(`/listings/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     }),
 };
