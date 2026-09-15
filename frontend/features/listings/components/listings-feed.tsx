@@ -1,94 +1,177 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { listingsApi, type ListingFromApi } from '../api';
-import { ListingCard } from './listing-card';
-import { ListingCardSkeleton } from './listing-card-skeleton';
+import { ChangeEvent, useEffect, useState } from "react";
+import {
+  LISTING_CATEGORIES,
+  LISTING_LOCATIONS,
+} from "@/features/listings/constants";
+import {
+  listingsApi,
+  type GetAllListingsParams,
+  type ListingFromApi,
+} from "../api";
+import { ListingCard } from "./listing-card";
+import { ListingCardSkeleton } from "./listing-card-skeleton";
 
-const CATEGORIES = ['Sve', 'Košenje trave', 'Pranje auta', 'Selidbe', 'IT pomoć'];
-const LOCATIONS = ['Sve', 'Sarajevo', 'Ilidža', 'Stup', 'Vogošća'];
+const ALL_FILTER = "Sve";
+const CATEGORIES = [ALL_FILTER, ...LISTING_CATEGORIES];
+const LOCATIONS = [ALL_FILTER, ...LISTING_LOCATIONS];
 const PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_MS = 300;
+
+function createQuery(
+  q: string,
+  category: string,
+  location: string,
+  page: number,
+): GetAllListingsParams {
+  return {
+    page,
+    limit: PAGE_SIZE,
+    q: q.trim() || undefined,
+    category: category === ALL_FILTER ? undefined : category,
+    location: location === ALL_FILTER ? undefined : location,
+  };
+}
+
+function appendUnique(current: ListingFromApi[], incoming: ListingFromApi[]) {
+  const existingIds = new Set(current.map((listing) => listing.id));
+  return [
+    ...current,
+    ...incoming.filter((listing) => !existingIds.has(listing.id)),
+  ];
+}
 
 export function ListingsFeed() {
   const [listings, setListings] = useState<ListingFromApi[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [q, setQ] = useState('');
-  const [category, setCategory] = useState('Sve');
-  const [location, setLocation] = useState('Sve');
+  const [q, setQ] = useState("");
+  const [category, setCategory] = useState(ALL_FILTER);
+  const [location, setLocation] = useState(ALL_FILTER);
+  const currentFilterKey = `${q.trim()}|${category}|${location}`;
+  const [loadedFilterKey, setLoadedFilterKey] = useState(currentFilterKey);
+  const filtersPending = currentFilterKey !== loadedFilterKey;
 
   useEffect(() => {
-    listingsApi
-      .getAll({ page: 1, limit: PAGE_SIZE })
-      .then((res) => {
-        setListings(res.items);
-        setPage(res.page);
-        setTotalPages(res.totalPages);
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setIsLoading(false));
-  }, []);
+    const controller = new AbortController();
+    const delay = q.trim() ? SEARCH_DEBOUNCE_MS : 0;
+
+    const timeout = window.setTimeout(() => {
+      setIsRefreshing(true);
+      setError(null);
+
+      listingsApi
+        .getAll(createQuery(q, category, location, 1), controller.signal)
+        .then((response) => {
+          setListings(response.items);
+          setPage(response.page);
+          setTotalPages(response.totalPages);
+          setLoadedFilterKey(currentFilterKey);
+        })
+        .catch((err: unknown) => {
+          if (err instanceof DOMException && err.name === "AbortError") return;
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Oglasi trenutno nisu dostupni.",
+          );
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) {
+            setIsLoading(false);
+            setIsRefreshing(false);
+          }
+        });
+    }, delay);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [q, category, location, currentFilterKey]);
 
   const loadMore = async () => {
+    if (filtersPending || isRefreshing || page >= totalPages) return;
+
     setIsLoadingMore(true);
     try {
-      const res = await listingsApi.getAll({ page: page + 1, limit: PAGE_SIZE });
-      setListings((prev) => [...prev, ...res.items]);
-      setPage(res.page);
-      setTotalPages(res.totalPages);
+      const response = await listingsApi.getAll(
+        createQuery(q, category, location, page + 1),
+      );
+      setListings((current) => appendUnique(current, response.items));
+      setPage(response.page);
+      setTotalPages(response.totalPages);
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : "Oglasi nisu učitani.");
     } finally {
       setIsLoadingMore(false);
     }
   };
 
-  const filtered = listings.filter((x) => {
-    const matchesQ =
-      q.trim().length === 0 || x.title.toLowerCase().includes(q.trim().toLowerCase());
-    const matchesCategory = category === 'Sve' || x.category === category;
-    const matchesLocation = location === 'Sve' || x.location === location;
-    return matchesQ && matchesCategory && matchesLocation;
-  });
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setQ(event.target.value);
+    setIsRefreshing(true);
+  };
+
+  const handleCategoryChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    setCategory(event.target.value);
+    setIsRefreshing(true);
+  };
+
+  const handleLocationChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    setLocation(event.target.value);
+    setIsRefreshing(true);
+  };
 
   return (
     <div className="space-y-4">
       <div className="grid gap-3 md:grid-cols-3">
         <input
+          aria-label="Pretraži oglase"
           className="h-10 rounded-md border bg-background px-3 text-sm"
           placeholder="Pretraži (npr. košenje, selidba...)"
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={handleSearchChange}
         />
 
         <select
+          aria-label="Filtriraj po kategoriji"
           className="h-10 rounded-md border bg-background px-3 text-sm"
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          onChange={handleCategoryChange}
         >
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
+          {CATEGORIES.map((item) => (
+            <option key={item} value={item}>
+              {item}
             </option>
           ))}
         </select>
 
         <select
+          aria-label="Filtriraj po lokaciji"
           className="h-10 rounded-md border bg-background px-3 text-sm"
           value={location}
-          onChange={(e) => setLocation(e.target.value)}
+          onChange={handleLocationChange}
         >
-          {LOCATIONS.map((l) => (
-            <option key={l} value={l}>
-              {l}
+          {LOCATIONS.map((item) => (
+            <option key={item} value={item}>
+              {item}
             </option>
           ))}
         </select>
       </div>
+
+      {isRefreshing && !isLoading && (
+        <p className="text-sm text-muted-foreground" aria-live="polite">
+          Pretražujem oglase...
+        </p>
+      )}
 
       {isLoading && (
         <div className="space-y-3">
@@ -99,30 +182,40 @@ export function ListingsFeed() {
       )}
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+        <div
+          className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600"
+          role="alert"
+        >
           Greška: {error}
         </div>
       )}
 
       {!isLoading && !error && (
         <>
-          <div className="space-y-3">
-            {filtered.length === 0 ? (
+          <div
+            className={`space-y-3 transition-opacity ${
+              isRefreshing ? "opacity-60" : "opacity-100"
+            }`}
+          >
+            {listings.length === 0 ? (
               <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-                Nema oglasa za ove filtere.
+                Nema oglasa za odabrane filtere.
               </div>
             ) : (
-              filtered.map((listing) => <ListingCard key={listing.id} listing={listing} />)
+              listings.map((listing) => (
+                <ListingCard key={listing.id} listing={listing} />
+              ))
             )}
           </div>
 
           {page < totalPages && (
             <button
               className="h-10 w-full rounded-md border text-sm hover:bg-muted disabled:opacity-50"
+              disabled={isLoadingMore || filtersPending || isRefreshing}
+              type="button"
               onClick={loadMore}
-              disabled={isLoadingMore}
             >
-              {isLoadingMore ? 'Učitavam...' : 'Učitaj još'}
+              {isLoadingMore ? "Učitavam..." : "Učitaj još"}
             </button>
           )}
         </>

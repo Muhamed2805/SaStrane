@@ -77,7 +77,11 @@ export async function apiRequest<T>(
   let response: Response;
   try {
     response = await fetch(`${API_URL}${path}`, { ...options, headers });
-  } catch {
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error;
+    }
+
     throw new ApiError(
       "Nije moguće povezati se sa serverom. Provjeri mrežnu vezu.",
       0,

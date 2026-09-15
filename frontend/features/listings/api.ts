@@ -26,6 +26,9 @@ export type GetAllListingsParams = {
   page?: number;
   limit?: number;
   clientId?: string;
+  q?: string;
+  category?: string;
+  location?: string;
 };
 
 export type CreateListingPayload = {
@@ -45,13 +48,18 @@ export type UpdateListingPayload = Partial<{
 }>;
 
 export const listingsApi = {
-  getAll: (params: GetAllListingsParams = {}) => {
+  getAll: (params: GetAllListingsParams = {}, signal?: AbortSignal) => {
     const searchParams = new URLSearchParams();
     if (params.page) searchParams.set("page", String(params.page));
     if (params.limit) searchParams.set("limit", String(params.limit));
     if (params.clientId) searchParams.set("clientId", params.clientId);
+    if (params.q) searchParams.set("q", params.q);
+    if (params.category) searchParams.set("category", params.category);
+    if (params.location) searchParams.set("location", params.location);
     const query = searchParams.toString();
-    return apiRequest<ListingsPage>(`/listings${query ? `?${query}` : ""}`);
+    return apiRequest<ListingsPage>(`/listings${query ? `?${query}` : ""}`, {
+      signal,
+    });
   },
 
   getById: (id: string) =>
