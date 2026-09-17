@@ -40,7 +40,9 @@ export function Navbar() {
           <NavLink href="/" label="Početna" />
           <NavLink href="/listings" label="Pronađi posao" />
           <NavLink href="/#kako-funkcionise" label="Kako funkcioniše" />
-          {user ? <NavLink href="/inbox" label="Moje prijave" /> : null}
+          {user ? (
+            <NavLink href="/inbox?tab=applications" label="Moje prijave" />
+          ) : null}
 
           {user ? (
             <div className="flex items-center gap-4 border-l pl-6">
@@ -114,7 +116,11 @@ export function Navbar() {
 
           {user ? (
             <>
-              <NavLink href="/inbox" label="Moje prijave" onClick={closeMenu} />
+              <NavLink
+                href="/inbox?tab=applications"
+                label="Moje prijave"
+                onClick={closeMenu}
+              />
               <NavLink
                 href="/profile"
                 label={user.fullName}

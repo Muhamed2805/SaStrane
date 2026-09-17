@@ -7,15 +7,15 @@ const footerGroups = [
     links: [
       { label: 'Pronađi posao', href: '/listings' },
       { label: 'Objavi oglas', href: '/listings/create' },
-      { label: 'Moje prijave', href: '/inbox' },
+      { label: 'Moje prijave', href: '/inbox?tab=applications' },
     ],
   },
   {
     title: 'Moj račun',
     links: [
       { label: 'Profil', href: '/profile' },
-      { label: 'Primljene prijave', href: '/inbox' },
-      { label: 'Moji oglasi', href: '/inbox' },
+      { label: 'Primljene prijave', href: '/inbox?tab=received' },
+      { label: 'Moji oglasi', href: '/inbox?tab=listings' },
     ],
   },
 ];
