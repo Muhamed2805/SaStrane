@@ -6,6 +6,7 @@ import { Navbar } from '@/components/navbar';
 import { AuthModal } from '@/features/auth/components/auth-modal';
 import { ApplyModal } from '@/features/applications/components/apply-modal';
 import { AuthProvider } from '@/components/auth-provider';
+import { Footer } from '@/components/footer';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -28,14 +29,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    <html lang="bs">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} flex min-h-screen flex-col antialiased`}
+      >
         <AuthProvider>
           <Navbar />
           <AuthModal />
           <ApplyModal />
           <Toaster richColors position="top-center" />
-          <div className="mx-auto max-w-5xl px-4 py-6">{children}</div>
+          <main className="site-container flex-1 py-8">{children}</main>
+          <Footer />
         </AuthProvider>
       </body>
     </html>
