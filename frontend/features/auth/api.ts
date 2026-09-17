@@ -1,11 +1,11 @@
-import { apiRequest } from "@/lib/api-client";
-export { ApiError } from "@/lib/api-client";
+import { apiRequest } from '@/lib/api-client';
+export { ApiError } from '@/lib/api-client';
 
 export type AuthUser = {
   id: string;
   email: string;
   fullName: string;
-  role: "CLIENT" | "EXECUTOR" | "BOTH";
+  role: 'CLIENT' | 'EXECUTOR' | 'BOTH';
   createdAt: string;
 };
 
@@ -24,7 +24,7 @@ export type RegisterPayload = {
   email: string;
   password: string;
   fullName: string;
-  role?: "CLIENT" | "EXECUTOR" | "BOTH";
+  role: 'CLIENT' | 'EXECUTOR' | 'BOTH';
 };
 
 export type LoginPayload = {
@@ -34,32 +34,32 @@ export type LoginPayload = {
 
 export const authApi = {
   register: (payload: RegisterPayload) =>
-    apiRequest<AuthResponse>("/auth/register", {
-      method: "POST",
+    apiRequest<AuthResponse>('/auth/register', {
+      method: 'POST',
       body: JSON.stringify(payload),
     }),
 
   login: (payload: LoginPayload) =>
-    apiRequest<AuthResponse>("/auth/login", {
-      method: "POST",
+    apiRequest<AuthResponse>('/auth/login', {
+      method: 'POST',
       body: JSON.stringify(payload),
     }),
 
   me: (token: string) =>
-    apiRequest<AuthUser>("/auth/me", {
-      method: "GET",
+    apiRequest<AuthUser>('/auth/me', {
+      method: 'GET',
       headers: { Authorization: `Bearer ${token}` },
     }),
 
   refresh: (refreshToken: string) =>
-    apiRequest<RefreshResponse>("/auth/refresh", {
-      method: "POST",
+    apiRequest<RefreshResponse>('/auth/refresh', {
+      method: 'POST',
       body: JSON.stringify({ refreshToken }),
     }),
 
   logout: (token: string) =>
-    apiRequest<{ success: boolean }>("/auth/logout", {
-      method: "POST",
+    apiRequest<{ success: boolean }>('/auth/logout', {
+      method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
     }),
 };
