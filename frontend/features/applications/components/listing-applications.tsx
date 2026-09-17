@@ -1,22 +1,22 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
-import { useAuthStore } from "@/features/auth/store";
+import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { useAuthStore } from '@/features/auth/store';
 import {
   applicationsApi,
   type ApplicationFromApi,
   type ApplicationStatus,
-} from "../api";
-import { ApplicationCardSkeleton } from "./application-card-skeleton";
-import { ReceivedApplicationCard } from "./received-application-card";
+} from '../api';
+import { ApplicationCardSkeleton } from './application-card-skeleton';
+import { ReceivedApplicationCard } from './received-application-card';
 
 type ListingApplicationsProps = {
   listingId: string;
   clientId: string;
 };
 
-type DecidedStatus = Extract<ApplicationStatus, "ACCEPTED" | "REJECTED">;
+type DecidedStatus = Extract<ApplicationStatus, 'ACCEPTED' | 'REJECTED'>;
 
 export function ListingApplications({
   listingId,
@@ -37,7 +37,7 @@ export function ListingApplications({
     try {
       setApplications(await applicationsApi.getForListing(listingId, token));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Prijave nisu dostupne.");
+      setError(err instanceof Error ? err.message : 'Prijave nisu dostupne.');
     } finally {
       setIsLoading(false);
     }
@@ -59,19 +59,22 @@ export function ListingApplications({
         ),
       );
       toast.success(
-        status === "ACCEPTED"
-          ? "Prijava je prihvaćena."
-          : "Prijava je odbijena.",
+        status === 'ACCEPTED'
+          ? 'Prijava je prihvaćena.'
+          : 'Prijava je odbijena.',
       );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Status nije ažuriran.");
+      toast.error(err instanceof Error ? err.message : 'Status nije ažuriran.');
     } finally {
       setUpdatingId(null);
     }
   };
 
   return (
-    <section className="space-y-4" aria-labelledby="listing-applications-title">
+    <section
+      className="space-y-4 rounded-2xl border bg-white p-6 shadow-sm sm:p-8"
+      aria-labelledby="listing-applications-title"
+    >
       <div>
         <h2 id="listing-applications-title" className="text-lg font-semibold">
           Pristigle prijave
@@ -79,7 +82,7 @@ export function ListingApplications({
         {!isLoading && !error && (
           <p className="mt-1 text-sm text-muted-foreground">
             {applications.length === 1
-              ? "1 prijava na ovaj oglas"
+              ? '1 prijava na ovaj oglas'
               : `${applications.length} prijava na ovaj oglas`}
           </p>
         )}
