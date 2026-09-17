@@ -1,8 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Menu, X } from 'lucide-react';
+import {
+  ChevronDown,
+  ClipboardList,
+  Inbox,
+  LogOut,
+  Menu,
+  Send,
+  UserRound,
+  X,
+} from 'lucide-react';
 import { useAuthStore } from '@/features/auth/store';
 import { BrandLogo } from './brand-logo';
 
@@ -26,10 +35,40 @@ const NavLink = ({
   );
 };
 
+const workspaceLinks = [
+  { href: '/profile', label: 'Moj profil', icon: UserRound },
+  { href: '/inbox?tab=listings', label: 'Moji oglasi', icon: ClipboardList },
+  { href: '/inbox?tab=applications', label: 'Moje prijave', icon: Send },
+  { href: '/inbox?tab=received', label: 'Primljene prijave', icon: Inbox },
+];
+
 export function Navbar() {
   const { user, logout, openAuthModal } = useAuthStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const closeMenu = () => setIsMenuOpen(false);
+
+  useEffect(() => {
+    if (!isUserMenuOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!userMenuRef.current?.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsUserMenuOpen(false);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isUserMenuOpen]);
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur-md">
@@ -45,22 +84,70 @@ export function Navbar() {
           ) : null}
 
           {user ? (
-            <div className="flex items-center gap-4 border-l pl-6">
-              <Link
-                href="/profile"
-                className="flex items-center gap-2 text-sm font-medium text-foreground transition-colors hover:text-primary"
-              >
-                <span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                  {user.fullName.charAt(0).toUpperCase()}
-                </span>
-                <span className="max-w-32 truncate">{user.fullName}</span>
-              </Link>
-              <button
-                className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-                onClick={logout}
-              >
-                Odjavi se
-              </button>
+            <div className="flex items-center gap-3 border-l pl-6">
+              <div ref={userMenuRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsUserMenuOpen((open) => !open)}
+                  className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                  aria-expanded={isUserMenuOpen}
+                  aria-controls="user-navigation"
+                >
+                  <span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                    {user.fullName.charAt(0).toUpperCase()}
+                  </span>
+                  <span className="max-w-28 truncate">{user.fullName}</span>
+                  <ChevronDown
+                    className={`size-4 text-muted-foreground transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+
+                {isUserMenuOpen ? (
+                  <div
+                    id="user-navigation"
+                    className="absolute right-0 top-[calc(100%+0.75rem)] w-64 overflow-hidden rounded-2xl border bg-popover p-2 text-popover-foreground shadow-xl"
+                  >
+                    <div className="border-b px-3 py-2.5">
+                      <p className="truncate text-sm font-semibold">
+                        {user.fullName}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {user.email}
+                      </p>
+                    </div>
+                    <div className="py-1.5">
+                      {workspaceLinks.map((item) => {
+                        const Icon = item.icon;
+
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-muted hover:text-primary"
+                          >
+                            <Icon className="size-4 text-muted-foreground" />
+                            {item.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                    <div className="border-t pt-1.5">
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          void logout();
+                        }}
+                      >
+                        <LogOut className="size-4" />
+                        Odjavi se
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
               <Link
                 href="/listings/create"
                 className="rounded-lg bg-brand-orange px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-orange-dark"
@@ -116,16 +203,22 @@ export function Navbar() {
 
           {user ? (
             <>
-              <NavLink
-                href="/inbox?tab=applications"
-                label="Moje prijave"
-                onClick={closeMenu}
-              />
-              <NavLink
-                href="/profile"
-                label={user.fullName}
-                onClick={closeMenu}
-              />
+              <div className="border-t pt-4">
+                <p className="truncate text-sm font-semibold">
+                  {user.fullName}
+                </p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {user.email}
+                </p>
+              </div>
+              {workspaceLinks.map((item) => (
+                <NavLink
+                  key={item.href}
+                  href={item.href}
+                  label={item.label}
+                  onClick={closeMenu}
+                />
+              ))}
               <Link
                 href="/listings/create"
                 onClick={closeMenu}
@@ -137,7 +230,7 @@ export function Navbar() {
                 className="py-1 text-left text-sm text-muted-foreground hover:text-foreground"
                 onClick={() => {
                   closeMenu();
-                  logout();
+                  void logout();
                 }}
               >
                 Odjavi se
