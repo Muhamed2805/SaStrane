@@ -1,6 +1,6 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import {
-  ArrowLeft,
   CalendarDays,
   CheckCircle2,
   MapPin,
@@ -13,6 +13,7 @@ import { ListingActions } from '@/features/listings/components/listing-actions';
 import { ListingCard } from '@/features/listings/components/listing-card';
 import { ListingApplications } from '@/features/applications/components/listing-applications';
 import { formatDate } from '@/lib/format-date';
+import { ApiError } from '@/lib/api-client';
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -20,24 +21,16 @@ type PageProps = {
 
 export default async function ListingDetailsPage({ params }: PageProps) {
   const { id } = await params;
-  const listing = await listingsApi.getById(id).catch(() => null);
+  let listing;
 
-  if (!listing) {
-    return (
-      <div className="mx-auto max-w-xl rounded-2xl border bg-white px-6 py-14 text-center">
-        <h1 className="text-xl font-bold">Oglas nije pronađen</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Oglas je možda uklonjen ili poveznica više nije aktivna.
-        </p>
-        <Link
-          href="/listings"
-          className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white"
-        >
-          <ArrowLeft className="size-4" aria-hidden="true" />
-          Nazad na oglase
-        </Link>
-      </div>
-    );
+  try {
+    listing = await listingsApi.getById(id);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      notFound();
+    }
+
+    throw error;
   }
 
   const relatedListings = await listingsApi
