@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState } from 'react';
 import {
   LISTING_CATEGORIES,
   LISTING_LOCATIONS,
-} from "@/features/listings/constants";
+} from '@/features/listings/constants';
 import {
   listingsApi,
   type GetAllListingsParams,
   type ListingFromApi,
-} from "../api";
-import { ListingCard } from "./listing-card";
-import { ListingCardSkeleton } from "./listing-card-skeleton";
+} from '../api';
+import { ListingCard } from './listing-card';
+import { ListingCardSkeleton } from './listing-card-skeleton';
 
-const ALL_FILTER = "Sve";
+const ALL_FILTER = 'Sve';
 const CATEGORIES = [ALL_FILTER, ...LISTING_CATEGORIES];
 const LOCATIONS = [ALL_FILTER, ...LISTING_LOCATIONS];
 const PAGE_SIZE = 10;
@@ -42,7 +42,15 @@ function appendUnique(current: ListingFromApi[], incoming: ListingFromApi[]) {
   ];
 }
 
-export function ListingsFeed() {
+export function ListingsFeed({
+  initialQuery = '',
+  initialCategory = ALL_FILTER,
+  initialLocation = ALL_FILTER,
+}: {
+  initialQuery?: string;
+  initialCategory?: string;
+  initialLocation?: string;
+}) {
   const [listings, setListings] = useState<ListingFromApi[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -51,9 +59,9 @@ export function ListingsFeed() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [q, setQ] = useState("");
-  const [category, setCategory] = useState(ALL_FILTER);
-  const [location, setLocation] = useState(ALL_FILTER);
+  const [q, setQ] = useState(initialQuery);
+  const [category, setCategory] = useState(initialCategory);
+  const [location, setLocation] = useState(initialLocation);
   const currentFilterKey = `${q.trim()}|${category}|${location}`;
   const [loadedFilterKey, setLoadedFilterKey] = useState(currentFilterKey);
   const filtersPending = currentFilterKey !== loadedFilterKey;
@@ -75,11 +83,11 @@ export function ListingsFeed() {
           setLoadedFilterKey(currentFilterKey);
         })
         .catch((err: unknown) => {
-          if (err instanceof DOMException && err.name === "AbortError") return;
+          if (err instanceof DOMException && err.name === 'AbortError') return;
           setError(
             err instanceof Error
               ? err.message
-              : "Oglasi trenutno nisu dostupni.",
+              : 'Oglasi trenutno nisu dostupni.',
           );
         })
         .finally(() => {
@@ -108,7 +116,7 @@ export function ListingsFeed() {
       setPage(response.page);
       setTotalPages(response.totalPages);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Oglasi nisu učitani.");
+      setError(err instanceof Error ? err.message : 'Oglasi nisu učitani.');
     } finally {
       setIsLoadingMore(false);
     }
@@ -194,7 +202,7 @@ export function ListingsFeed() {
         <>
           <div
             className={`space-y-3 transition-opacity ${
-              isRefreshing ? "opacity-60" : "opacity-100"
+              isRefreshing ? 'opacity-60' : 'opacity-100'
             }`}
           >
             {listings.length === 0 ? (
@@ -215,7 +223,7 @@ export function ListingsFeed() {
               type="button"
               onClick={loadMore}
             >
-              {isLoadingMore ? "Učitavam..." : "Učitaj još"}
+              {isLoadingMore ? 'Učitavam...' : 'Učitaj još'}
             </button>
           )}
         </>

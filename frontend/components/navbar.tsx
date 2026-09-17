@@ -38,7 +38,8 @@ export function Navbar() {
 
         <nav className="hidden items-center gap-7 md:flex">
           <NavLink href="/" label="Početna" />
-          <NavLink href="/" label="Pronađi posao" />
+          <NavLink href="/listings" label="Pronađi posao" />
+          <NavLink href="/#kako-funkcionise" label="Kako funkcioniše" />
           {user ? <NavLink href="/inbox" label="Moje prijave" /> : null}
 
           {user ? (
@@ -104,7 +105,12 @@ export function Navbar() {
           className="site-container flex flex-col gap-4 border-t py-5 md:hidden"
         >
           <NavLink href="/" label="Početna" onClick={closeMenu} />
-          <NavLink href="/" label="Pronađi posao" onClick={closeMenu} />
+          <NavLink href="/listings" label="Pronađi posao" onClick={closeMenu} />
+          <NavLink
+            href="/#kako-funkcionise"
+            label="Kako funkcioniše"
+            onClick={closeMenu}
+          />
 
           {user ? (
             <>

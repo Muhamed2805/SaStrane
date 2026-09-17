@@ -5,7 +5,7 @@ const footerGroups = [
   {
     title: 'Platforma',
     links: [
-      { label: 'Pronađi posao', href: '/' },
+      { label: 'Pronađi posao', href: '/listings' },
       { label: 'Objavi oglas', href: '/listings/create' },
       { label: 'Moje prijave', href: '/inbox' },
     ],

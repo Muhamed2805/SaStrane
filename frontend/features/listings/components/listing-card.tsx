@@ -1,28 +1,51 @@
 import Link from 'next/link';
+import { CalendarDays, MapPin, Tag } from 'lucide-react';
+import { formatDate } from '@/lib/format-date';
 import type { ListingFromApi } from '../api';
 
 export function ListingCard({ listing }: { listing: ListingFromApi }) {
   return (
-    <Link href={`/listings/${listing.id}`} className="block">
-      <div className="rounded-lg border p-4 hover:bg-muted/50">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="font-medium">{listing.title}</div>
-            <div className="mt-1 text-sm text-muted-foreground">
-              {listing.category} · {listing.location}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {listing.client.fullName}
-            </div>
-          </div>
-
+    <Link href={`/listings/${listing.id}`} className="group block h-full">
+      <article className="flex h-full flex-col rounded-xl border bg-white p-5 shadow-sm shadow-slate-900/[0.02] transition-all group-hover:-translate-y-0.5 group-hover:border-primary/30 group-hover:shadow-md">
+        <div className="flex items-start justify-between gap-3">
+          <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+            {listing.category}
+          </span>
           {listing.budget ? (
-            <div className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs">
+            <span className="shrink-0 text-sm font-bold text-brand-orange-dark">
               {listing.budget}
-            </div>
+            </span>
           ) : null}
         </div>
-      </div>
+
+        <h2 className="mt-4 line-clamp-2 font-semibold leading-snug transition-colors group-hover:text-primary">
+          {listing.title}
+        </h2>
+
+        {listing.description ? (
+          <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
+            {listing.description}
+          </p>
+        ) : null}
+
+        <div className="mt-auto space-y-2 pt-5 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <MapPin className="size-3.5 text-primary" aria-hidden="true" />
+            <span>{listing.location}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Tag className="size-3.5 text-primary" aria-hidden="true" />
+            <span>{listing.client.fullName}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CalendarDays
+              className="size-3.5 text-primary"
+              aria-hidden="true"
+            />
+            <span>{formatDate(listing.createdAt)}</span>
+          </div>
+        </div>
+      </article>
     </Link>
   );
 }
