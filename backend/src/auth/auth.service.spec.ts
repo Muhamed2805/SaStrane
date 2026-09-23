@@ -24,6 +24,7 @@ describe('AuthService', () => {
     delete: jest.fn<(input: unknown) => Promise<unknown>>(),
     findUnique: jest.fn<(input: unknown) => Promise<unknown>>(),
     update: jest.fn<(input: unknown) => Promise<unknown>>(),
+    updateMany: jest.fn<(input: unknown) => Promise<{ count: number }>>(),
   };
   const jwtService = {
     signAsync: jest.fn<(payload: unknown) => Promise<string>>(),
@@ -37,6 +38,14 @@ describe('AuthService', () => {
   };
   const emailService = {
     sendVerificationCode:
+      jest.fn<
+        (input: {
+          email: string;
+          fullName: string;
+          code: string;
+        }) => Promise<void>
+      >(),
+    sendPasswordResetCode:
       jest.fn<
         (input: {
           email: string;
@@ -363,6 +372,179 @@ describe('AuthService', () => {
 
       expect(userRepository.update).not.toHaveBeenCalled();
       expect(emailService.sendVerificationCode).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('forgotPassword', () => {
+    it('does not reveal whether an account exists', async () => {
+      userRepository.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.forgotPassword('MISSING@EXAMPLE.COM'),
+      ).resolves.toEqual({ success: true });
+
+      expect(userRepository.update).not.toHaveBeenCalled();
+      expect(emailService.sendPasswordResetCode).not.toHaveBeenCalled();
+    });
+
+    it('stores a hashed code and sends it to a verified account', async () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2026-09-23T12:00:00.000Z'));
+      userRepository.findUnique.mockResolvedValue(user);
+      userRepository.update.mockResolvedValue(user);
+      emailService.sendPasswordResetCode.mockResolvedValue(undefined);
+
+      await expect(service.forgotPassword(user.email)).resolves.toEqual({
+        success: true,
+      });
+
+      // Jest exposes mock call arguments as `any`; narrow them immediately.
+      /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+      const emailInput = emailService.sendPasswordResetCode.mock
+        .calls[0][0] as {
+        email: string;
+        fullName: string;
+        code: string;
+      };
+      /* eslint-enable @typescript-eslint/no-unsafe-member-access */
+      expect(emailInput).toEqual(
+        expect.objectContaining({
+          email: user.email,
+          fullName: user.fullName,
+        }),
+      );
+      expect(emailInput.code).toMatch(/^\d{6}$/);
+      expect(userRepository.update).toHaveBeenCalledWith({
+        where: { id: user.id },
+        data: {
+          passwordResetCodeHash: createHmac('sha256', 'verification-secret')
+            .update(`password-reset:${user.email}:${emailInput.code}`)
+            .digest('hex'),
+          passwordResetExpiresAt: new Date('2026-09-23T12:10:00.000Z'),
+          passwordResetSentAt: new Date('2026-09-23T12:00:00.000Z'),
+          passwordResetAttempts: 0,
+        },
+      });
+    });
+
+    it('silently respects the resend cooldown', async () => {
+      userRepository.findUnique.mockResolvedValue({
+        ...user,
+        passwordResetSentAt: new Date(),
+      });
+
+      await expect(service.forgotPassword(user.email)).resolves.toEqual({
+        success: true,
+      });
+
+      expect(userRepository.update).not.toHaveBeenCalled();
+      expect(emailService.sendPasswordResetCode).not.toHaveBeenCalled();
+    });
+
+    it('clears its code without exposing an email delivery failure', async () => {
+      userRepository.findUnique.mockResolvedValue(user);
+      userRepository.update.mockResolvedValue(user);
+      userRepository.updateMany.mockResolvedValue({ count: 1 });
+      emailService.sendPasswordResetCode.mockRejectedValue(
+        new Error('provider unavailable'),
+      );
+
+      await expect(service.forgotPassword(user.email)).resolves.toEqual({
+        success: true,
+      });
+
+      expect(userRepository.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: user.id,
+          passwordResetCodeHash: expect.any(String) as unknown,
+        },
+        data: {
+          passwordResetCodeHash: null,
+          passwordResetExpiresAt: null,
+          passwordResetSentAt: null,
+          passwordResetAttempts: 0,
+        },
+      });
+    });
+  });
+
+  describe('resetPassword', () => {
+    const code = '123456';
+    const codeHash = createHmac('sha256', 'verification-secret')
+      .update(`password-reset:${user.email}:${code}`)
+      .digest('hex');
+    const resetUser = {
+      ...user,
+      passwordResetCodeHash: codeHash,
+      passwordResetExpiresAt: new Date(Date.now() + 60_000),
+      passwordResetSentAt: new Date(),
+      passwordResetAttempts: 0,
+    };
+
+    it('atomically replaces the password and revokes existing sessions', async () => {
+      userRepository.findUnique.mockResolvedValue(resetUser);
+      jest.mocked(bcrypt.hash).mockResolvedValue('new-password-hash');
+      userRepository.updateMany.mockResolvedValue({ count: 1 });
+
+      await expect(
+        service.resetPassword({
+          email: 'USER@EXAMPLE.COM',
+          code,
+          password: 'new-secure-password',
+        }),
+      ).resolves.toEqual({ success: true });
+
+      expect(bcrypt.hash).toHaveBeenCalledWith('new-secure-password', 12);
+      expect(userRepository.updateMany).toHaveBeenCalledWith({
+        where: { id: user.id, passwordResetCodeHash: codeHash },
+        data: {
+          passwordHash: 'new-password-hash',
+          passwordResetCodeHash: null,
+          passwordResetExpiresAt: null,
+          passwordResetSentAt: null,
+          passwordResetAttempts: 0,
+          refreshTokenHash: null,
+          refreshTokenExpiresAt: null,
+        },
+      });
+    });
+
+    it('counts an invalid code without hashing a new password', async () => {
+      userRepository.findUnique.mockResolvedValue(resetUser);
+      userRepository.update.mockResolvedValue(user);
+
+      await expect(
+        service.resetPassword({
+          email: user.email,
+          code: '654321',
+          password: 'new-secure-password',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(userRepository.update).toHaveBeenCalledWith({
+        where: { id: user.id },
+        data: { passwordResetAttempts: { increment: 1 } },
+      });
+      expect(bcrypt.hash).not.toHaveBeenCalled();
+      expect(userRepository.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('rejects an expired code', async () => {
+      userRepository.findUnique.mockResolvedValue({
+        ...resetUser,
+        passwordResetExpiresAt: new Date(Date.now() - 1),
+      });
+
+      await expect(
+        service.resetPassword({
+          email: user.email,
+          code,
+          password: 'new-secure-password',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(bcrypt.hash).not.toHaveBeenCalled();
+      expect(userRepository.updateMany).not.toHaveBeenCalled();
     });
   });
 

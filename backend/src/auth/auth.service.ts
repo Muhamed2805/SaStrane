@@ -21,6 +21,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { EmailService } from './email.service';
 
@@ -28,6 +29,9 @@ const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const VERIFICATION_CODE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const VERIFICATION_RESEND_COOLDOWN_MS = 60 * 1000; // 1 minute
 const MAX_VERIFICATION_ATTEMPTS = 5;
+const PASSWORD_RESET_CODE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const PASSWORD_RESET_RESEND_COOLDOWN_MS = 60 * 1000; // 1 minute
+const MAX_PASSWORD_RESET_ATTEMPTS = 5;
 
 function hashToken(token: string) {
   return createHash('sha256').update(token).digest('hex');
@@ -73,6 +77,36 @@ export class AuthService {
   ) {
     const expected = Buffer.from(storedHash, 'hex');
     const received = Buffer.from(this.hashVerificationCode(email, code), 'hex');
+
+    return (
+      expected.length === received.length && timingSafeEqual(expected, received)
+    );
+  }
+
+  private hashPasswordResetCode(email: string, code: string) {
+    const secret =
+      this.config.get<string>('EMAIL_VERIFICATION_SECRET') ??
+      this.config.get<string>('JWT_SECRET');
+
+    if (!secret) {
+      throw new ServiceUnavailableException('Password reset is not configured');
+    }
+
+    return createHmac('sha256', secret)
+      .update(`password-reset:${this.normalizeEmail(email)}:${code}`)
+      .digest('hex');
+  }
+
+  private passwordResetCodeMatches(
+    storedHash: string,
+    email: string,
+    code: string,
+  ) {
+    const expected = Buffer.from(storedHash, 'hex');
+    const received = Buffer.from(
+      this.hashPasswordResetCode(email, code),
+      'hex',
+    );
 
     return (
       expected.length === received.length && timingSafeEqual(expected, received)
@@ -318,6 +352,122 @@ export class AuthService {
         },
       });
       throw error;
+    }
+
+    return { success: true };
+  }
+
+  async forgotPassword(emailInput: string) {
+    const email = this.normalizeEmail(emailInput);
+    const user = await this.prisma.user.findUnique({ where: { email } });
+
+    // Always return the same response so this endpoint cannot be used to
+    // discover which email addresses have a SaStrane account.
+    if (!user?.emailVerifiedAt) {
+      return { success: true };
+    }
+
+    const now = new Date();
+    if (
+      user.passwordResetSentAt &&
+      now.getTime() - user.passwordResetSentAt.getTime() <
+        PASSWORD_RESET_RESEND_COOLDOWN_MS
+    ) {
+      return { success: true };
+    }
+
+    const code = this.createVerificationCode();
+    const codeHash = this.hashPasswordResetCode(email, code);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordResetCodeHash: codeHash,
+        passwordResetExpiresAt: new Date(
+          now.getTime() + PASSWORD_RESET_CODE_TTL_MS,
+        ),
+        passwordResetSentAt: now,
+        passwordResetAttempts: 0,
+      },
+    });
+
+    try {
+      await this.emailService.sendPasswordResetCode({
+        email: user.email,
+        fullName: user.fullName,
+        code,
+      });
+    } catch {
+      // Keep the public response indistinguishable from an unknown account.
+      // Clear only the code created by this request so a concurrent newer
+      // request cannot be invalidated.
+      await this.prisma.user.updateMany({
+        where: { id: user.id, passwordResetCodeHash: codeHash },
+        data: {
+          passwordResetCodeHash: null,
+          passwordResetExpiresAt: null,
+          passwordResetSentAt: null,
+          passwordResetAttempts: 0,
+        },
+      });
+    }
+
+    return { success: true };
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    const email = this.normalizeEmail(dto.email);
+    const user = await this.prisma.user.findUnique({ where: { email } });
+
+    if (
+      !user?.emailVerifiedAt ||
+      !user.passwordResetCodeHash ||
+      !user.passwordResetExpiresAt ||
+      user.passwordResetExpiresAt <= new Date()
+    ) {
+      throw new BadRequestException('Kod nije ispravan ili je istekao.');
+    }
+
+    if (user.passwordResetAttempts >= MAX_PASSWORD_RESET_ATTEMPTS) {
+      throw new HttpException(
+        'Previše pogrešnih pokušaja. Zatraži novi kod.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    if (
+      !this.passwordResetCodeMatches(
+        user.passwordResetCodeHash,
+        email,
+        dto.code,
+      )
+    ) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { passwordResetAttempts: { increment: 1 } },
+      });
+      throw new BadRequestException('Kod nije ispravan ili je istekao.');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+    const result = await this.prisma.user.updateMany({
+      where: {
+        id: user.id,
+        passwordResetCodeHash: user.passwordResetCodeHash,
+      },
+      data: {
+        passwordHash,
+        passwordResetCodeHash: null,
+        passwordResetExpiresAt: null,
+        passwordResetSentAt: null,
+        passwordResetAttempts: 0,
+        refreshTokenHash: null,
+        refreshTokenExpiresAt: null,
+      },
+    });
+
+    if (result.count !== 1) {
+      throw new BadRequestException('Kod nije ispravan ili je istekao.');
     }
 
     return { success: true };
