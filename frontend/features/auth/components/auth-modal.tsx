@@ -51,6 +51,7 @@ const roles: Array<{
 
 const fieldClassName =
   'h-12 w-full rounded-lg border bg-background pr-4 pl-11 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:ring-3 focus:ring-primary/10';
+const RESEND_COOLDOWN_MS = 60_000;
 
 export function AuthModal() {
   const {
@@ -75,6 +76,9 @@ export function AuthModal() {
   const [showPassword, setShowPassword] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendAvailableAt, setResendAvailableAt] = useState<number | null>(
+    null,
+  );
   const [resendConfirmation, setResendConfirmation] = useState(false);
 
   useEffect(() => {
@@ -95,14 +99,22 @@ export function AuthModal() {
   }, [closeAuthModal, isAuthModalOpen, isLoading]);
 
   useEffect(() => {
-    if (resendCooldown <= 0) return;
+    if (!resendAvailableAt) return;
 
-    const timer = window.setTimeout(() => {
-      setResendCooldown((seconds) => Math.max(0, seconds - 1));
-    }, 1000);
+    const updateCooldown = () => {
+      const seconds = Math.max(
+        0,
+        Math.ceil((resendAvailableAt - Date.now()) / 1000),
+      );
+      setResendCooldown(seconds);
+      if (seconds === 0) setResendAvailableAt(null);
+    };
 
-    return () => window.clearTimeout(timer);
-  }, [resendCooldown]);
+    updateCooldown();
+    const timer = window.setInterval(updateCooldown, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [resendAvailableAt]);
 
   if (!isAuthModalOpen) return null;
 
@@ -114,8 +126,14 @@ export function AuthModal() {
     setShowPassword(false);
     setVerificationCode('');
     setResendCooldown(0);
+    setResendAvailableAt(null);
     setResendConfirmation(false);
     clearError();
+  };
+
+  const startResendCooldown = () => {
+    setResendAvailableAt(Date.now() + RESEND_COOLDOWN_MS);
+    setResendCooldown(RESEND_COOLDOWN_MS / 1000);
   };
 
   const handleClose = () => {
@@ -141,7 +159,7 @@ export function AuthModal() {
     if (nextState.authModalTab === 'verify') {
       setPassword('');
       setVerificationCode('');
-      setResendCooldown(60);
+      startResendCooldown();
     }
     if (!nextState.isAuthModalOpen) resetFields();
   };
@@ -159,7 +177,7 @@ export function AuthModal() {
     const sent = await resendVerification();
     if (sent) {
       setVerificationCode('');
-      setResendCooldown(60);
+      startResendCooldown();
       setResendConfirmation(true);
     }
   };
