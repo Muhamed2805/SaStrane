@@ -30,10 +30,13 @@ type AuthState = {
   isLoading: boolean;
   error: string | null;
   isAuthModalOpen: boolean;
+  authModalTab: 'login' | 'register';
 
   openAuthModal: () => void;
+  openRegistrationModal: () => void;
   closeAuthModal: () => void;
   clearError: () => void;
+  setAuthModalTab: (tab: 'login' | 'register') => void;
 
   login: (payload: LoginPayload) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
@@ -56,10 +59,16 @@ export const useAuthStore = create<AuthState>()(
       isLoading: false,
       error: null,
       isAuthModalOpen: false,
+      authModalTab: 'login',
 
-      openAuthModal: () => set({ isAuthModalOpen: true, error: null }),
-      closeAuthModal: () => set({ isAuthModalOpen: false, error: null }),
+      openAuthModal: () =>
+        set({ isAuthModalOpen: true, authModalTab: 'login', error: null }),
+      openRegistrationModal: () =>
+        set({ isAuthModalOpen: true, authModalTab: 'register', error: null }),
+      closeAuthModal: () =>
+        set({ isAuthModalOpen: false, authModalTab: 'login', error: null }),
       clearError: () => set({ error: null }),
+      setAuthModalTab: (authModalTab) => set({ authModalTab, error: null }),
 
       login: async (payload) => {
         set({ isLoading: true, error: null });

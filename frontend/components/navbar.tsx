@@ -43,7 +43,7 @@ const workspaceLinks = [
 ];
 
 export function Navbar() {
-  const { user, logout, openAuthModal } = useAuthStore();
+  const { user, logout, openAuthModal, openRegistrationModal } = useAuthStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -165,9 +165,9 @@ export function Navbar() {
               </button>
               <button
                 className="rounded-lg bg-brand-orange px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-orange-dark"
-                onClick={openAuthModal}
+                onClick={openRegistrationModal}
               >
-                Objavi oglas
+                Registruj se
               </button>
             </div>
           )}
@@ -251,10 +251,10 @@ export function Navbar() {
                 className="rounded-lg bg-brand-orange px-4 py-3 text-sm font-semibold text-white"
                 onClick={() => {
                   closeMenu();
-                  openAuthModal();
+                  openRegistrationModal();
                 }}
               >
-                Objavi oglas
+                Registruj se
               </button>
             </>
           )}

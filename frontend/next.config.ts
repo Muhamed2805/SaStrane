@@ -1,10 +1,17 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
+import { networkInterfaces } from 'node:os';
+
+function getLanDevOrigins() {
+  return Object.values(networkInterfaces())
+    .flatMap((addresses) => addresses ?? [])
+    .filter((address) => address.family === 'IPv4' && !address.internal)
+    .map((address) => address.address);
+}
 
 const nextConfig: NextConfig = {
-  // Dev-only: lets the dev server be reached from other devices on the
-  // same LAN (e.g. testing from a phone). Update this IP if your machine's
-  // network address changes.
-  allowedDevOrigins: ["192.168.0.20"],
+  // Resolve current LAN addresses at startup so DHCP changes cannot leave
+  // remote browsers with HTML but blocked JavaScript chunks.
+  allowedDevOrigins: getLanDevOrigins(),
 };
 
 export default nextConfig;

@@ -17,7 +17,6 @@ import { BrandLogo } from '@/components/brand-logo';
 import { useAuthStore } from '../store';
 import type { RegisterPayload } from '../api';
 
-type Tab = 'login' | 'register';
 type UserRole = RegisterPayload['role'];
 
 const roles: Array<{
@@ -52,15 +51,16 @@ const fieldClassName =
 export function AuthModal() {
   const {
     isAuthModalOpen,
+    authModalTab,
     closeAuthModal,
     clearError,
+    setAuthModalTab,
     login,
     register,
     isLoading,
     error,
   } = useAuthStore();
 
-  const [tab, setTab] = useState<Tab>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -103,7 +103,7 @@ export function AuthModal() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (tab === 'login') {
+    if (authModalTab === 'login') {
       await login({ email: email.trim(), password });
     } else {
       await register({
@@ -117,15 +117,16 @@ export function AuthModal() {
     if (!useAuthStore.getState().isAuthModalOpen) resetFields();
   };
 
-  const switchTab = (nextTab: Tab) => {
-    setTab(nextTab);
+  const switchTab = (nextTab: 'login' | 'register') => {
+    setAuthModalTab(nextTab);
     resetFields();
   };
 
   const isInvalid =
     !email.trim() ||
     !password ||
-    (tab === 'register' && (fullName.trim().length < 2 || password.length < 8));
+    (authModalTab === 'register' &&
+      (fullName.trim().length < 2 || password.length < 8));
 
   return (
     <div
@@ -158,10 +159,12 @@ export function AuthModal() {
         <div className="px-6 pt-7 sm:px-8">
           <BrandLogo />
           <h2 id="auth-dialog-title" className="mt-6 text-2xl font-bold">
-            {tab === 'login' ? 'Dobro došao nazad' : 'Kreiraj svoj račun'}
+            {authModalTab === 'login'
+              ? 'Dobro došao nazad'
+              : 'Kreiraj svoj račun'}
           </h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            {tab === 'login'
+            {authModalTab === 'login'
               ? 'Prijavi se kako bi upravljao oglasima i prijavama.'
               : 'Pridruži se lokalnoj zajednici klijenata i izvođača.'}
           </p>
@@ -170,24 +173,24 @@ export function AuthModal() {
             <button
               type="button"
               className={`h-10 rounded-lg text-sm font-semibold transition-all ${
-                tab === 'login'
+                authModalTab === 'login'
                   ? 'bg-white text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
               onClick={() => switchTab('login')}
-              aria-pressed={tab === 'login'}
+              aria-pressed={authModalTab === 'login'}
             >
               Prijava
             </button>
             <button
               type="button"
               className={`h-10 rounded-lg text-sm font-semibold transition-all ${
-                tab === 'register'
+                authModalTab === 'register'
                   ? 'bg-white text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
               onClick={() => switchTab('register')}
-              aria-pressed={tab === 'register'}
+              aria-pressed={authModalTab === 'register'}
             >
               Registracija
             </button>
@@ -195,7 +198,7 @@ export function AuthModal() {
         </div>
 
         <form className="space-y-5 p-6 sm:p-8" onSubmit={handleSubmit}>
-          {tab === 'register' ? (
+          {authModalTab === 'register' ? (
             <div>
               <label htmlFor="auth-full-name" className="text-sm font-semibold">
                 Ime i prezime
@@ -253,7 +256,7 @@ export function AuthModal() {
               <label htmlFor="auth-password" className="text-sm font-semibold">
                 Lozinka
               </label>
-              {tab === 'register' ? (
+              {authModalTab === 'register' ? (
                 <span className="text-xs text-muted-foreground">
                   Najmanje 8 znakova
                 </span>
@@ -270,10 +273,10 @@ export function AuthModal() {
                 placeholder="Unesi lozinku"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete={
-                  tab === 'login' ? 'current-password' : 'new-password'
+                  authModalTab === 'login' ? 'current-password' : 'new-password'
                 }
                 value={password}
-                minLength={tab === 'register' ? 8 : 1}
+                minLength={authModalTab === 'register' ? 8 : 1}
                 required
                 onChange={(event) => {
                   setPassword(event.target.value);
@@ -295,7 +298,7 @@ export function AuthModal() {
             </div>
           </div>
 
-          {tab === 'register' ? (
+          {authModalTab === 'register' ? (
             <fieldset>
               <legend className="text-sm font-semibold">
                 Kako želiš koristiti SaStrane?
@@ -363,7 +366,7 @@ export function AuthModal() {
             ) : null}
             {isLoading
               ? 'Molimo sačekaj...'
-              : tab === 'login'
+              : authModalTab === 'login'
                 ? 'Prijavi se'
                 : 'Kreiraj račun'}
           </button>
