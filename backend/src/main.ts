@@ -1,13 +1,25 @@
 import 'reflect-metadata';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { isCorsOriginAllowed, parseCorsOrigins } from './config/cors';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const allowedOrigins = parseCorsOrigins(process.env.CORS_ORIGINS);
   const isProduction = process.env.NODE_ENV === 'production';
+  const port = Number(process.env.PORT ?? 4000);
+
+  if (isProduction) app.set('trust proxy', 1);
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
 
   app.enableCors({
     origin: (
@@ -31,6 +43,6 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(4000);
+  await app.listen(port, '0.0.0.0');
 }
 void bootstrap();
