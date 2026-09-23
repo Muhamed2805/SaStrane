@@ -20,6 +20,12 @@ export type RefreshResponse = {
   refreshToken: string;
 };
 
+export type RegisterResponse = {
+  email: string;
+  verificationRequired: true;
+  expiresInSeconds: number;
+};
+
 export type RegisterPayload = {
   email: string;
   password: string;
@@ -34,7 +40,7 @@ export type LoginPayload = {
 
 export const authApi = {
   register: (payload: RegisterPayload) =>
-    apiRequest<AuthResponse>('/auth/register', {
+    apiRequest<RegisterResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
@@ -43,6 +49,18 @@ export const authApi = {
     apiRequest<AuthResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(payload),
+    }),
+
+  verifyEmail: (email: string, code: string) =>
+    apiRequest<AuthResponse>('/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ email, code }),
+    }),
+
+  resendVerification: (email: string) =>
+    apiRequest<{ success: true }>('/auth/resend-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
     }),
 
   me: (token: string) =>

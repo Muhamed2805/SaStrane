@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-   url = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 enum UserRole {
@@ -20,11 +20,17 @@ enum ApplicationStatus {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  fullName     String
-  role         UserRole @default(BOTH)
+  id              String    @id @default(cuid())
+  email           String    @unique
+  emailVerifiedAt DateTime?
+  passwordHash    String
+  fullName        String
+  role            UserRole  @default(BOTH)
+
+  emailVerificationCodeHash  String?
+  emailVerificationExpiresAt DateTime?
+  emailVerificationSentAt    DateTime?
+  emailVerificationAttempts  Int       @default(0)
 
   refreshTokenHash      String?   @unique
   refreshTokenExpiresAt DateTime?
@@ -32,20 +38,20 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  listings      Listing[]      @relation("UserListings")
-  applications  Application[]  @relation("UserApplications")
+  listings     Listing[]     @relation("UserListings")
+  applications Application[] @relation("UserApplications")
 }
 
 model Listing {
-  id        String   @id @default(cuid())
-  title     String
-  category  String
-  location  String
-  budget    String?
+  id          String  @id @default(cuid())
+  title       String
+  category    String
+  location    String
+  budget      String?
   description String?
 
-  clientId  String
-  client    User @relation("UserListings", fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
+  client   User   @relation("UserListings", fields: [clientId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -54,9 +60,9 @@ model Listing {
 }
 
 model Application {
-  id            String            @id @default(cuid())
-  listingId     String
-  executorId    String
+  id         String @id @default(cuid())
+  listingId  String
+  executorId String
 
   message       String
   proposedPrice String?
@@ -65,8 +71,8 @@ model Application {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  executor  User    @relation("UserApplications", fields: [executorId], references: [id], onDelete: Cascade)
+  listing  Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  executor User    @relation("UserApplications", fields: [executorId], references: [id], onDelete: Cascade)
 
   @@unique([listingId, executorId]) // jedan executor može jednom aplicirati na isti oglas
   @@index([listingId, status])

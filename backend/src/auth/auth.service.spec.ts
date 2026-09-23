@@ -1,10 +1,17 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { createHash } from 'crypto';
+import { createHash, createHmac } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
 import { UserRole } from './dto/register.dto';
+import { EmailService } from './email.service';
 
 jest.mock('bcrypt', () => ({
   compare: jest.fn(),
@@ -13,17 +20,37 @@ jest.mock('bcrypt', () => ({
 
 describe('AuthService', () => {
   const userRepository = {
-    create: jest.fn(),
-    findUnique: jest.fn(),
-    update: jest.fn(),
+    create: jest.fn<(input: unknown) => Promise<unknown>>(),
+    delete: jest.fn<(input: unknown) => Promise<unknown>>(),
+    findUnique: jest.fn<(input: unknown) => Promise<unknown>>(),
+    update: jest.fn<(input: unknown) => Promise<unknown>>(),
   };
   const jwtService = {
-    signAsync: jest.fn(),
+    signAsync: jest.fn<(payload: unknown) => Promise<string>>(),
+  };
+  const configService = {
+    get: jest.fn((key: string) => {
+      if (key === 'EMAIL_VERIFICATION_SECRET') return 'verification-secret';
+      if (key === 'JWT_SECRET') return 'jwt-secret';
+      return undefined;
+    }),
+  };
+  const emailService = {
+    sendVerificationCode:
+      jest.fn<
+        (input: {
+          email: string;
+          fullName: string;
+          code: string;
+        }) => Promise<void>
+      >(),
   };
 
   const service = new AuthService(
     { user: userRepository } as unknown as PrismaService,
     jwtService as unknown as JwtService,
+    configService as unknown as ConfigService,
+    emailService as unknown as EmailService,
   );
 
   const user = {
@@ -31,7 +58,12 @@ describe('AuthService', () => {
     email: 'user@example.com',
     fullName: 'Test User',
     role: UserRole.BOTH,
+    emailVerifiedAt: new Date('2026-09-15T12:00:00.000Z'),
     passwordHash: 'stored-password-hash',
+    emailVerificationCodeHash: null,
+    emailVerificationExpiresAt: null,
+    emailVerificationSentAt: null,
+    emailVerificationAttempts: 0,
     refreshTokenHash: null,
     refreshTokenExpiresAt: null,
     createdAt: new Date('2026-09-15T12:00:00.000Z'),
@@ -40,17 +72,26 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    configService.get.mockImplementation((key: string) => {
+      if (key === 'EMAIL_VERIFICATION_SECRET') return 'verification-secret';
+      if (key === 'JWT_SECRET') return 'jwt-secret';
+      return undefined;
+    });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   describe('register', () => {
-    it('normalizes the email, hashes the password, and issues both tokens', async () => {
+    it('normalizes the email, hashes the password, and sends a verification code', async () => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2026-09-15T12:00:00.000Z'));
       userRepository.findUnique.mockResolvedValue(null);
       jest.mocked(bcrypt.hash).mockResolvedValue('new-password-hash');
       userRepository.create.mockResolvedValue(user);
       userRepository.update.mockResolvedValue(user);
-      jwtService.signAsync.mockResolvedValue('access-token');
+      emailService.sendVerificationCode.mockResolvedValue(undefined);
 
       const result = await service.register({
         email: 'USER@EXAMPLE.COM',
@@ -61,43 +102,61 @@ describe('AuthService', () => {
 
       expect(userRepository.findUnique).toHaveBeenCalledWith({
         where: { email: 'user@example.com' },
-        select: { id: true },
+        select: { id: true, emailVerifiedAt: true },
       });
       expect(bcrypt.hash).toHaveBeenCalledWith('secure-password', 12);
-      expect(userRepository.create).toHaveBeenCalledWith(
+      // Jest exposes mock call arguments as `any`; narrow them immediately.
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const createInput = userRepository.create.mock.calls[0][0] as {
+        data: {
+          email: string;
+          passwordHash: string;
+          fullName: string;
+          role: UserRole;
+          emailVerificationCodeHash: string;
+          emailVerificationExpiresAt: Date;
+          emailVerificationSentAt: Date;
+          emailVerificationAttempts: number;
+        };
+      };
+      expect(createInput.data).toEqual(
         expect.objectContaining({
-          data: {
-            email: 'user@example.com',
-            passwordHash: 'new-password-hash',
-            fullName: 'Test User',
-            role: UserRole.BOTH,
-          },
+          email: 'user@example.com',
+          passwordHash: 'new-password-hash',
+          fullName: 'Test User',
+          role: UserRole.BOTH,
+          emailVerificationExpiresAt: new Date('2026-09-15T12:10:00.000Z'),
+          emailVerificationSentAt: new Date('2026-09-15T12:00:00.000Z'),
+          emailVerificationAttempts: 0,
         }),
       );
-      expect(jwtService.signAsync).toHaveBeenCalledWith({
-        sub: user.id,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const emailInput = emailService.sendVerificationCode.mock.calls[0][0] as {
+        email: string;
+        fullName: string;
+        code: string;
+      };
+      expect(emailInput.email).toBe(user.email);
+      expect(emailInput.fullName).toBe(user.fullName);
+      expect(emailInput.code).toMatch(/^\d{6}$/);
+      expect(createInput.data.emailVerificationCodeHash).toBe(
+        createHmac('sha256', 'verification-secret')
+          .update(`user@example.com:${emailInput.code}`)
+          .digest('hex'),
+      );
+      expect(result).toEqual({
         email: user.email,
-        role: user.role,
+        verificationRequired: true,
+        expiresInSeconds: 600,
       });
-      expect(result.user).toBe(user);
-      expect(result.accessToken).toBe('access-token');
-      expect(result.refreshToken).toMatch(/^[a-f0-9]{64}$/);
-
-      const refreshToken = result.refreshToken;
-      expect(userRepository.update).toHaveBeenCalledWith({
-        where: { id: user.id },
-        data: {
-          refreshTokenHash: createHash('sha256')
-            .update(refreshToken)
-            .digest('hex'),
-          refreshTokenExpiresAt: new Date('2026-09-22T12:00:00.000Z'),
-        },
-      });
-      jest.useRealTimers();
+      expect(jwtService.signAsync).not.toHaveBeenCalled();
     });
 
     it('rejects an email that is already registered', async () => {
-      userRepository.findUnique.mockResolvedValue({ id: user.id });
+      userRepository.findUnique.mockResolvedValue({
+        id: user.id,
+        emailVerifiedAt: user.emailVerifiedAt,
+      });
 
       await expect(
         service.register({
@@ -111,6 +170,29 @@ describe('AuthService', () => {
       expect(bcrypt.hash).not.toHaveBeenCalled();
       expect(userRepository.create).not.toHaveBeenCalled();
       expect(jwtService.signAsync).not.toHaveBeenCalled();
+    });
+
+    it('removes the unverified account when email delivery fails', async () => {
+      userRepository.findUnique.mockResolvedValue(null);
+      jest.mocked(bcrypt.hash).mockResolvedValue('new-password-hash');
+      userRepository.create.mockResolvedValue(user);
+      emailService.sendVerificationCode.mockRejectedValue(
+        new Error('email provider unavailable'),
+      );
+      userRepository.delete.mockResolvedValue(user);
+
+      await expect(
+        service.register({
+          email: user.email,
+          password: 'secure-password',
+          fullName: user.fullName,
+          role: UserRole.BOTH,
+        }),
+      ).rejects.toThrow('email provider unavailable');
+
+      expect(userRepository.delete).toHaveBeenCalledWith({
+        where: { id: user.id },
+      });
     });
   });
 
@@ -173,6 +255,114 @@ describe('AuthService', () => {
 
       expect(jwtService.signAsync).not.toHaveBeenCalled();
       expect(userRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects a valid password until the email is verified', async () => {
+      userRepository.findUnique.mockResolvedValue({
+        ...user,
+        emailVerifiedAt: null,
+      });
+      jest.mocked(bcrypt.compare).mockResolvedValue(true);
+
+      await expect(
+        service.login({
+          email: user.email,
+          password: 'secure-password',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(jwtService.signAsync).not.toHaveBeenCalled();
+      expect(userRepository.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('verifyEmail', () => {
+    const code = '123456';
+    const codeHash = createHmac('sha256', 'verification-secret')
+      .update(`user@example.com:${code}`)
+      .digest('hex');
+
+    it('verifies a valid code and issues a session', async () => {
+      const pendingUser = {
+        ...user,
+        emailVerifiedAt: null,
+        emailVerificationCodeHash: codeHash,
+        emailVerificationExpiresAt: new Date(Date.now() + 60_000),
+        emailVerificationSentAt: new Date(),
+      };
+      const verifiedUser = { ...pendingUser, emailVerifiedAt: new Date() };
+      userRepository.findUnique.mockResolvedValue(pendingUser);
+      userRepository.update
+        .mockResolvedValueOnce(verifiedUser)
+        .mockResolvedValueOnce(verifiedUser);
+      jwtService.signAsync.mockResolvedValue('access-token');
+
+      const result = await service.verifyEmail({ email: user.email, code });
+
+      expect(result.user.email).toBe(user.email);
+      expect(result.accessToken).toBe('access-token');
+      expect(result.refreshToken).toMatch(/^[a-f0-9]{64}$/);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const verificationUpdate = userRepository.update.mock.calls[0][0] as {
+        where: { id: string };
+        data: {
+          emailVerifiedAt: Date;
+          emailVerificationCodeHash: null;
+          emailVerificationAttempts: number;
+        };
+      };
+      expect(verificationUpdate.where).toEqual({ id: user.id });
+      expect(verificationUpdate.data.emailVerifiedAt).toBeInstanceOf(Date);
+      expect(verificationUpdate.data.emailVerificationCodeHash).toBeNull();
+      expect(verificationUpdate.data.emailVerificationAttempts).toBe(0);
+    });
+
+    it('counts an invalid verification attempt without issuing tokens', async () => {
+      userRepository.findUnique.mockResolvedValue({
+        ...user,
+        emailVerifiedAt: null,
+        emailVerificationCodeHash: codeHash,
+        emailVerificationExpiresAt: new Date(Date.now() + 60_000),
+      });
+      userRepository.update.mockResolvedValue(user);
+
+      await expect(
+        service.verifyEmail({ email: user.email, code: '654321' }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(userRepository.update).toHaveBeenCalledWith({
+        where: { id: user.id },
+        data: { emailVerificationAttempts: { increment: 1 } },
+      });
+      expect(jwtService.signAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resendVerification', () => {
+    it('does not reveal whether an unknown account exists', async () => {
+      userRepository.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.resendVerification('missing@example.com'),
+      ).resolves.toEqual({ success: true });
+
+      expect(userRepository.update).not.toHaveBeenCalled();
+      expect(emailService.sendVerificationCode).not.toHaveBeenCalled();
+    });
+
+    it('enforces a cooldown between verification emails', async () => {
+      userRepository.findUnique.mockResolvedValue({
+        ...user,
+        emailVerifiedAt: null,
+        emailVerificationSentAt: new Date(),
+      });
+
+      await expect(
+        service.resendVerification(user.email),
+      ).rejects.toMatchObject({ status: 429 });
+
+      expect(userRepository.update).not.toHaveBeenCalled();
+      expect(emailService.sendVerificationCode).not.toHaveBeenCalled();
     });
   });
 

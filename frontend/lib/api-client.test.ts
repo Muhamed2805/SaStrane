@@ -50,16 +50,14 @@ describe('apiRequest', () => {
   it('joins backend validation messages for a bad request', async () => {
     vi.stubGlobal(
       'fetch',
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(
-            JSON.stringify({
-              message: ['Naslov je obavezan.', 'Budžet nije validan.'],
-            }),
-            { status: 400 },
-          ),
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            message: ['Naslov je obavezan.', 'Budžet nije validan.'],
+          }),
+          { status: 400 },
         ),
+      ),
     );
 
     await expect(apiRequest('/listings', { method: 'POST' })).rejects.toEqual(
@@ -89,6 +87,29 @@ describe('apiRequest', () => {
         name: 'ApiError',
         status: 500,
         message: 'Server trenutno nije dostupan. Pokušaj ponovo kasnije.',
+      }),
+    );
+  });
+
+  it('preserves a machine-readable application error code', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            code: 'EMAIL_NOT_VERIFIED',
+            message: 'Potvrdi email prije prijave.',
+          }),
+          { status: 403 },
+        ),
+      ),
+    );
+
+    await expect(apiRequest('/auth/login')).rejects.toEqual(
+      expect.objectContaining({
+        status: 403,
+        code: 'EMAIL_NOT_VERIFIED',
+        message: 'Potvrdi email prije prijave.',
       }),
     );
   });

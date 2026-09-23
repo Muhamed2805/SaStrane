@@ -30,7 +30,8 @@ type AuthState = {
   isLoading: boolean;
   error: string | null;
   isAuthModalOpen: boolean;
-  authModalTab: 'login' | 'register';
+  authModalTab: 'login' | 'register' | 'verify';
+  verificationEmail: string | null;
 
   openAuthModal: () => void;
   openRegistrationModal: () => void;
@@ -40,6 +41,8 @@ type AuthState = {
 
   login: (payload: LoginPayload) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
+  verifyEmail: (code: string) => Promise<boolean>;
+  resendVerification: () => Promise<boolean>;
   logout: () => void;
   restoreSession: () => Promise<void>;
   refreshAccessToken: () => Promise<void>;
@@ -60,13 +63,29 @@ export const useAuthStore = create<AuthState>()(
       error: null,
       isAuthModalOpen: false,
       authModalTab: 'login',
+      verificationEmail: null,
 
       openAuthModal: () =>
-        set({ isAuthModalOpen: true, authModalTab: 'login', error: null }),
+        set({
+          isAuthModalOpen: true,
+          authModalTab: 'login',
+          verificationEmail: null,
+          error: null,
+        }),
       openRegistrationModal: () =>
-        set({ isAuthModalOpen: true, authModalTab: 'register', error: null }),
+        set({
+          isAuthModalOpen: true,
+          authModalTab: 'register',
+          verificationEmail: null,
+          error: null,
+        }),
       closeAuthModal: () =>
-        set({ isAuthModalOpen: false, authModalTab: 'login', error: null }),
+        set({
+          isAuthModalOpen: false,
+          authModalTab: 'login',
+          verificationEmail: null,
+          error: null,
+        }),
       clearError: () => set({ error: null }),
       setAuthModalTab: (authModalTab) => set({ authModalTab, error: null }),
 
@@ -83,6 +102,15 @@ export const useAuthStore = create<AuthState>()(
             isAuthModalOpen: false,
           });
         } catch (err) {
+          if (err instanceof ApiError && err.code === 'EMAIL_NOT_VERIFIED') {
+            set({
+              authModalTab: 'verify',
+              verificationEmail: payload.email.trim().toLowerCase(),
+              error: null,
+              isLoading: false,
+            });
+            return;
+          }
           set({ error: authErrorMessage(err), isLoading: false });
         }
       },
@@ -90,17 +118,67 @@ export const useAuthStore = create<AuthState>()(
       register: async (payload) => {
         set({ isLoading: true, error: null });
         try {
-          const { user, accessToken, refreshToken } =
-            await authApi.register(payload);
+          const response = await authApi.register(payload);
+          set({
+            authModalTab: 'verify',
+            verificationEmail: response.email,
+            isLoading: false,
+          });
+        } catch (err) {
+          if (
+            err instanceof ApiError &&
+            err.code === 'EMAIL_VERIFICATION_PENDING'
+          ) {
+            set({
+              authModalTab: 'verify',
+              verificationEmail: payload.email.trim().toLowerCase(),
+              error: null,
+              isLoading: false,
+            });
+            return;
+          }
+          set({ error: authErrorMessage(err), isLoading: false });
+        }
+      },
+
+      verifyEmail: async (code) => {
+        const email = get().verificationEmail;
+        if (!email) return false;
+
+        set({ isLoading: true, error: null });
+        try {
+          const { user, accessToken, refreshToken } = await authApi.verifyEmail(
+            email,
+            code,
+          );
           set({
             user,
             token: accessToken,
             refreshToken,
             isLoading: false,
             isAuthModalOpen: false,
+            authModalTab: 'login',
+            verificationEmail: null,
           });
+          return true;
         } catch (err) {
           set({ error: authErrorMessage(err), isLoading: false });
+          return false;
+        }
+      },
+
+      resendVerification: async () => {
+        const email = get().verificationEmail;
+        if (!email) return false;
+
+        set({ isLoading: true, error: null });
+        try {
+          await authApi.resendVerification(email);
+          set({ isLoading: false });
+          return true;
+        } catch (err) {
+          set({ error: authErrorMessage(err), isLoading: false });
+          return false;
         }
       },
 
