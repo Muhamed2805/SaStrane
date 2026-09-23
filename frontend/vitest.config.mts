@@ -11,6 +11,7 @@ export default defineConfig({
     },
   },
   test: {
+    include: ['**/*.test.{ts,tsx}'],
     environment: 'node',
     clearMocks: true,
     restoreMocks: true,
