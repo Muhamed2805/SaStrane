@@ -23,6 +23,14 @@ function authErrorMessage(err: unknown) {
   return (err as Error).message;
 }
 
+export type AuthModalTab =
+  | 'login'
+  | 'register'
+  | 'verify'
+  | 'forgot'
+  | 'reset'
+  | 'reset-success';
+
 type AuthState = {
   user: AuthUser | null;
   token: string | null;
@@ -30,19 +38,22 @@ type AuthState = {
   isLoading: boolean;
   error: string | null;
   isAuthModalOpen: boolean;
-  authModalTab: 'login' | 'register' | 'verify';
+  authModalTab: AuthModalTab;
   verificationEmail: string | null;
+  passwordResetEmail: string | null;
 
   openAuthModal: () => void;
   openRegistrationModal: () => void;
   closeAuthModal: () => void;
   clearError: () => void;
-  setAuthModalTab: (tab: 'login' | 'register') => void;
+  setAuthModalTab: (tab: AuthModalTab) => void;
 
   login: (payload: LoginPayload) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
   verifyEmail: (code: string) => Promise<boolean>;
   resendVerification: () => Promise<boolean>;
+  requestPasswordReset: (email: string) => Promise<boolean>;
+  resetPassword: (code: string, password: string) => Promise<boolean>;
   logout: () => void;
   restoreSession: () => Promise<void>;
   refreshAccessToken: () => Promise<void>;
@@ -64,12 +75,14 @@ export const useAuthStore = create<AuthState>()(
       isAuthModalOpen: false,
       authModalTab: 'login',
       verificationEmail: null,
+      passwordResetEmail: null,
 
       openAuthModal: () =>
         set({
           isAuthModalOpen: true,
           authModalTab: 'login',
           verificationEmail: null,
+          passwordResetEmail: null,
           error: null,
         }),
       openRegistrationModal: () =>
@@ -77,6 +90,7 @@ export const useAuthStore = create<AuthState>()(
           isAuthModalOpen: true,
           authModalTab: 'register',
           verificationEmail: null,
+          passwordResetEmail: null,
           error: null,
         }),
       closeAuthModal: () =>
@@ -84,6 +98,7 @@ export const useAuthStore = create<AuthState>()(
           isAuthModalOpen: false,
           authModalTab: 'login',
           verificationEmail: null,
+          passwordResetEmail: null,
           error: null,
         }),
       clearError: () => set({ error: null }),
@@ -175,6 +190,42 @@ export const useAuthStore = create<AuthState>()(
         try {
           await authApi.resendVerification(email);
           set({ isLoading: false });
+          return true;
+        } catch (err) {
+          set({ error: authErrorMessage(err), isLoading: false });
+          return false;
+        }
+      },
+
+      requestPasswordReset: async (emailInput) => {
+        const email = emailInput.trim().toLowerCase();
+        set({ isLoading: true, error: null });
+        try {
+          await authApi.forgotPassword(email);
+          set({
+            authModalTab: 'reset',
+            passwordResetEmail: email,
+            isLoading: false,
+          });
+          return true;
+        } catch (err) {
+          set({ error: authErrorMessage(err), isLoading: false });
+          return false;
+        }
+      },
+
+      resetPassword: async (code, password) => {
+        const email = get().passwordResetEmail;
+        if (!email) return false;
+
+        set({ isLoading: true, error: null });
+        try {
+          await authApi.resetPassword(email, code, password);
+          set({
+            authModalTab: 'reset-success',
+            passwordResetEmail: null,
+            isLoading: false,
+          });
           return true;
         } catch (err) {
           set({ error: authErrorMessage(err), isLoading: false });

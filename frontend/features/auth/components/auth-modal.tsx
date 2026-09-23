@@ -20,6 +20,7 @@ import {
 import { BrandLogo } from '@/components/brand-logo';
 import { useAuthStore } from '../store';
 import type { RegisterPayload } from '../api';
+import { PasswordResetFlow } from './password-reset-flow';
 
 type UserRole = RegisterPayload['role'];
 
@@ -58,6 +59,7 @@ export function AuthModal() {
     isAuthModalOpen,
     authModalTab,
     verificationEmail,
+    passwordResetEmail,
     closeAuthModal,
     clearError,
     setAuthModalTab,
@@ -193,18 +195,35 @@ export function AuthModal() {
     (authModalTab === 'register' &&
       (fullName.trim().length < 2 || password.length < 8));
 
+  const isPasswordResetFlow =
+    authModalTab === 'forgot' ||
+    authModalTab === 'reset' ||
+    authModalTab === 'reset-success';
+
   const title =
     authModalTab === 'login'
       ? 'Dobro došao nazad'
       : authModalTab === 'register'
         ? 'Kreiraj svoj račun'
-        : 'Potvrdi svoj email';
+        : authModalTab === 'verify'
+          ? 'Potvrdi svoj email'
+          : authModalTab === 'forgot'
+            ? 'Zaboravljena lozinka'
+            : authModalTab === 'reset'
+              ? 'Postavi novu lozinku'
+              : 'Lozinka je promijenjena';
   const description =
     authModalTab === 'login'
       ? 'Prijavi se kako bi upravljao oglasima i prijavama.'
       : authModalTab === 'register'
         ? 'Pridruži se lokalnoj zajednici klijenata i izvođača.'
-        : `Poslali smo šestocifreni kod na ${verificationEmail ?? 'tvoj email'}.`;
+        : authModalTab === 'verify'
+          ? `Poslali smo šestocifreni kod na ${verificationEmail ?? 'tvoj email'}.`
+          : authModalTab === 'forgot'
+            ? 'Unesi email računa i poslat ćemo ti kod za promjenu lozinke.'
+            : authModalTab === 'reset'
+              ? `Ako račun postoji, poslali smo šestocifreni kod na ${passwordResetEmail ?? 'tvoj email'}.`
+              : 'Tvoj račun je ponovo spreman za korištenje.';
 
   return (
     <div
@@ -236,7 +255,7 @@ export function AuthModal() {
 
         <div className="px-6 pt-7 sm:px-8">
           <BrandLogo />
-          {authModalTab === 'verify' ? (
+          {authModalTab === 'verify' || isPasswordResetFlow ? (
             <span className="mt-7 flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <ShieldCheck className="size-6" aria-hidden="true" />
             </span>
@@ -248,7 +267,7 @@ export function AuthModal() {
             {description}
           </p>
 
-          {authModalTab !== 'verify' ? (
+          {authModalTab === 'login' || authModalTab === 'register' ? (
             <div className="mt-6 grid grid-cols-2 rounded-xl bg-muted p-1">
               <button
                 type="button"
@@ -365,6 +384,8 @@ export function AuthModal() {
               </button>
             </div>
           </form>
+        ) : isPasswordResetFlow ? (
+          <PasswordResetFlow initialEmail={email} />
         ) : (
           <form className="space-y-5 p-6 sm:p-8" onSubmit={handleSubmit}>
             {authModalTab === 'register' ? (
@@ -435,7 +456,18 @@ export function AuthModal() {
                   <span className="text-xs text-muted-foreground">
                     Najmanje 8 znakova
                   </span>
-                ) : null}
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearError();
+                      setAuthModalTab('forgot');
+                    }}
+                    className="text-xs font-semibold text-primary hover:underline"
+                  >
+                    Zaboravljena lozinka?
+                  </button>
+                )}
               </div>
               <div className="relative mt-2">
                 <LockKeyhole
