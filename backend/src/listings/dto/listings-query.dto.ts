@@ -26,6 +26,7 @@ export class ListingsQueryDto {
   @IsOptional()
   @Transform(trimString)
   @IsString()
+  @MaxLength(64)
   clientId?: string;
 
   @IsOptional()

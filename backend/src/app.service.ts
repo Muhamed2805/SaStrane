@@ -5,10 +5,6 @@ import { PrismaService } from './prisma/prisma.service';
 export class AppService {
   constructor(private readonly prisma: PrismaService) {}
 
-  getHello(): string {
-    return 'Hello World!';
-  }
-
   async getHealth() {
     try {
       await this.prisma.$queryRaw`SELECT 1`;

@@ -11,9 +11,25 @@ describe('validateEnvironment', () => {
       expect.objectContaining({
         NODE_ENV: 'development',
         PORT: 4000,
+        JWT_EXPIRES_IN: '15m',
       }),
     );
   });
+
+  it('accepts a JWT lifetime with an explicit unit', () => {
+    expect(
+      validateEnvironment({ ...validEnvironment, JWT_EXPIRES_IN: ' 30m ' }),
+    ).toEqual(expect.objectContaining({ JWT_EXPIRES_IN: '30m' }));
+  });
+
+  it.each(['900', '15 minutes', '0m', '-5m', '15M'])(
+    'rejects the JWT lifetime %p',
+    (value) => {
+      expect(() =>
+        validateEnvironment({ ...validEnvironment, JWT_EXPIRES_IN: value }),
+      ).toThrow('JWT_EXPIRES_IN must be a positive number');
+    },
+  );
 
   it('rejects a non-PostgreSQL database URL', () => {
     expect(() =>

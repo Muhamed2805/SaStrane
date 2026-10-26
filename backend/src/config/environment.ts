@@ -1,4 +1,9 @@
 const MINIMUM_SECRET_LENGTH = 32;
+const DEFAULT_JWT_EXPIRES_IN = '15m';
+
+// An explicit unit is required: jsonwebtoken reads a unitless string such as
+// "900" as milliseconds, which would make every access token expire at once.
+const JWT_EXPIRES_IN_PATTERN = /^[1-9]\d*(s|m|h|d)$/;
 
 function requiredString(config: Record<string, unknown>, key: string): string {
   const value = config[key];
@@ -41,6 +46,16 @@ export function validateEnvironment(config: Record<string, unknown>) {
 
   const jwtSecret = requiredString(config, 'JWT_SECRET');
 
+  const jwtExpiresIn =
+    typeof config.JWT_EXPIRES_IN === 'string' && config.JWT_EXPIRES_IN.trim()
+      ? config.JWT_EXPIRES_IN.trim()
+      : DEFAULT_JWT_EXPIRES_IN;
+  if (!JWT_EXPIRES_IN_PATTERN.test(jwtExpiresIn)) {
+    throw new Error(
+      'JWT_EXPIRES_IN must be a positive number followed by s, m, h, or d (for example 15m)',
+    );
+  }
+
   const rawPort = config.PORT ?? 4000;
   const port = Number(rawPort);
   if (!Number.isInteger(port) || port < 1 || port > 65_535) {
@@ -61,6 +76,7 @@ export function validateEnvironment(config: Record<string, unknown>) {
     NODE_ENV: nodeEnv,
     DATABASE_URL: databaseUrl,
     JWT_SECRET: jwtSecret,
+    JWT_EXPIRES_IN: jwtExpiresIn,
     PORT: port,
   };
 }

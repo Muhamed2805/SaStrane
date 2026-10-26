@@ -1,4 +1,19 @@
-import { IsEmail, IsEnum, IsString, MinLength } from 'class-validator';
+import { Transform } from 'class-transformer';
+import {
+  IsByteLength,
+  IsEmail,
+  IsEnum,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
+import { trimString } from '../../common/transforms/trim-string.transform';
+import {
+  EMAIL_MAX_LENGTH,
+  PASSWORD_MAX_BYTES,
+  PASSWORD_MAX_BYTES_MESSAGE,
+  PASSWORD_MIN_LENGTH,
+} from './credential-limits';
 
 export enum UserRole {
   CLIENT = 'CLIENT',
@@ -7,15 +22,20 @@ export enum UserRole {
 }
 
 export class RegisterDto {
+  @Transform(trimString)
   @IsEmail()
+  @MaxLength(EMAIL_MAX_LENGTH)
   email!: string;
 
   @IsString()
-  @MinLength(8)
+  @MinLength(PASSWORD_MIN_LENGTH)
+  @IsByteLength(0, PASSWORD_MAX_BYTES, { message: PASSWORD_MAX_BYTES_MESSAGE })
   password!: string;
 
+  @Transform(trimString)
   @IsString()
   @MinLength(2)
+  @MaxLength(100)
   fullName!: string;
 
   @IsEnum(UserRole)

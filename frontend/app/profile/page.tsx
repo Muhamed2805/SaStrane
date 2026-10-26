@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -40,39 +40,64 @@ const EMPTY_STATS: ProfileStats = {
 
 export default function ProfilePage() {
   const { user, token, openAuthModal } = useAuthStore();
-  const [stats, setStats] = useState<ProfileStats | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [reloadCount, setReloadCount] = useState(0);
+  const [loadResult, setLoadResult] = useState<{
+    key: string;
+    stats: ProfileStats;
+    error: string | null;
+  } | null>(null);
 
-  const loadStats = useCallback(async () => {
-    if (!user || !token) return;
+  const userId = user?.id;
+  const hasToken = Boolean(token);
+  // Identifies the current load. Another user or a retry gets a new key, so
+  // the placeholders show instead of stale numbers until that load finishes.
+  const loadKey = userId && hasToken ? `${userId}:${reloadCount}` : null;
+  const result =
+    loadKey !== null && loadResult?.key === loadKey ? loadResult : null;
+  const isLoading = loadKey !== null && result === null;
+  const stats = result?.stats ?? null;
+  const error = result?.error ?? null;
 
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const [listingsPage, applicationsPage, receivedPage] = await Promise.all([
-        listingsApi.getAll({ clientId: user.id, limit: 1 }),
-        applicationsApi.getMyApplications(token, { limit: 1 }),
-        applicationsApi.getReceivedApplications(token, { limit: 1 }),
-      ]);
-
-      setStats({
-        listings: listingsPage.total,
-        applications: applicationsPage.total,
-        received: receivedPage.total,
-      });
-    } catch (requestError) {
-      setStats(EMPTY_STATS);
-      setError((requestError as Error).message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [token, user]);
-
+  // The token is read when the request starts instead of being a dependency:
+  // it rotates every few minutes, and a rotation must not reload the stats.
   useEffect(() => {
-    void loadStats();
-  }, [loadStats]);
+    const currentToken = useAuthStore.getState().token;
+    if (!loadKey || !userId || !currentToken) return;
+
+    let ignore = false;
+    Promise.all([
+      listingsApi.getAll({ clientId: userId, limit: 1 }),
+      applicationsApi.getMyApplications(currentToken, { limit: 1 }),
+      applicationsApi.getReceivedApplications(currentToken, { limit: 1 }),
+    ])
+      .then(([listingsPage, applicationsPage, receivedPage]) => {
+        if (ignore) return;
+        setLoadResult({
+          key: loadKey,
+          stats: {
+            listings: listingsPage.total,
+            applications: applicationsPage.total,
+            received: receivedPage.total,
+          },
+          error: null,
+        });
+      })
+      .catch((requestError: unknown) => {
+        if (ignore) return;
+        setLoadResult({
+          key: loadKey,
+          stats: EMPTY_STATS,
+          error:
+            requestError instanceof Error
+              ? requestError.message
+              : 'Statistika nije dostupna.',
+        });
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [loadKey, userId]);
 
   if (!user) {
     return (
@@ -170,7 +195,7 @@ export default function ProfilePage() {
           {error ? (
             <button
               type="button"
-              onClick={() => void loadStats()}
+              onClick={() => setReloadCount((count) => count + 1)}
               className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
             >
               <RefreshCw className="size-4" />

@@ -6,7 +6,7 @@ import { PrismaService } from './prisma/prisma.service';
 describe('AppController', () => {
   let appController: AppController;
   const prisma = {
-    $queryRaw: jest.fn<() => Promise<unknown>>(),
+    $queryRaw: jest.fn<Promise<unknown>, []>(),
   };
 
   beforeEach(async () => {
@@ -16,12 +16,6 @@ describe('AppController', () => {
     }).compile();
 
     appController = app.get<AppController>(AppController);
-  });
-
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
-    });
   });
 
   describe('health', () => {

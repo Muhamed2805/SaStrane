@@ -1,48 +1,19 @@
 import 'reflect-metadata';
-import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import helmet from 'helmet';
 import { AppModule } from './app.module';
-import { isCorsOriginAllowed, parseCorsOrigins } from './config/cors';
+import { configureApp } from './app.setup';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  const allowedOrigins = parseCorsOrigins(process.env.CORS_ORIGINS);
-  const isProduction = process.env.NODE_ENV === 'production';
-  const port = Number(process.env.PORT ?? 4000);
+  configureApp(app);
 
-  if (isProduction) app.set('trust proxy', 1);
+  // Run onModuleDestroy hooks (for example closing the database pool) when
+  // the host stops the process with SIGTERM during a deploy or restart.
+  app.enableShutdownHooks();
 
-  app.use(
-    helmet({
-      contentSecurityPolicy: false,
-      crossOriginResourcePolicy: { policy: 'cross-origin' },
-    }),
-  );
-
-  app.enableCors({
-    origin: (
-      origin: string | undefined,
-      callback: (err: Error | null, allow?: boolean) => void,
-    ) => {
-      if (isCorsOriginAllowed(origin, allowedOrigins, isProduction)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    credentials: true,
-  });
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
-
+  const port = app.get(ConfigService).getOrThrow<number>('PORT');
   await app.listen(port, '0.0.0.0');
 }
 void bootstrap();
