@@ -131,6 +131,7 @@ export function PasswordResetFlow({ initialEmail }: { initialEmail: string }) {
               type="email"
               autoComplete="email"
               value={email}
+              maxLength={254}
               autoFocus
               required
               onChange={(event) => {

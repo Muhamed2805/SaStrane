@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store';
 import {
@@ -24,28 +24,47 @@ export function ListingApplications({
 }: ListingApplicationsProps) {
   const { user, token } = useAuthStore();
   const [applications, setApplications] = useState<ApplicationFromApi[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [reloadCount, setReloadCount] = useState(0);
+  const [loadResult, setLoadResult] = useState<{
+    key: string;
+    error: string | null;
+  } | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const isOwner = user?.id === clientId;
+  const hasToken = Boolean(token);
+  // Identifies the current load. Another listing or a retry gets a new key,
+  // so the skeleton shows instead of stale data until that load finishes.
+  const loadKey = isOwner && hasToken ? `${listingId}:${reloadCount}` : null;
+  const isLoading = loadKey !== null && loadResult?.key !== loadKey;
+  const error =
+    loadKey !== null && loadResult?.key === loadKey ? loadResult.error : null;
 
-  const loadApplications = useCallback(async () => {
-    if (!isOwner || !token) return;
-
-    setIsLoading(true);
-    setError(null);
-    try {
-      setApplications(await applicationsApi.getForListing(listingId, token));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Prijave nisu dostupne.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isOwner, listingId, token]);
-
+  // The token is read when the request starts instead of being a dependency:
+  // it rotates every few minutes, and a rotation must not reload the list.
   useEffect(() => {
-    void loadApplications();
-  }, [loadApplications]);
+    const currentToken = useAuthStore.getState().token;
+    if (!loadKey || !currentToken) return;
+
+    let ignore = false;
+    applicationsApi
+      .getForListing(listingId, currentToken)
+      .then((items) => {
+        if (ignore) return;
+        setApplications(items);
+        setLoadResult({ key: loadKey, error: null });
+      })
+      .catch((err: unknown) => {
+        if (ignore) return;
+        setLoadResult({
+          key: loadKey,
+          error: err instanceof Error ? err.message : 'Prijave nisu dostupne.',
+        });
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [loadKey, listingId]);
 
   if (!isOwner || !token) return null;
 
@@ -101,7 +120,7 @@ export function ListingApplications({
           <button
             className="mt-3 underline"
             type="button"
-            onClick={loadApplications}
+            onClick={() => setReloadCount((count) => count + 1)}
           >
             Pokušaj ponovo
           </button>

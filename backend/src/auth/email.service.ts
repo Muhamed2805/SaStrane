@@ -5,6 +5,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+// Without a deadline a slow email provider would keep the sign-up request
+// (and its database row) waiting until the client gives up.
+const EMAIL_REQUEST_TIMEOUT_MS = 10_000;
+
 function escapeHtml(value: string) {
   return value
     .replaceAll('&', '&amp;')
@@ -86,8 +90,12 @@ export class EmailService {
           html: input.html,
           tags: [{ name: 'category', value: input.tag }],
         }),
+        signal: AbortSignal.timeout(EMAIL_REQUEST_TIMEOUT_MS),
       });
-    } catch {
+    } catch (error) {
+      this.logger.error(
+        `Email request (${input.tag}) failed: ${(error as Error).message}`,
+      );
       throw new ServiceUnavailableException(
         'Email trenutno nije moguće poslati. Pokušaj ponovo.',
       );
@@ -96,7 +104,7 @@ export class EmailService {
     if (!response.ok) {
       const responseBody = await response.text();
       this.logger.error(
-        `Resend rejected verification email (${response.status}): ${responseBody}`,
+        `Resend rejected ${input.tag} email (${response.status}): ${responseBody}`,
       );
       throw new ServiceUnavailableException(
         'Email trenutno nije moguće poslati. Pokušaj ponovo.',

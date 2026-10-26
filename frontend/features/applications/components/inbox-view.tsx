@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -100,8 +100,11 @@ export function InboxView({
   const [receivedApplications, setReceivedApplications] = useState<
     ApplicationFromApi[]
   >([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [reloadCount, setReloadCount] = useState(0);
+  const [loadResult, setLoadResult] = useState<{
+    key: string;
+    error: string | null;
+  } | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [myListingsPage, setMyListingsPage] = useState(1);
   const [myListingsTotal, setMyListingsTotal] = useState(0);
@@ -114,60 +117,66 @@ export function InboxView({
   const [receivedTotalPages, setReceivedTotalPages] = useState(1);
   const [loadingMore, setLoadingMore] = useState<InboxTab | null>(null);
 
-  const loadWorkspace = useCallback(async () => {
-    if (!user || !token) return;
+  const userId = user?.id;
+  const hasToken = Boolean(token);
+  // Identifies the current load. Another user or a retry gets a new key, so
+  // the skeleton shows instead of stale data until that load finishes.
+  const loadKey = userId && hasToken ? `${userId}:${reloadCount}` : null;
+  const isLoading = loadKey !== null && loadResult?.key !== loadKey;
+  const error =
+    loadKey !== null && loadResult?.key === loadKey ? loadResult.error : null;
+  const reloadWorkspace = () => setReloadCount((count) => count + 1);
 
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const [listingsPageData, myPageData, receivedPageData] =
-        await Promise.all([
-          listingsApi.getAll({
-            clientId: user.id,
-            page: 1,
-            limit: PAGE_SIZE,
-          }),
-          applicationsApi.getMyApplications(token, {
-            page: 1,
-            limit: PAGE_SIZE,
-          }),
-          applicationsApi.getReceivedApplications(token, {
-            page: 1,
-            limit: PAGE_SIZE,
-          }),
-        ]);
-
-      setMyListings(listingsPageData.items);
-      setMyListingsPage(listingsPageData.page);
-      setMyListingsTotal(listingsPageData.total);
-      setMyListingsTotalPages(Math.max(1, listingsPageData.totalPages));
-      setMyApplications(myPageData.items);
-      setMyPage(myPageData.page);
-      setMyTotal(myPageData.total);
-      setMyTotalPages(Math.max(1, myPageData.totalPages));
-      setReceivedApplications(receivedPageData.items);
-      setReceivedPage(receivedPageData.page);
-      setReceivedTotal(receivedPageData.total);
-      setReceivedTotalPages(Math.max(1, receivedPageData.totalPages));
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : 'Radni prostor trenutno nije dostupan.',
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user, token]);
-
+  // The token is read when the request starts instead of being a dependency:
+  // it rotates every few minutes, and a rotation must not reload the
+  // workspace and drop the pages loaded with "Učitaj još".
   useEffect(() => {
-    if (user && token) {
-      void loadWorkspace();
-    } else {
-      setIsLoading(false);
-    }
-  }, [user, token, loadWorkspace]);
+    const currentToken = useAuthStore.getState().token;
+    if (!loadKey || !userId || !currentToken) return;
+
+    let ignore = false;
+    Promise.all([
+      listingsApi.getAll({ clientId: userId, page: 1, limit: PAGE_SIZE }),
+      applicationsApi.getMyApplications(currentToken, {
+        page: 1,
+        limit: PAGE_SIZE,
+      }),
+      applicationsApi.getReceivedApplications(currentToken, {
+        page: 1,
+        limit: PAGE_SIZE,
+      }),
+    ])
+      .then(([listingsPageData, myPageData, receivedPageData]) => {
+        if (ignore) return;
+        setMyListings(listingsPageData.items);
+        setMyListingsPage(listingsPageData.page);
+        setMyListingsTotal(listingsPageData.total);
+        setMyListingsTotalPages(Math.max(1, listingsPageData.totalPages));
+        setMyApplications(myPageData.items);
+        setMyPage(myPageData.page);
+        setMyTotal(myPageData.total);
+        setMyTotalPages(Math.max(1, myPageData.totalPages));
+        setReceivedApplications(receivedPageData.items);
+        setReceivedPage(receivedPageData.page);
+        setReceivedTotal(receivedPageData.total);
+        setReceivedTotalPages(Math.max(1, receivedPageData.totalPages));
+        setLoadResult({ key: loadKey, error: null });
+      })
+      .catch((requestError: unknown) => {
+        if (ignore) return;
+        setLoadResult({
+          key: loadKey,
+          error:
+            requestError instanceof Error
+              ? requestError.message
+              : 'Radni prostor trenutno nije dostupan.',
+        });
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [loadKey, userId]);
 
   const selectTab = (tab: InboxTab) => {
     setActiveTab(tab);
@@ -392,7 +401,7 @@ export function InboxView({
           <p className="mt-1 text-red-600">{error}</p>
           <button
             type="button"
-            onClick={() => void loadWorkspace()}
+            onClick={reloadWorkspace}
             className="mt-4 inline-flex items-center gap-2 font-semibold underline"
           >
             <RefreshCw className="size-4" aria-hidden="true" />

@@ -18,16 +18,29 @@ jest.mock('bcrypt', () => ({
   hash: jest.fn(),
 }));
 
+// bcrypt's functions are overloaded (callback and promise forms), so
+// jest.mocked() would pick the callback form. Type the promise form directly.
+const hashMock = bcrypt.hash as unknown as jest.Mock<
+  Promise<string>,
+  [data: string, rounds: number]
+>;
+const compareMock = bcrypt.compare as unknown as jest.Mock<
+  Promise<boolean>,
+  [data: string, encrypted: string]
+>;
+
+type EmailInput = { email: string; fullName: string; code: string };
+
 describe('AuthService', () => {
   const userRepository = {
-    create: jest.fn<(input: unknown) => Promise<unknown>>(),
-    delete: jest.fn<(input: unknown) => Promise<unknown>>(),
-    findUnique: jest.fn<(input: unknown) => Promise<unknown>>(),
-    update: jest.fn<(input: unknown) => Promise<unknown>>(),
-    updateMany: jest.fn<(input: unknown) => Promise<{ count: number }>>(),
+    create: jest.fn<Promise<unknown>, [input: unknown]>(),
+    delete: jest.fn<Promise<unknown>, [input: unknown]>(),
+    findUnique: jest.fn<Promise<unknown>, [input: unknown]>(),
+    update: jest.fn<Promise<unknown>, [input: unknown]>(),
+    updateMany: jest.fn<Promise<{ count: number }>, [input: unknown]>(),
   };
   const jwtService = {
-    signAsync: jest.fn<(payload: unknown) => Promise<string>>(),
+    signAsync: jest.fn<Promise<string>, [payload: unknown]>(),
   };
   const configService = {
     get: jest.fn((key: string) => {
@@ -37,22 +50,8 @@ describe('AuthService', () => {
     }),
   };
   const emailService = {
-    sendVerificationCode:
-      jest.fn<
-        (input: {
-          email: string;
-          fullName: string;
-          code: string;
-        }) => Promise<void>
-      >(),
-    sendPasswordResetCode:
-      jest.fn<
-        (input: {
-          email: string;
-          fullName: string;
-          code: string;
-        }) => Promise<void>
-      >(),
+    sendVerificationCode: jest.fn<Promise<void>, [input: EmailInput]>(),
+    sendPasswordResetCode: jest.fn<Promise<void>, [input: EmailInput]>(),
   };
 
   const service = new AuthService(
@@ -97,7 +96,7 @@ describe('AuthService', () => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2026-09-15T12:00:00.000Z'));
       userRepository.findUnique.mockResolvedValue(null);
-      jest.mocked(bcrypt.hash).mockResolvedValue('new-password-hash');
+      hashMock.mockResolvedValue('new-password-hash');
       userRepository.create.mockResolvedValue(user);
       userRepository.update.mockResolvedValue(user);
       emailService.sendVerificationCode.mockResolvedValue(undefined);
@@ -114,8 +113,7 @@ describe('AuthService', () => {
         select: { id: true, emailVerifiedAt: true },
       });
       expect(bcrypt.hash).toHaveBeenCalledWith('secure-password', 12);
-      // Jest exposes mock call arguments as `any`; narrow them immediately.
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      // Mock call arguments are typed as `unknown`; narrow them immediately.
       const createInput = userRepository.create.mock.calls[0][0] as {
         data: {
           email: string;
@@ -139,7 +137,6 @@ describe('AuthService', () => {
           emailVerificationAttempts: 0,
         }),
       );
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const emailInput = emailService.sendVerificationCode.mock.calls[0][0] as {
         email: string;
         fullName: string;
@@ -183,7 +180,7 @@ describe('AuthService', () => {
 
     it('removes the unverified account when email delivery fails', async () => {
       userRepository.findUnique.mockResolvedValue(null);
-      jest.mocked(bcrypt.hash).mockResolvedValue('new-password-hash');
+      hashMock.mockResolvedValue('new-password-hash');
       userRepository.create.mockResolvedValue(user);
       emailService.sendVerificationCode.mockRejectedValue(
         new Error('email provider unavailable'),
@@ -208,7 +205,7 @@ describe('AuthService', () => {
   describe('login', () => {
     it('returns a safe user response and rotates the refresh token', async () => {
       userRepository.findUnique.mockResolvedValue(user);
-      jest.mocked(bcrypt.compare).mockResolvedValue(true);
+      compareMock.mockResolvedValue(true);
       jwtService.signAsync.mockResolvedValue('access-token');
       userRepository.update.mockResolvedValue(user);
 
@@ -253,7 +250,7 @@ describe('AuthService', () => {
 
     it('rejects an invalid password without issuing tokens', async () => {
       userRepository.findUnique.mockResolvedValue(user);
-      jest.mocked(bcrypt.compare).mockResolvedValue(false);
+      compareMock.mockResolvedValue(false);
 
       await expect(
         service.login({
@@ -271,7 +268,7 @@ describe('AuthService', () => {
         ...user,
         emailVerifiedAt: null,
       });
-      jest.mocked(bcrypt.compare).mockResolvedValue(true);
+      compareMock.mockResolvedValue(true);
 
       await expect(
         service.login({
@@ -311,7 +308,6 @@ describe('AuthService', () => {
       expect(result.user.email).toBe(user.email);
       expect(result.accessToken).toBe('access-token');
       expect(result.refreshToken).toMatch(/^[a-f0-9]{64}$/);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const verificationUpdate = userRepository.update.mock.calls[0][0] as {
         where: { id: string };
         data: {
@@ -398,15 +394,7 @@ describe('AuthService', () => {
         success: true,
       });
 
-      // Jest exposes mock call arguments as `any`; narrow them immediately.
-      /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-      const emailInput = emailService.sendPasswordResetCode.mock
-        .calls[0][0] as {
-        email: string;
-        fullName: string;
-        code: string;
-      };
-      /* eslint-enable @typescript-eslint/no-unsafe-member-access */
+      const emailInput = emailService.sendPasswordResetCode.mock.calls[0][0];
       expect(emailInput).toEqual(
         expect.objectContaining({
           email: user.email,
@@ -483,7 +471,7 @@ describe('AuthService', () => {
 
     it('atomically replaces the password and revokes existing sessions', async () => {
       userRepository.findUnique.mockResolvedValue(resetUser);
-      jest.mocked(bcrypt.hash).mockResolvedValue('new-password-hash');
+      hashMock.mockResolvedValue('new-password-hash');
       userRepository.updateMany.mockResolvedValue({ count: 1 });
 
       await expect(

@@ -408,6 +408,7 @@ export function AuthModal() {
                     autoComplete="name"
                     value={fullName}
                     minLength={2}
+                    maxLength={100}
                     required
                     onChange={(event) => {
                       setFullName(event.target.value);
@@ -434,6 +435,7 @@ export function AuthModal() {
                   type="email"
                   autoComplete="email"
                   value={email}
+                  maxLength={254}
                   required
                   autoFocus
                   onChange={(event) => {
