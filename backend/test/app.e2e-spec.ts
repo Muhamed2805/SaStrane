@@ -2,74 +2,23 @@ import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerStorage, ThrottlerStorageService } from '@nestjs/throttler';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { Prisma } from '../src/generated/prisma/client';
-import * as bcrypt from 'bcrypt';
 import request from 'supertest';
-import { AppModule } from './../src/app.module';
-import { configureApp } from './../src/app.setup';
-import { REFRESH_COOKIE_NAME } from './../src/auth/refresh-cookie';
-import { ROTATION_GRACE_MS } from './../src/auth/sessions.service';
-import { PrismaService } from './../src/prisma/prisma.service';
-import { createFakeSessionStore } from './fake-session-store';
+import { AppModule } from '../src/app.module';
+import { configureApp } from '../src/app.setup';
+import { EmailService } from '../src/auth/email.service';
+import { ROTATION_GRACE_MS } from '../src/auth/sessions.service';
+import { PrismaService } from '../src/prisma/prisma.service';
+import {
+  CapturingEmailService,
+  PASSWORD,
+  cookiePair,
+  createUser,
+  resetDatabase,
+  setCookieHeader,
+} from './helpers';
 
-const password = 'correct-horse-battery';
-const user = {
-  id: 'user-1',
-  email: 'user@example.com',
-  fullName: 'Test User',
-  role: 'BOTH',
-  emailVerifiedAt: new Date(),
-  passwordHash: bcrypt.hashSync(password, 4),
-  createdAt: new Date('2026-09-15T12:00:00.000Z'),
-};
-const publicUser = {
-  id: user.id,
-  email: user.email,
-  fullName: user.fullName,
-  role: user.role,
-  createdAt: user.createdAt,
-};
-
-const sessionStore = createFakeSessionStore(() => publicUser);
-
-// The database is mocked: these tests cover the HTTP layer (routing,
-// validation, cookies, error mapping) with the same setup the server uses.
-const prisma = {
-  $queryRaw: jest.fn<Promise<unknown>, []>(),
-  $transaction: (input: unknown) =>
-    Array.isArray(input)
-      ? Promise.all(input)
-      : (input as (tx: unknown) => Promise<unknown>)(prisma),
-  user: {
-    findUnique: jest.fn<Promise<unknown>, [input: unknown]>(),
-    create: jest.fn<Promise<unknown>, [input: unknown]>(),
-    update: jest.fn<Promise<unknown>, [input: unknown]>(),
-  },
-  session: sessionStore.session,
-  refreshToken: sessionStore.refreshToken,
-};
-
-const validRegistration = {
-  email: 'new.user@example.com',
-  password,
-  fullName: 'New User',
-  role: 'BOTH',
-};
-
-function setCookieHeader(response: request.Response): string {
-  const header = response.headers['set-cookie'] as unknown;
-  const cookies = Array.isArray(header) ? (header as string[]) : [];
-  const cookie = cookies.find((value) =>
-    value.startsWith(`${REFRESH_COOKIE_NAME}=`),
-  );
-  if (!cookie) throw new Error('Response did not set the refresh cookie');
-  return cookie;
-}
-
-// The "name=value" part, as a browser would send it back.
-function cookiePair(setCookie: string) {
-  return setCookie.split(';')[0];
-}
+// The app runs with its real configuration against the e2e database. Only
+// email delivery and the rate limiter's storage are swapped out.
 
 // The app's real in-memory rate limiter, swapped for a fresh one before each
 // test. Otherwise limits such as the login one run out across tests.
@@ -86,16 +35,26 @@ class ResettableThrottlerStorage implements ThrottlerStorage {
   }
 }
 
+const listingInput = {
+  title: 'Košenje dvorišta i orezivanje živice',
+  category: 'Košenje trave',
+  location: 'Ilidža',
+  budget: '60 KM',
+  description: 'Dvorište od oko 400 m², kosilicu imam.',
+};
+
 describe('App (e2e)', () => {
   const throttlerStorage = new ResettableThrottlerStorage();
+  const emails = new CapturingEmailService();
   let app: NestExpressApplication;
+  let prisma: PrismaService;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideProvider(PrismaService)
-      .useValue(prisma)
+      .overrideProvider(EmailService)
+      .useValue(emails)
       .overrideProvider(ThrottlerStorage)
       .useValue(throttlerStorage)
       .compile();
@@ -104,25 +63,26 @@ describe('App (e2e)', () => {
       moduleFixture.createNestApplication<NestExpressApplication>(),
     );
     await app.init();
+    prisma = app.get(PrismaService);
   });
 
   afterAll(async () => {
     await app.close();
   });
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-    sessionStore.reset();
+  beforeEach(async () => {
+    await resetDatabase(prisma);
+    emails.clear();
     throttlerStorage.reset();
   });
 
-  async function login() {
-    prisma.user.findUnique.mockResolvedValue(user);
+  const http = () => request(app.getHttpServer());
 
-    const response = await request(app.getHttpServer())
+  async function login(email: string, password = PASSWORD) {
+    const response = await http()
       .post('/api/auth/login')
       .set('User-Agent', 'e2e-browser')
-      .send({ email: user.email, password })
+      .send({ email, password })
       .expect(200);
 
     return {
@@ -132,86 +92,159 @@ describe('App (e2e)', () => {
     };
   }
 
+  // A verified user and their access token.
+  async function signedInUser(fullName?: string) {
+    const user = await createUser(prisma, { fullName });
+    const { accessToken } = await login(user.email);
+    return { user, auth: `Bearer ${accessToken}` };
+  }
+
   function refresh(cookie?: string) {
-    const call = request(app.getHttpServer()).post('/api/auth/refresh');
+    const call = http().post('/api/auth/refresh');
     return cookie ? call.set('Cookie', cookie) : call;
   }
 
   function me(accessToken: string) {
-    return request(app.getHttpServer())
+    return http()
       .get('/api/auth/me')
       .set('Authorization', `Bearer ${accessToken}`);
   }
 
+  async function postListing(auth: string, input: object = listingInput) {
+    const response = await http()
+      .post('/api/listings')
+      .set('Authorization', auth)
+      .send(input)
+      .expect(201);
+    return response.body as { id: string };
+  }
+
   describe('routing', () => {
     it('GET /health reports a reachable database', async () => {
-      prisma.$queryRaw.mockResolvedValue([{ '?column?': 1 }]);
-
-      const response = await request(app.getHttpServer())
-        .get('/health')
-        .expect(200);
+      const response = await http().get('/health').expect(200);
 
       expect(response.body).toMatchObject({ status: 'ok', database: 'up' });
     });
 
-    it('GET /health returns 503 when the database is down', async () => {
-      prisma.$queryRaw.mockRejectedValue(new Error('connection refused'));
-
-      await request(app.getHttpServer()).get('/health').expect(503);
-    });
-
     it('serves the API only under /api', async () => {
-      await request(app.getHttpServer()).get('/').expect(404);
-      await request(app.getHttpServer()).get('/auth/me').expect(404);
-      await request(app.getHttpServer()).get('/api/health').expect(404);
+      await http().get('/').expect(404);
+      await http().get('/auth/me').expect(404);
+      await http().get('/api/health').expect(404);
     });
   });
 
-  describe('validation', () => {
+  describe('sign-up and email codes', () => {
+    const registration = {
+      email: 'New.User@Example.com',
+      password: PASSWORD,
+      fullName: 'New User',
+      role: 'BOTH',
+    };
+
     it('rejects unknown fields in a request body', async () => {
-      await request(app.getHttpServer())
+      await http()
         .post('/api/auth/register')
-        .send({ ...validRegistration, isAdmin: true })
+        .send({ ...registration, isAdmin: true })
         .expect(400);
 
-      expect(prisma.user.create).not.toHaveBeenCalled();
+      expect(await prisma.user.count()).toBe(0);
     });
 
     it('rejects passwords that bcrypt would silently truncate', async () => {
-      const response = await request(app.getHttpServer())
+      const response = await http()
         .post('/api/auth/register')
-        .send({ ...validRegistration, password: 'a'.repeat(73) })
+        .send({ ...registration, password: 'a'.repeat(73) })
         .expect(400);
 
       expect(JSON.stringify(response.body)).toContain('Lozinka je preduga');
     });
 
-    it('returns 409, not 500, when a parallel sign-up wins the race', async () => {
-      prisma.user.findUnique.mockResolvedValue(null);
-      prisma.user.create.mockRejectedValue(
-        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
-          code: 'P2002',
-          clientVersion: 'test',
+    it('signs in only after the emailed code confirms the address', async () => {
+      await http().post('/api/auth/register').send(registration).expect(201);
+      const email = 'new.user@example.com';
+
+      const early = await http()
+        .post('/api/auth/login')
+        .send({ email, password: PASSWORD })
+        .expect(403);
+      expect(early.body).toMatchObject({ code: 'EMAIL_NOT_VERIFIED' });
+
+      await http()
+        .post('/api/auth/verify-email')
+        .send({ email, code: '000000' })
+        .expect(400);
+
+      const verified = await http()
+        .post('/api/auth/verify-email')
+        .send({ email, code: emails.lastCode('verification', email) })
+        .expect(200);
+      expect(verified.body).toMatchObject({ user: { email } });
+      setCookieHeader(verified);
+
+      await login(email);
+    });
+
+    it('creates one account when two sign-ups with one email race', async () => {
+      const statuses = await Promise.all(
+        [1, 2].map(async () => {
+          const response = await http()
+            .post('/api/auth/register')
+            .send(registration);
+          return response.status;
         }),
       );
 
-      await request(app.getHttpServer())
-        .post('/api/auth/register')
-        .send(validRegistration)
-        .expect(409);
+      expect(statuses.sort()).toEqual([201, 409]);
+      expect(await prisma.user.count()).toBe(1);
+    });
+
+    it('resets the password with the emailed code and ends every session', async () => {
+      const user = await createUser(prisma);
+      const first = await login(user.email);
+      const second = await login(user.email);
+
+      await http()
+        .post('/api/auth/forgot-password')
+        .send({ email: user.email })
+        .expect(200);
+      await http()
+        .post('/api/auth/reset-password')
+        .send({
+          email: user.email,
+          code: emails.lastCode('password-reset', user.email),
+          password: 'a-brand-new-password',
+        })
+        .expect(200);
+
+      for (const session of [first, second]) {
+        await me(session.accessToken).expect(401);
+        await refresh(session.cookie).expect(401);
+      }
+      await http()
+        .post('/api/auth/login')
+        .send({ email: user.email, password: PASSWORD })
+        .expect(401);
+      await login(user.email, 'a-brand-new-password');
     });
   });
 
   describe('sessions', () => {
     it('protects authenticated endpoints', async () => {
-      await request(app.getHttpServer()).get('/api/auth/me').expect(401);
+      await http().get('/api/auth/me').expect(401);
     });
 
     it('keeps the refresh token out of reach of page scripts', async () => {
-      const { response, accessToken } = await login();
+      const user = await createUser(prisma);
+      const { response, accessToken } = await login(user.email);
 
       expect(response.body).toEqual({
-        user: { ...publicUser, createdAt: publicUser.createdAt.toISOString() },
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          role: user.role,
+          createdAt: user.createdAt.toISOString(),
+        },
         accessToken,
       });
       const setCookie = setCookieHeader(response);
@@ -219,22 +252,29 @@ describe('App (e2e)', () => {
       expect(setCookie).toMatch(/; SameSite=Strict/);
       expect(setCookie).toMatch(/; Path=\/api\/auth(;|$)/);
       expect(setCookie).toMatch(/; Expires=/);
-      expect(sessionStore.sessions).toEqual([
+
+      const sessions = await prisma.session.findMany();
+      expect(sessions).toEqual([
         expect.objectContaining({ userId: user.id, userAgent: 'e2e-browser' }),
       ]);
+      // Only a hash of the token is stored.
+      const [token] = await prisma.refreshToken.findMany();
+      expect(setCookie).not.toContain(token.tokenHash);
     });
 
     it('issues an access token that /api/auth/me accepts', async () => {
-      const { accessToken } = await login();
-      prisma.user.findUnique.mockResolvedValue(publicUser);
+      const user = await createUser(prisma);
+      const { accessToken } = await login(user.email);
 
       const response = await me(accessToken).expect(200);
 
       expect(response.body).toMatchObject({ id: user.id, email: user.email });
+      expect(response.body).not.toHaveProperty('passwordHash');
     });
 
     it('rotates the refresh cookie and keeps the session', async () => {
-      const { cookie } = await login();
+      const user = await createUser(prisma);
+      const { cookie } = await login(user.email);
 
       const refreshed = await refresh(cookie).expect(200);
       const nextCookie = cookiePair(setCookieHeader(refreshed));
@@ -242,14 +282,14 @@ describe('App (e2e)', () => {
 
       expect(nextCookie).not.toBe(cookie);
       expect(refreshed.body).toMatchObject({ user: { id: user.id } });
-      prisma.user.findUnique.mockResolvedValue(publicUser);
       await me(accessToken).expect(200);
       await refresh(nextCookie).expect(200);
-      expect(sessionStore.sessions).toHaveLength(1);
+      expect(await prisma.session.count()).toBe(1);
     });
 
     it('answers a concurrent refresh with the same cookie without rotating again', async () => {
-      const { cookie } = await login();
+      const user = await createUser(prisma);
+      const { cookie } = await login(user.email);
       await refresh(cookie).expect(200);
 
       const second = await refresh(cookie).expect(200);
@@ -259,20 +299,20 @@ describe('App (e2e)', () => {
     });
 
     it('revokes the session when an old refresh cookie comes back', async () => {
-      const { cookie, accessToken } = await login();
+      const user = await createUser(prisma);
+      const { cookie, accessToken } = await login(user.email);
       const refreshed = await refresh(cookie).expect(200);
       const currentCookie = cookiePair(setCookieHeader(refreshed));
       // Move the rotation outside the grace window.
-      for (const token of sessionStore.refreshTokens) {
-        if (token.rotatedAt) {
-          token.rotatedAt = new Date(Date.now() - ROTATION_GRACE_MS - 1_000);
-        }
-      }
+      await prisma.refreshToken.updateMany({
+        where: { rotatedAt: { not: null } },
+        data: { rotatedAt: new Date(Date.now() - ROTATION_GRACE_MS - 1_000) },
+      });
 
       const reuse = await refresh(cookie).expect(401);
 
       expect(setCookieHeader(reuse)).toMatch(/Expires=Thu, 01 Jan 1970/);
-      expect(sessionStore.sessions[0]).toMatchObject({
+      expect(await prisma.session.findFirst()).toMatchObject({
         revokedReason: 'TOKEN_REUSE',
       });
       // Whoever holds the newest cookie or an access token is out too.
@@ -281,9 +321,10 @@ describe('App (e2e)', () => {
     });
 
     it('signs out immediately on logout', async () => {
-      const { cookie, accessToken } = await login();
+      const user = await createUser(prisma);
+      const { cookie, accessToken } = await login(user.email);
 
-      const logout = await request(app.getHttpServer())
+      const logout = await http()
         .post('/api/auth/logout')
         .set('Cookie', cookie)
         .expect(204);
@@ -299,6 +340,7 @@ describe('App (e2e)', () => {
     });
 
     it('rejects an access token without a session', async () => {
+      const user = await createUser(prisma);
       const jwt = app.get(JwtService);
       // Tokens issued before sessions existed carry no session id.
       const legacyToken = await jwt.signAsync({
@@ -308,6 +350,210 @@ describe('App (e2e)', () => {
       });
 
       await me(legacyToken).expect(401);
+    });
+  });
+
+  describe('listings', () => {
+    it('requires sign-in to post a job', async () => {
+      await http().post('/api/listings').send(listingInput).expect(401);
+    });
+
+    it('filters jobs by category and location, and searches without case', async () => {
+      const { auth } = await signedInUser();
+      await postListing(auth);
+      await postListing(auth, {
+        title: 'Generalno čišćenje stana',
+        category: 'Čišćenje',
+        location: 'Mostar',
+      });
+
+      const byCategory = await http()
+        .get('/api/listings')
+        .query({ category: 'Čišćenje' })
+        .expect(200);
+      const byLocation = await http()
+        .get('/api/listings')
+        .query({ location: 'Ilidža' })
+        .expect(200);
+      const bySearch = await http()
+        .get('/api/listings')
+        .query({ q: 'ŽIVICE' })
+        .expect(200);
+
+      expect(byCategory.body).toMatchObject({
+        total: 1,
+        items: [{ title: 'Generalno čišćenje stana' }],
+      });
+      expect(byLocation.body).toMatchObject({
+        total: 1,
+        items: [{ location: 'Ilidža' }],
+      });
+      expect(bySearch.body).toMatchObject({
+        total: 1,
+        items: [{ title: listingInput.title }],
+      });
+    });
+
+    it('pages through jobs, newest first', async () => {
+      const { auth } = await signedInUser();
+      for (const title of ['Prvi posao', 'Drugi posao', 'Treći posao']) {
+        await postListing(auth, { ...listingInput, title });
+      }
+
+      const response = await http()
+        .get('/api/listings')
+        .query({ page: 2, limit: 2 })
+        .expect(200);
+
+      expect(response.body).toMatchObject({
+        total: 3,
+        page: 2,
+        limit: 2,
+        totalPages: 2,
+        items: [{ title: 'Prvi posao' }],
+      });
+    });
+
+    it('lets only the owner edit or delete a job', async () => {
+      const owner = await signedInUser();
+      const other = await signedInUser();
+      const { id } = await postListing(owner.auth);
+
+      await http()
+        .patch(`/api/listings/${id}`)
+        .set('Authorization', other.auth)
+        .send({ budget: '1 KM' })
+        .expect(403);
+      await http()
+        .delete(`/api/listings/${id}`)
+        .set('Authorization', other.auth)
+        .expect(403);
+
+      const updated = await http()
+        .patch(`/api/listings/${id}`)
+        .set('Authorization', owner.auth)
+        .send({ budget: '80 KM' })
+        .expect(200);
+      expect(updated.body).toMatchObject({ budget: '80 KM' });
+    });
+
+    it('deletes a job together with its applications', async () => {
+      const owner = await signedInUser();
+      const executor = await signedInUser();
+      const { id } = await postListing(owner.auth);
+      await http()
+        .post('/api/applications')
+        .set('Authorization', executor.auth)
+        .send({ listingId: id, message: 'Mogu doći sutra poslijepodne.' })
+        .expect(201);
+
+      await http()
+        .delete(`/api/listings/${id}`)
+        .set('Authorization', owner.auth)
+        .expect(200);
+
+      await http().get(`/api/listings/${id}`).expect(404);
+      expect(await prisma.application.count()).toBe(0);
+    });
+
+    it('returns 404 for an unknown job', async () => {
+      await http().get('/api/listings/does-not-exist').expect(404);
+    });
+  });
+
+  describe('applications', () => {
+    const message = 'Imam iskustva, mogu doći u subotu ujutro.';
+
+    async function listingWithApplicant() {
+      const client = await signedInUser('Amra Hodžić');
+      const executor = await signedInUser('Kenan Mehić');
+      const { id: listingId } = await postListing(client.auth);
+      const application = await http()
+        .post('/api/applications')
+        .set('Authorization', executor.auth)
+        .send({ listingId, message, proposedPrice: '55 KM' })
+        .expect(201);
+      return {
+        client,
+        executor,
+        listingId,
+        applicationId: (application.body as { id: string }).id,
+      };
+    }
+
+    it('accepts one application per executor and job', async () => {
+      const { executor, listingId } = await listingWithApplicant();
+
+      // There is no check before the insert, so this is the database's
+      // unique constraint, mapped to 409.
+      await http()
+        .post('/api/applications')
+        .set('Authorization', executor.auth)
+        .send({ listingId, message })
+        .expect(409);
+      expect(await prisma.application.count()).toBe(1);
+    });
+
+    it('does not let a client apply to their own job', async () => {
+      const client = await signedInUser();
+      const { id: listingId } = await postListing(client.auth);
+
+      await http()
+        .post('/api/applications')
+        .set('Authorization', client.auth)
+        .send({ listingId, message })
+        .expect(403);
+    });
+
+    it('returns 404 when applying to an unknown job', async () => {
+      const executor = await signedInUser();
+
+      await http()
+        .post('/api/applications')
+        .set('Authorization', executor.auth)
+        .send({ listingId: 'does-not-exist', message })
+        .expect(404);
+    });
+
+    it('shows the client the application and lets them accept it', async () => {
+      const { client, executor, applicationId } = await listingWithApplicant();
+
+      const received = await http()
+        .get('/api/applications/received')
+        .set('Authorization', client.auth)
+        .expect(200);
+      expect(received.body).toMatchObject({
+        total: 1,
+        items: [{ id: applicationId, message, status: 'PENDING' }],
+      });
+
+      await http()
+        .patch(`/api/applications/${applicationId}/status`)
+        .set('Authorization', client.auth)
+        .send({ status: 'ACCEPTED' })
+        .expect(200);
+
+      const sent = await http()
+        .get('/api/applications/my')
+        .set('Authorization', executor.auth)
+        .expect(200);
+      expect(sent.body).toMatchObject({
+        total: 1,
+        items: [{ id: applicationId, status: 'ACCEPTED' }],
+      });
+    });
+
+    it('lets only the client decide on an application', async () => {
+      const { executor, applicationId } = await listingWithApplicant();
+
+      await http()
+        .patch(`/api/applications/${applicationId}/status`)
+        .set('Authorization', executor.auth)
+        .send({ status: 'ACCEPTED' })
+        .expect(403);
+      expect(await prisma.application.findFirst()).toMatchObject({
+        status: 'PENDING',
+      });
     });
   });
 });
