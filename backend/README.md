@@ -1,98 +1,102 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# SaStrane backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+The NestJS API for SaStrane. It uses PostgreSQL through Prisma 7. For the
+architecture and setup of the whole project, see the
+[main README](../README.md).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+## Setup
 
 ```bash
-$ npm install
+cp .env.example .env
+npm install
+npx prisma generate
+npx prisma migrate deploy
+npm run start:dev
 ```
 
-## Compile and run the project
+The API runs on <http://localhost:4000>. Routes start with `/api`, except
+`GET /health`.
 
-```bash
-# development
-$ npm run start
+## Environment variables
 
-# watch mode
-$ npm run start:dev
+The backend validates these at startup and refuses to start when one is
+invalid. `prisma.config.ts` reads `DATABASE_URL` from `.env` for the Prisma
+CLI. Variables already set in the environment win.
 
-# production mode
-$ npm run start:prod
-```
+| Variable | Required | Default | Notes |
+| --- | --- | --- | --- |
+| `DATABASE_URL` | Yes | | PostgreSQL URL. Use `sslmode=verify-full` for hosted databases. |
+| `JWT_SECRET` | Yes | | At least 32 characters in production. |
+| `JWT_EXPIRES_IN` | No | `15m` | Access token lifetime: a number followed by `s`, `m`, `h` or `d`. |
+| `PORT` | No | `4000` | |
+| `NODE_ENV` | No | `development` | `development`, `test` or `production`. |
+| `CORS_ORIGINS` | In production | | Comma-separated frontend origins. |
+| `TRUST_PROXY_HOPS` | No | `1` in production, else `0` | Proxies in front of the API that add to `X-Forwarded-For`. Rate limits use the client IP. See `.env.example`. |
+| `RESEND_API_KEY` | In production | | When it is empty in development, email codes are printed in the terminal. |
+| `EMAIL_FROM` | In production | | For example `SaStrane <noreply@your-domain.com>`. |
+| `EMAIL_VERIFICATION_SECRET` | In production | | Hashes the email codes. At least 32 characters, and different from `JWT_SECRET`. |
 
-## Run tests
+## Scripts
 
-```bash
-# unit tests
-$ npm run test
+| Script | What it does |
+| --- | --- |
+| `npm run start:dev` | Starts the API and restarts it on changes. |
+| `npm run build` | Compiles to `dist/`. |
+| `npm run start:prod` | Runs `dist/main.js`. |
+| `npm run lint` | Runs ESLint. |
+| `npm run typecheck` | Type-checks without emitting. |
+| `npm test` | Runs the unit tests (Jest). |
+| `npm run test:e2e` | Runs HTTP tests against the whole app with a mocked Prisma. |
+| `npm run test:cov` | Runs the unit tests with coverage. |
 
-# e2e tests
-$ npm run test:e2e
+## Database
 
-# test coverage
-$ npm run test:cov
-```
+The schema is in `prisma/schema.prisma` and the migrations are in
+`prisma/migrations`. The Prisma Client is generated into
+`src/generated/prisma`, which git ignores, so run `npx prisma generate`
+after every install and every schema change.
 
-## Deployment
+| Task | Command |
+| --- | --- |
+| Apply the existing migrations | `npx prisma migrate deploy` |
+| Create a migration after a schema change | `npx prisma migrate dev --name <change>` |
+| Check that the database matches the migrations | `npx prisma migrate status` |
+| Browse the data | `npx prisma studio` |
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## API
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+**Auth** is a Bearer access token, from login or refresh. **Owner** means the
+token's user must own the job.
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/health` | | Checks the API and the database. Returns 503 when the database does not answer. |
+| `POST` | `/api/auth/register` | | Creates an account and emails a verification code. |
+| `POST` | `/api/auth/verify-email` | | Confirms the code and signs in. |
+| `POST` | `/api/auth/resend-verification` | | Sends a new verification code. |
+| `POST` | `/api/auth/login` | | Signs in a verified account. |
+| `POST` | `/api/auth/refresh` | Cookie | Rotates the refresh token and returns a new access token. |
+| `POST` | `/api/auth/logout` | Cookie | Revokes the session. |
+| `GET` | `/api/auth/me` | Bearer | Returns the signed-in user. |
+| `POST` | `/api/auth/forgot-password` | | Emails a password reset code. |
+| `POST` | `/api/auth/reset-password` | | Sets a new password and revokes all sessions. |
+| `GET` | `/api/listings` | | Lists jobs. Filters: `q`, `category`, `location`, `clientId`. Paging: `page`, `limit` (max 100). |
+| `GET` | `/api/listings/:id` | | Returns one job. |
+| `POST` | `/api/listings` | Bearer | Creates a job. |
+| `PATCH` | `/api/listings/:id` | Owner | Updates a job. |
+| `DELETE` | `/api/listings/:id` | Owner | Deletes a job and its applications. |
+| `POST` | `/api/applications` | Bearer | Applies to a job, once per job. |
+| `GET` | `/api/applications/my` | Bearer | Lists the applications you sent. |
+| `GET` | `/api/applications/my/listing-ids` | Bearer | Lists the IDs of the jobs you applied to. |
+| `GET` | `/api/applications/received` | Bearer | Lists the applications to your jobs. |
+| `GET` | `/api/applications/listing/:listingId` | Owner | Lists the applications to one job. |
+| `PATCH` | `/api/applications/:id/status` | Owner | Accepts or rejects an application. |
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+**Lists.** Paged lists return
+`{ items, total, page, limit, totalPages }`.
 
-## Resources
+**Errors.** Errors use the standard NestJS shape. Unique conflicts return
+409, and missing records return 404.
 
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+**Rate limits.** Each client IP gets 30 requests per minute. The sign-in,
+sign-up and email code routes have stricter limits.
