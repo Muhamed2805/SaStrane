@@ -33,7 +33,11 @@ frontend/
 ### Backend
 cd backend
 npm install
+npx prisma generate
 npm run start:dev
+
+Run `npx prisma generate` again after every schema change. The client is
+generated into `src/generated/prisma`, which git ignores.
 
 ### Frontend
 cd frontend

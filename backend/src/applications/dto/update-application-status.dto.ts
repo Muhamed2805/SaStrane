@@ -1,4 +1,4 @@
-import { ApplicationStatus } from '@prisma/client';
+import { ApplicationStatus } from '../../generated/prisma/enums';
 import { IsIn, IsNotEmpty } from 'class-validator';
 
 export class UpdateApplicationStatusDto {

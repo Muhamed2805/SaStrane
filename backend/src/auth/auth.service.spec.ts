@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { SessionRevocationReason } from '@prisma/client';
+import { SessionRevocationReason } from '../generated/prisma/enums';
 import * as bcrypt from 'bcrypt';
 import { createHmac } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';

@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../generated/prisma/client';
 
 // The user fields that are safe to send to the client.
 export const PUBLIC_USER_SELECT = {

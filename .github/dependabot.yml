@@ -15,6 +15,9 @@ updates:
       - dependency-name: "@types/node"
         versions: [">=25"]
     groups:
+      # The client, the CLI and the adapter must move together, majors too.
+      prisma:
+        patterns: ["prisma", "@prisma/*"]
       production-dependencies:
         dependency-type: production
         update-types: [minor, patch]

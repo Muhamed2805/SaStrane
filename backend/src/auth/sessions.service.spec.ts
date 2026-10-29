@@ -1,4 +1,4 @@
-import { SessionRevocationReason } from '@prisma/client';
+import { SessionRevocationReason } from '../generated/prisma/enums';
 import { createHash } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import {

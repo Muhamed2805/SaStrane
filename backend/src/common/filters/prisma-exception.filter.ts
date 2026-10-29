@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client';
 
 // Turns database errors that reach the HTTP layer into proper status codes.
 // Without this filter, a race such as two parallel sign-ups with one email
