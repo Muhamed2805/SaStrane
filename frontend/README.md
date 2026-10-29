@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SaStrane frontend
 
-## Getting Started
+The Next.js 16 app for SaStrane, built with React 19, Tailwind CSS 4 and
+shadcn/ui. For the architecture and setup of the whole project, see the
+[main README](../README.md).
 
-First, run the development server:
+## Setup
+
+Start the [backend](../backend/README.md) first, then run:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app runs on <http://localhost:3000>.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Default | Notes |
+| --- | --- | --- |
+| `BACKEND_URL` | `http://localhost:4000` | The backend origin. Browsers reach it through the `/api/*` rewrite, and server rendering calls it directly. The build fixes the rewrite, so set it before `npm run dev` or `npm run build`. |
 
-## Learn More
+## Scripts
 
-To learn more about Next.js, take a look at the following resources:
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Starts the development server. |
+| `npm run build` | Builds for production. |
+| `npm start` | Serves the production build. |
+| `npm run lint` | Runs ESLint. |
+| `npm run typecheck` | Type-checks without emitting. |
+| `npm test` | Runs the unit tests (Vitest). |
+| `npm run test:e2e` | Runs the Playwright tests in Chromium. They start a dev server and mock the API. |
+| `npm run test:e2e:ui` | Opens the Playwright test UI. |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Before the first `test:e2e`, run `npx playwright install chromium`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Structure
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Folder | Contents |
+| --- | --- |
+| `app/` | Routes: `/`, `/listings`, `/listings/[id]`, `/listings/create`, `/listings/[id]/edit`, `/inbox`, `/profile`, `/login` |
+| `features/auth/` | The session: an in-memory access token, refresh on reload and on 401, and tab sync |
+| `features/listings/` | The job list, detail, form and API calls |
+| `features/applications/` | Applying and the workspace |
+| `features/landing/` | Home page sections |
+| `components/` | Navbar, footer, auth provider and UI primitives |
+| `lib/` | API client, API URL and date formatting |
+| `e2e/` | Playwright tests |
