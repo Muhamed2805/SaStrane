@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsByteLength,
@@ -8,6 +9,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { trimString } from '../../common/transforms/trim-string.transform';
+import { UserRole } from '../../generated/prisma/enums';
 import {
   EMAIL_MAX_LENGTH,
   PASSWORD_MAX_BYTES,
@@ -15,18 +17,13 @@ import {
   PASSWORD_MIN_LENGTH,
 } from './credential-limits';
 
-export enum UserRole {
-  CLIENT = 'CLIENT',
-  EXECUTOR = 'EXECUTOR',
-  BOTH = 'BOTH',
-}
-
 export class RegisterDto {
   @Transform(trimString)
   @IsEmail()
   @MaxLength(EMAIL_MAX_LENGTH)
   email!: string;
 
+  /** At least 8 characters and at most 72 bytes in UTF-8. */
   @IsString()
   @MinLength(PASSWORD_MIN_LENGTH)
   @IsByteLength(0, PASSWORD_MAX_BYTES, { message: PASSWORD_MAX_BYTES_MESSAGE })
@@ -38,6 +35,8 @@ export class RegisterDto {
   @MaxLength(100)
   fullName!: string;
 
+  /** Whether the user posts jobs, applies to them, or both. */
+  @ApiProperty({ enum: UserRole, enumName: 'UserRole' })
   @IsEnum(UserRole)
   role!: UserRole;
 }

@@ -1,38 +1,18 @@
+import type { components } from '@/lib/api-schema';
 import { apiRequest } from '@/lib/api-client';
 export { ApiError } from '@/lib/api-client';
 
-export type AuthUser = {
-  id: string;
-  email: string;
-  fullName: string;
-  role: 'CLIENT' | 'EXECUTOR' | 'BOTH';
-  createdAt: string;
-};
+// The types come from the backend's openapi.json. See lib/api-schema.d.ts.
+type Schemas = components['schemas'];
 
+export type AuthUser = Schemas['PublicUserDto'];
 // The refresh token never appears here: the server keeps it in an httpOnly
 // cookie that page scripts cannot read.
-export type AuthResponse = {
-  user: AuthUser;
-  accessToken: string;
-};
-
-export type RegisterResponse = {
-  email: string;
-  verificationRequired: true;
-  expiresInSeconds: number;
-};
-
-export type RegisterPayload = {
-  email: string;
-  password: string;
-  fullName: string;
-  role: 'CLIENT' | 'EXECUTOR' | 'BOTH';
-};
-
-export type LoginPayload = {
-  email: string;
-  password: string;
-};
+export type AuthResponse = Schemas['AuthSessionDto'];
+export type RegisterResponse = Schemas['RegistrationDto'];
+export type RegisterPayload = Schemas['RegisterDto'];
+export type LoginPayload = Schemas['LoginDto'];
+type Success = Schemas['SuccessDto'];
 
 export const authApi = {
   register: (payload: RegisterPayload) =>
@@ -54,19 +34,19 @@ export const authApi = {
     }),
 
   resendVerification: (email: string) =>
-    apiRequest<{ success: true }>('/auth/resend-verification', {
+    apiRequest<Success>('/auth/resend-verification', {
       method: 'POST',
       body: JSON.stringify({ email }),
     }),
 
   forgotPassword: (email: string) =>
-    apiRequest<{ success: true }>('/auth/forgot-password', {
+    apiRequest<Success>('/auth/forgot-password', {
       method: 'POST',
       body: JSON.stringify({ email }),
     }),
 
   resetPassword: (email: string, code: string, password: string) =>
-    apiRequest<{ success: true }>('/auth/reset-password', {
+    apiRequest<Success>('/auth/reset-password', {
       method: 'POST',
       body: JSON.stringify({ email, code, password }),
     }),

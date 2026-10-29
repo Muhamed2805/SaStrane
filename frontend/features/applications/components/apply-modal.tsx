@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store';
-import { listingsApi, type ListingFromApi } from '@/features/listings/api';
+import { listingsApi, type Listing } from '@/features/listings/api';
 import { useApplicationsStore } from '../store';
 
 export function ApplyModal() {
@@ -28,7 +28,7 @@ export function ApplyModal() {
     error,
   } = useApplicationsStore();
 
-  const [listingDetails, setListingDetails] = useState<ListingFromApi | null>(
+  const [listingDetails, setListingDetails] = useState<Listing | null>(
     null,
   );
   const [message, setMessage] = useState('');

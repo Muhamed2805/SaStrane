@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ChevronRight, LockKeyhole, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store';
-import { listingsApi, type ListingFromApi } from '@/features/listings/api';
+import { listingsApi, type Listing } from '@/features/listings/api';
 import {
   ListingForm,
   type ListingFormValues,
@@ -17,7 +17,7 @@ export default function EditListingPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { user, status, openAuthModal } = useAuthStore();
-  const [listing, setListing] = useState<ListingFromApi | null>(null);
+  const [listing, setListing] = useState<Listing | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {

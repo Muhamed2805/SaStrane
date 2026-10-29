@@ -1,0 +1,2396 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "app_getHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database does not answer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthUnavailableDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Checks that the API runs and the database answers.",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "description": "The account can sign in after POST /api/auth/verify-email.",
+        "operationId": "auth_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field is missing or invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The email is registered (EMAIL_ALREADY_REGISTERED) or waits for verification (EMAIL_VERIFICATION_PENDING).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Creates an account and emails a verification code.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/verify-email": {
+      "post": {
+        "description": "Sets the refresh cookie.",
+        "operationId": "auth_verifyEmail",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSessionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field is invalid, or the code is wrong or has expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests, or too many wrong codes for this one. Request a new code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Verifies the email with the emailed code and signs in.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/resend-verification": {
+      "post": {
+        "description": "Answers the same for unknown and already verified addresses,\nand then sends nothing.",
+        "operationId": "auth_resendVerification",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendVerificationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The email is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests, or the last code was sent less than a minute ago.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Emails a new verification code.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/forgot-password": {
+      "post": {
+        "description": "Answers the same for addresses without a verified account, and\nthen sends nothing.",
+        "operationId": "auth_forgotPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The email is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Emails a code for setting a new password.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/reset-password": {
+      "post": {
+        "description": "Ends every session of the user, so other devices must sign in\nagain.",
+        "operationId": "auth_resetPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field is invalid, or the code is wrong or has expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests, or too many wrong codes for this one. Request a new code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Sets a new password with the emailed code.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "description": "Sets the refresh cookie.",
+        "operationId": "auth_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSessionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field is missing or invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The email or the password is wrong.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The email is not verified yet (EMAIL_NOT_VERIFIED).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Signs in with email and password.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "description": "Replaces the refresh cookie. Presenting a replaced cookie again\nends the session, except within 30 seconds of the replacement, which\ncovers parallel requests.",
+        "operationId": "auth_refresh",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSessionDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The cookie is missing, expired or revoked. The response clears it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "summary": "Issues a new access token from the refresh cookie.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "description": "Uses the cookie rather than the access token, so a user can\nsign out even after the access token has expired.",
+        "operationId": "auth_logout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Also when there was no session."
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "summary": "Ends the session of the refresh cookie and clears the cookie.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "operationId": "auth_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicUserDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Returns the signed-in user.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/listings": {
+      "get": {
+        "description": "`q` searches the title, description and category without regard\nto case. `category` and `location` must match exactly.",
+        "operationId": "listings_getAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "clientId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 120,
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 60,
+              "type": "string"
+            }
+          },
+          {
+            "name": "location",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 120,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingsPageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A query parameter is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Lists jobs, newest first.",
+        "tags": [
+          "listings"
+        ]
+      },
+      "post": {
+        "operationId": "listings_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateListingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field is missing or invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Posts a job as the signed-in user.",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/api/listings/{id}": {
+      "get": {
+        "operationId": "listings_getById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The job does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Returns one job with its description.",
+        "tags": [
+          "listings"
+        ]
+      },
+      "patch": {
+        "operationId": "listings_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateListingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No field is given, or a field is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The job belongs to another user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The job does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Changes the given fields of the user's own job.",
+        "tags": [
+          "listings"
+        ]
+      },
+      "delete": {
+        "operationId": "listings_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The job belongs to another user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The job does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Deletes the user's own job together with its applications.",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/api/applications": {
+      "post": {
+        "operationId": "applications_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApplicationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field is missing or invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The job is the user's own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The job does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The user has already applied to this job.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Applies to a job as the signed-in user.",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/applications/my/listing-ids": {
+      "get": {
+        "operationId": "applications_getAppliedListingIds",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lists the IDs of all jobs the user has applied to.",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/applications/my": {
+      "get": {
+        "operationId": "applications_getMy",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyApplicationsPageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A query parameter is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lists the applications the user has sent.",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/applications/received": {
+      "get": {
+        "operationId": "applications_getReceived",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivedApplicationsPageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A query parameter is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lists the applications to all of the user's jobs.",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/applications/listing/{listingId}": {
+      "get": {
+        "operationId": "applications_getForListing",
+        "parameters": [
+          {
+            "name": "listingId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ListingApplicationDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The job belongs to another user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The job does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lists the applications to one of the user's jobs, newest first.",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/applications/{id}/status": {
+      "patch": {
+        "operationId": "applications_updateStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateApplicationStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingApplicationDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The status is not ACCEPTED or REJECTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The application is for another user's job.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The application does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Accepts or rejects an application to one of the user's jobs.",
+        "tags": [
+          "applications"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "SaStrane API",
+    "description": "The API of SaStrane, a marketplace for small local jobs.\n\nEndpoints marked with a lock need an access token in the Authorization\nheader. Login, email verification and refresh return one. The refresh token\ntravels only in the httpOnly cookie sastrane_refresh, which the\nbrowser sends to /api/auth.",
+    "version": "1.0.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      },
+      "cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sastrane_refresh"
+      }
+    },
+    "schemas": {
+      "HealthDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          },
+          "database": {
+            "type": "string",
+            "enum": [
+              "up"
+            ]
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "The server time as an ISO 8601 string."
+          }
+        },
+        "required": [
+          "status",
+          "database",
+          "timestamp"
+        ]
+      },
+      "HealthUnavailableDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "error"
+            ]
+          },
+          "database": {
+            "type": "string",
+            "enum": [
+              "down"
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "database"
+        ]
+      },
+      "ErrorResponseDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "description": "What went wrong. A validation error lists one message per problem.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "statusCode": {
+            "type": "number",
+            "description": "The HTTP status code."
+          },
+          "error": {
+            "type": "string",
+            "description": "The HTTP status text, such as \"Not Found\"."
+          },
+          "code": {
+            "type": "string",
+            "description": "Set when the client needs to tell this error apart from others with the\nsame status: EMAIL_NOT_VERIFIED, EMAIL_ALREADY_REGISTERED or\nEMAIL_VERIFICATION_PENDING."
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "UserRole": {
+        "type": "string",
+        "enum": [
+          "CLIENT",
+          "EXECUTOR",
+          "BOTH"
+        ],
+        "description": "Whether the user posts jobs, applies to them, or both."
+      },
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "description": "Whether the user posts jobs, applies to them, or both.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserRole"
+              }
+            ]
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "description": "At least 8 characters and at most 72 bytes in UTF-8.",
+            "minLength": 8
+          },
+          "fullName": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "role",
+          "email",
+          "password",
+          "fullName"
+        ]
+      },
+      "RegistrationDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "The normalized address the verification code was sent to."
+          },
+          "verificationRequired": {
+            "type": "boolean",
+            "description": "Always true: the account can sign in only after the email is verified."
+          },
+          "expiresInSeconds": {
+            "type": "number",
+            "description": "How long the emailed code stays valid."
+          }
+        },
+        "required": [
+          "email",
+          "verificationRequired",
+          "expiresInSeconds"
+        ]
+      },
+      "VerifyEmailDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 6,
+            "pattern": "^\\d{6}$"
+          }
+        },
+        "required": [
+          "email",
+          "code"
+        ]
+      },
+      "PublicUserDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "description": "Whether the user posts jobs, applies to them, or both.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserRole"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "id",
+          "email",
+          "fullName",
+          "createdAt"
+        ]
+      },
+      "AuthSessionDto": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/PublicUserDto"
+          },
+          "accessToken": {
+            "type": "string",
+            "description": "A short-lived JWT for the Authorization header."
+          }
+        },
+        "required": [
+          "user",
+          "accessToken"
+        ]
+      },
+      "ResendVerificationDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "SuccessDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ]
+      },
+      "ForgotPasswordDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "ResetPasswordDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 6,
+            "pattern": "^\\d{6}$"
+          },
+          "password": {
+            "type": "string",
+            "description": "At least 8 characters and at most 72 bytes in UTF-8.",
+            "minLength": 8
+          }
+        },
+        "required": [
+          "email",
+          "code",
+          "password"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "ListingClientDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fullName"
+        ]
+      },
+      "ListingSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "budget": {
+            "type": "string",
+            "nullable": true,
+            "description": "Free text, such as \"50 KM\"."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "client": {
+            "$ref": "#/components/schemas/ListingClientDto"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "category",
+          "location",
+          "budget",
+          "createdAt",
+          "client"
+        ]
+      },
+      "ListingsPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListingSummaryDto"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "The number of items on all pages together."
+          },
+          "page": {
+            "type": "number",
+            "description": "The current page, starting at 1."
+          },
+          "limit": {
+            "type": "number",
+            "description": "The maximum number of items per page."
+          },
+          "totalPages": {
+            "type": "number",
+            "description": "The number of pages, 0 when there are no items."
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "totalPages"
+        ]
+      },
+      "ListingDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "budget": {
+            "type": "string",
+            "nullable": true,
+            "description": "Free text, such as \"50 KM\"."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "client": {
+            "$ref": "#/components/schemas/ListingClientDto"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "category",
+          "location",
+          "budget",
+          "createdAt",
+          "client",
+          "description"
+        ]
+      },
+      "CreateListingDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "budget": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "title",
+          "category",
+          "location"
+        ]
+      },
+      "UpdateListingDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "budget": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 60
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000
+          }
+        }
+      },
+      "CreateApplicationDto": {
+        "type": "object",
+        "properties": {
+          "listingId": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "message": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 2000
+          },
+          "proposedPrice": {
+            "type": "string",
+            "maxLength": 60
+          }
+        },
+        "required": [
+          "listingId",
+          "message"
+        ]
+      },
+      "ApplicationStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "ACCEPTED",
+          "REJECTED"
+        ]
+      },
+      "ApplicationDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApplicationStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "listingId": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "proposedPrice": {
+            "type": "string",
+            "nullable": true,
+            "description": "Free text, such as \"50 KM\"."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "id",
+          "listingId",
+          "message",
+          "proposedPrice",
+          "createdAt"
+        ]
+      },
+      "ApplicationListingDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "category",
+          "location"
+        ]
+      },
+      "MyApplicationDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApplicationStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "listingId": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "proposedPrice": {
+            "type": "string",
+            "nullable": true,
+            "description": "Free text, such as \"50 KM\"."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "listing": {
+            "$ref": "#/components/schemas/ApplicationListingDto"
+          }
+        },
+        "required": [
+          "status",
+          "id",
+          "listingId",
+          "message",
+          "proposedPrice",
+          "createdAt",
+          "listing"
+        ]
+      },
+      "MyApplicationsPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyApplicationDto"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "The number of items on all pages together."
+          },
+          "page": {
+            "type": "number",
+            "description": "The current page, starting at 1."
+          },
+          "limit": {
+            "type": "number",
+            "description": "The maximum number of items per page."
+          },
+          "totalPages": {
+            "type": "number",
+            "description": "The number of pages, 0 when there are no items."
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "totalPages"
+        ]
+      },
+      "ApplicationExecutorDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fullName",
+          "email"
+        ]
+      },
+      "ReceivedApplicationDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApplicationStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "listingId": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "proposedPrice": {
+            "type": "string",
+            "nullable": true,
+            "description": "Free text, such as \"50 KM\"."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "listing": {
+            "$ref": "#/components/schemas/ApplicationListingDto"
+          },
+          "executor": {
+            "$ref": "#/components/schemas/ApplicationExecutorDto"
+          }
+        },
+        "required": [
+          "status",
+          "id",
+          "listingId",
+          "message",
+          "proposedPrice",
+          "createdAt",
+          "listing",
+          "executor"
+        ]
+      },
+      "ReceivedApplicationsPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceivedApplicationDto"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "The number of items on all pages together."
+          },
+          "page": {
+            "type": "number",
+            "description": "The current page, starting at 1."
+          },
+          "limit": {
+            "type": "number",
+            "description": "The maximum number of items per page."
+          },
+          "totalPages": {
+            "type": "number",
+            "description": "The number of pages, 0 when there are no items."
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "totalPages"
+        ]
+      },
+      "ListingApplicationDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApplicationStatus"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "listingId": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "proposedPrice": {
+            "type": "string",
+            "nullable": true,
+            "description": "Free text, such as \"50 KM\"."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "executor": {
+            "$ref": "#/components/schemas/ApplicationExecutorDto"
+          }
+        },
+        "required": [
+          "status",
+          "id",
+          "listingId",
+          "message",
+          "proposedPrice",
+          "createdAt",
+          "executor"
+        ]
+      },
+      "UpdateApplicationStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "ACCEPTED",
+              "REJECTED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      }
+    }
+  }
+}

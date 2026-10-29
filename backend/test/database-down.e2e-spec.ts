@@ -3,11 +3,12 @@
 import './use-unreachable-database';
 import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
+import { contractCheckedRequest } from './openapi-contract';
 
 describe('App with the database down (e2e)', () => {
+  const contractViolations: string[] = [];
   let app: NestExpressApplication;
 
   beforeAll(async () => {
@@ -26,10 +27,15 @@ describe('App with the database down (e2e)', () => {
     await app.close();
   });
 
+  afterEach(() => {
+    expect(contractViolations.splice(0)).toEqual([]);
+  });
+
+  const http = () =>
+    contractCheckedRequest(app.getHttpServer(), contractViolations);
+
   it('reports the database as down on /health', async () => {
-    const response = await request(app.getHttpServer())
-      .get('/health')
-      .expect(503);
+    const response = await http().get('/health').expect(503);
 
     expect(response.body).toMatchObject({ database: 'down' });
   });
@@ -43,9 +49,7 @@ describe('App with the database down (e2e)', () => {
     ],
   ])('answers %s %s with 503 instead of 500', async (method, path, body) => {
     const call =
-      method === 'GET'
-        ? request(app.getHttpServer()).get(path)
-        : request(app.getHttpServer()).post(path).send(body);
+      method === 'GET' ? http().get(path) : http().post(path).send(body);
 
     const response = await call.expect(503);
 

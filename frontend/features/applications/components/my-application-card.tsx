@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import { Banknote, CalendarDays, ChevronRight, MapPin } from 'lucide-react';
 import { formatDate } from '@/lib/format-date';
-import type { ApplicationFromApi } from '../api';
+import type { MyApplication } from '../api';
 import { ApplicationStatusBadge } from './application-status-badge';
 
 export function MyApplicationCard({
   application,
 }: {
-  application: ApplicationFromApi;
+  application: MyApplication;
 }) {
   return (
     <article className="rounded-xl border bg-white p-5 shadow-sm transition-colors hover:border-primary/30">
@@ -17,19 +17,17 @@ export function MyApplicationCard({
             href={`/listings/${application.listingId}`}
             className="font-semibold transition-colors hover:text-primary"
           >
-            {application.listing?.title ?? `Oglas #${application.listingId}`}
+            {application.listing.title}
           </Link>
-          {application.listing ? (
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
-              <span className="rounded-full bg-primary/10 px-2.5 py-1 font-medium text-primary">
-                {application.listing.category}
-              </span>
-              <span className="inline-flex items-center gap-1.5 py-1">
-                <MapPin className="size-3.5 text-primary" aria-hidden="true" />
-                {application.listing.location}
-              </span>
-            </div>
-          ) : null}
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
+            <span className="rounded-full bg-primary/10 px-2.5 py-1 font-medium text-primary">
+              {application.listing.category}
+            </span>
+            <span className="inline-flex items-center gap-1.5 py-1">
+              <MapPin className="size-3.5 text-primary" aria-hidden="true" />
+              {application.listing.location}
+            </span>
+          </div>
         </div>
         <ApplicationStatusBadge status={application.status} />
       </div>

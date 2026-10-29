@@ -28,6 +28,7 @@ export class ResetPasswordDto {
   @Matches(/^\d{6}$/)
   code!: string;
 
+  /** At least 8 characters and at most 72 bytes in UTF-8. */
   @IsString()
   @MinLength(PASSWORD_MIN_LENGTH)
   @IsByteLength(0, PASSWORD_MAX_BYTES, { message: PASSWORD_MAX_BYTES_MESSAGE })

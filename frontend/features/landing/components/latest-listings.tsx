@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { listingsApi, type ListingFromApi } from '@/features/listings/api';
+import { listingsApi, type ListingSummary } from '@/features/listings/api';
 import { ListingCard } from '@/features/listings/components/listing-card';
 import { ListingCardSkeleton } from '@/features/listings/components/listing-card-skeleton';
 
 export function LatestListings() {
-  const [listings, setListings] = useState<ListingFromApi[]>([]);
+  const [listings, setListings] = useState<ListingSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
 

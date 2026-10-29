@@ -1,18 +1,16 @@
 import Link from 'next/link';
 import { Banknote, CalendarDays, Check, Mail, MapPin, X } from 'lucide-react';
 import { formatDate } from '@/lib/format-date';
-import type { ApplicationFromApi, ApplicationStatus } from '../api';
+import type {
+  ApplicationListing,
+  ApplicationStatus,
+  ListingApplication,
+} from '../api';
 import { ApplicationStatusBadge } from './application-status-badge';
 
-type ListingSummary = {
-  title: string;
-  category: string;
-  location: string;
-};
-
 type ReceivedApplicationCardProps = {
-  application: ApplicationFromApi;
-  listing?: ListingSummary;
+  application: ListingApplication;
+  listing?: ApplicationListing;
   isUpdating: boolean;
   onStatusUpdate: (
     id: string,
@@ -26,7 +24,7 @@ export function ReceivedApplicationCard({
   isUpdating,
   onStatusUpdate,
 }: ReceivedApplicationCardProps) {
-  const executorInitial = application.executor?.fullName
+  const executorInitial = application.executor.fullName
     .charAt(0)
     .toUpperCase();
 
@@ -59,25 +57,23 @@ export function ReceivedApplicationCard({
         </div>
       )}
 
-      {application.executor ? (
-        <div className="flex items-center gap-3">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 font-bold text-primary">
-            {executorInitial}
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">
-              {application.executor.fullName}
-            </p>
-            <a
-              href={`mailto:${application.executor.email}`}
-              className="mt-1 flex items-center gap-1.5 truncate text-xs text-muted-foreground hover:text-primary"
-            >
-              <Mail className="size-3.5" aria-hidden="true" />
-              {application.executor.email}
-            </a>
-          </div>
+      <div className="flex items-center gap-3">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 font-bold text-primary">
+          {executorInitial}
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">
+            {application.executor.fullName}
+          </p>
+          <a
+            href={`mailto:${application.executor.email}`}
+            className="mt-1 flex items-center gap-1.5 truncate text-xs text-muted-foreground hover:text-primary"
+          >
+            <Mail className="size-3.5" aria-hidden="true" />
+            {application.executor.email}
+          </a>
         </div>
-      ) : null}
+      </div>
 
       <blockquote className="mt-4 rounded-xl bg-muted/50 p-4 text-sm leading-6 text-foreground/80">
         “{application.message}”
