@@ -38,8 +38,7 @@ describe('SessionsService', () => {
     updateMany: jest.fn<Promise<{ count: number }>, Call>(),
   };
   type TransactionInput =
-    | Promise<unknown>[]
-    | ((tx: unknown) => Promise<unknown>);
+    Promise<unknown>[] | ((tx: unknown) => Promise<unknown>);
   const prisma = {
     session: sessionRepository,
     refreshToken: refreshTokenRepository,

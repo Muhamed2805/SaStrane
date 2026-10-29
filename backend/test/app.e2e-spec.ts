@@ -71,7 +71,23 @@ function cookiePair(setCookie: string) {
   return setCookie.split(';')[0];
 }
 
+// The app's real in-memory rate limiter, swapped for a fresh one before each
+// test. Otherwise limits such as the login one run out across tests.
+class ResettableThrottlerStorage implements ThrottlerStorage {
+  private current = new ThrottlerStorageService();
+
+  increment(...args: Parameters<ThrottlerStorage['increment']>) {
+    return this.current.increment(...args);
+  }
+
+  reset() {
+    this.current.onApplicationShutdown();
+    this.current = new ThrottlerStorageService();
+  }
+}
+
 describe('App (e2e)', () => {
+  const throttlerStorage = new ResettableThrottlerStorage();
   let app: NestExpressApplication;
 
   beforeAll(async () => {
@@ -80,6 +96,8 @@ describe('App (e2e)', () => {
     })
       .overrideProvider(PrismaService)
       .useValue(prisma)
+      .overrideProvider(ThrottlerStorage)
+      .useValue(throttlerStorage)
       .compile();
 
     app = configureApp(
@@ -95,9 +113,7 @@ describe('App (e2e)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     sessionStore.reset();
-    // Each test starts with fresh rate limits; the login limit would
-    // otherwise run out across tests.
-    app.get<ThrottlerStorageService>(ThrottlerStorage).storage.clear();
+    throttlerStorage.reset();
   });
 
   async function login() {

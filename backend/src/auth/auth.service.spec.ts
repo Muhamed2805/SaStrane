@@ -179,11 +179,7 @@ describe('AuthService', () => {
           emailVerificationAttempts: 0,
         }),
       );
-      const emailInput = emailService.sendVerificationCode.mock.calls[0][0] as {
-        email: string;
-        fullName: string;
-        code: string;
-      };
+      const emailInput = emailService.sendVerificationCode.mock.calls[0][0];
       expect(emailInput.email).toBe(user.email);
       expect(emailInput.fullName).toBe(user.fullName);
       expect(emailInput.code).toMatch(/^\d{6}$/);
