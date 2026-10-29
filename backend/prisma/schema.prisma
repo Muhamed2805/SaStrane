@@ -1,10 +1,15 @@
+// Generated into src so Nest compiles it with the app. Run `npx prisma
+// generate` after a fresh install or a schema change.
 generator client {
-  provider = "prisma-client-js"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "cjs"
+  importFileExtension = ""
 }
 
+// The connection URL is in prisma.config.ts.
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum UserRole {

@@ -9,7 +9,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { SessionRevocationReason } from '@prisma/client';
+import { SessionRevocationReason } from '../generated/prisma/enums';
 import * as bcrypt from 'bcrypt';
 import { createHmac, randomInt, timingSafeEqual } from 'crypto';
 import { JwtService } from '@nestjs/jwt';

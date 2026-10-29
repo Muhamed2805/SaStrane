@@ -1,5 +1,7 @@
 # compiled output
 /dist
+# Prisma Client, from `npx prisma generate`
+/src/generated
 /node_modules
 /build
 

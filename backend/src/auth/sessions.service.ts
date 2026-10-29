@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, SessionRevocationReason } from '@prisma/client';
+import { Prisma, SessionRevocationReason } from '../generated/prisma/client';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { PUBLIC_USER_SELECT, type PublicUser } from './public-user';
