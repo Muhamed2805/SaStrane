@@ -7,15 +7,16 @@ import { useAuthStore } from '@/features/auth/store';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, openAuthModal } = useAuthStore();
+  const { user, status, openAuthModal } = useAuthStore();
 
   useEffect(() => {
+    if (status === 'loading') return;
     if (user) {
       router.replace('/profile');
       return;
     }
     openAuthModal();
-  }, [openAuthModal, router, user]);
+  }, [openAuthModal, router, status, user]);
 
   return (
     <div className="mx-auto max-w-3xl py-10 text-center sm:py-16">

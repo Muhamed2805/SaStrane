@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function EditListingPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { user, token, openAuthModal } = useAuthStore();
+  const { user, status, openAuthModal } = useAuthStore();
   const [listing, setListing] = useState<ListingFromApi | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -43,7 +43,7 @@ export default function EditListingPage() {
     };
   }, [id]);
 
-  if (!token) {
+  if (status === 'signed-out') {
     return (
       <div className="mx-auto max-w-xl rounded-2xl border bg-white px-6 py-14 text-center shadow-sm">
         <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -108,15 +108,11 @@ export default function EditListingPage() {
   }
 
   const handleSubmit = async (values: ListingFormValues) => {
-    await listingsApi.update(
-      id,
-      {
-        ...values,
-        budget: values.budget || null,
-        description: values.description || null,
-      },
-      token,
-    );
+    await listingsApi.update(id, {
+      ...values,
+      budget: values.budget || null,
+      description: values.description || null,
+    });
     toast.success('Oglas je uspješno ažuriran!');
     router.push(`/listings/${id}`);
     router.refresh();

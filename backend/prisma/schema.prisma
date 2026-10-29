@@ -19,6 +19,12 @@ enum ApplicationStatus {
   REJECTED
 }
 
+enum SessionRevocationReason {
+  LOGOUT
+  PASSWORD_RESET
+  TOKEN_REUSE
+}
+
 model User {
   id              String    @id @default(cuid())
   email           String    @unique
@@ -37,14 +43,46 @@ model User {
   passwordResetSentAt    DateTime?
   passwordResetAttempts  Int       @default(0)
 
-  refreshTokenHash      String?   @unique
-  refreshTokenExpiresAt DateTime?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   listings     Listing[]     @relation("UserListings")
   applications Application[] @relation("UserApplications")
+  sessions     Session[]
+}
+
+// One signed-in browser or device. It ends at expiresAt even when it stays
+// in use, so a stolen session cannot be kept alive forever.
+model Session {
+  id            String                   @id @default(cuid())
+  userId        String
+  userAgent     String?
+  createdAt     DateTime                 @default(now())
+  lastUsedAt    DateTime                 @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  revokedReason SessionRevocationReason?
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+
+  @@index([userId])
+}
+
+// Every refresh exchanges the presented token for a new one. Used tokens are
+// kept until they expire: presenting one again means it was copied, and the
+// whole session is revoked.
+model RefreshToken {
+  id        String    @id @default(cuid())
+  sessionId String
+  tokenHash String    @unique
+  expiresAt DateTime
+  rotatedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
 }
 
 model Listing {

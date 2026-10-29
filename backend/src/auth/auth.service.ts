@@ -9,14 +9,9 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SessionRevocationReason } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import {
-  createHash,
-  createHmac,
-  randomBytes,
-  randomInt,
-  timingSafeEqual,
-} from 'crypto';
+import { createHmac, randomInt, timingSafeEqual } from 'crypto';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
@@ -24,18 +19,33 @@ import { LoginDto } from './dto/login.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { EmailService } from './email.service';
+import {
+  PUBLIC_USER_SELECT,
+  toPublicUser,
+  type PublicUser,
+} from './public-user';
+import { SessionsService, type IssuedRefreshToken } from './sessions.service';
 
-const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+export type AccessTokenPayload = {
+  sub: string;
+  sid: string;
+  email: string;
+  role: string;
+};
+
+export type AuthSession = {
+  user: PublicUser;
+  accessToken: string;
+  // null when the client keeps its current refresh token.
+  refreshToken: IssuedRefreshToken | null;
+};
+
 const VERIFICATION_CODE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const VERIFICATION_RESEND_COOLDOWN_MS = 60 * 1000; // 1 minute
 const MAX_VERIFICATION_ATTEMPTS = 5;
 const PASSWORD_RESET_CODE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const PASSWORD_RESET_RESEND_COOLDOWN_MS = 60 * 1000; // 1 minute
 const MAX_PASSWORD_RESET_ATTEMPTS = 5;
-
-function hashToken(token: string) {
-  return createHash('sha256').update(token).digest('hex');
-}
 
 @Injectable()
 export class AuthService {
@@ -44,6 +54,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly emailService: EmailService,
+    private readonly sessions: SessionsService,
   ) {}
 
   private normalizeEmail(email: string) {
@@ -113,26 +124,30 @@ export class AuthService {
     );
   }
 
-  private signAccessToken(user: { id: string; email: string; role: string }) {
-    return this.jwt.signAsync({
+  private signAccessToken(user: PublicUser, sessionId: string) {
+    const payload: AccessTokenPayload = {
       sub: user.id,
+      sid: sessionId,
       email: user.email,
       role: user.role,
-    });
+    };
+    return this.jwt.signAsync(payload);
   }
 
-  private async issueRefreshToken(userId: string) {
-    const rawToken = randomBytes(32).toString('hex');
+  private async startSession(
+    user: PublicUser,
+    userAgent?: string,
+  ): Promise<AuthSession> {
+    const { sessionId, refreshToken } = await this.sessions.create(
+      user.id,
+      userAgent,
+    );
 
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        refreshTokenHash: hashToken(rawToken),
-        refreshTokenExpiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
-      },
-    });
-
-    return rawToken;
+    return {
+      user: toPublicUser(user),
+      accessToken: await this.signAccessToken(user, sessionId),
+      refreshToken,
+    };
   }
 
   async register(dto: RegisterDto) {
@@ -196,7 +211,7 @@ export class AuthService {
     };
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, userAgent?: string): Promise<AuthSession> {
     const email = this.normalizeEmail(dto.email);
 
     const user = await this.prisma.user.findUnique({
@@ -220,23 +235,13 @@ export class AuthService {
       });
     }
 
-    const accessToken = await this.signAccessToken(user);
-    const refreshToken = await this.issueRefreshToken(user.id);
-
-    return {
-      user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName,
-        role: user.role,
-        createdAt: user.createdAt,
-      },
-      accessToken,
-      refreshToken,
-    };
+    return this.startSession(user, userAgent);
   }
 
-  async verifyEmail(dto: VerifyEmailDto) {
+  async verifyEmail(
+    dto: VerifyEmailDto,
+    userAgent?: string,
+  ): Promise<AuthSession> {
     const email = this.normalizeEmail(dto.email);
     const user = await this.prisma.user.findUnique({ where: { email } });
 
@@ -283,21 +288,10 @@ export class AuthService {
         emailVerificationSentAt: null,
         emailVerificationAttempts: 0,
       },
+      select: PUBLIC_USER_SELECT,
     });
-    const accessToken = await this.signAccessToken(verifiedUser);
-    const refreshToken = await this.issueRefreshToken(verifiedUser.id);
 
-    return {
-      user: {
-        id: verifiedUser.id,
-        email: verifiedUser.email,
-        fullName: verifiedUser.fullName,
-        role: verifiedUser.role,
-        createdAt: verifiedUser.createdAt,
-      },
-      accessToken,
-      refreshToken,
-    };
+    return this.startSession(verifiedUser, userAgent);
   }
 
   async resendVerification(emailInput: string) {
@@ -450,65 +444,63 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
-    const result = await this.prisma.user.updateMany({
-      where: {
-        id: user.id,
-        passwordResetCodeHash: user.passwordResetCodeHash,
-      },
-      data: {
-        passwordHash,
-        passwordResetCodeHash: null,
-        passwordResetExpiresAt: null,
-        passwordResetSentAt: null,
-        passwordResetAttempts: 0,
-        refreshTokenHash: null,
-        refreshTokenExpiresAt: null,
-      },
+    const passwordChanged = await this.prisma.$transaction(async (tx) => {
+      // Matching the code hash makes a concurrent reset with the same code
+      // fail instead of applying twice.
+      const result = await tx.user.updateMany({
+        where: {
+          id: user.id,
+          passwordResetCodeHash: user.passwordResetCodeHash,
+        },
+        data: {
+          passwordHash,
+          passwordResetCodeHash: null,
+          passwordResetExpiresAt: null,
+          passwordResetSentAt: null,
+          passwordResetAttempts: 0,
+        },
+      });
+      if (result.count !== 1) return false;
+
+      // A new password signs out every device, including one an attacker
+      // may be using.
+      await this.sessions.revokeAllForUser(
+        user.id,
+        SessionRevocationReason.PASSWORD_RESET,
+        tx,
+      );
+      return true;
     });
 
-    if (result.count !== 1) {
+    if (!passwordChanged) {
       throw new BadRequestException('Kod nije ispravan ili je istekao.');
     }
 
     return { success: true };
   }
 
-  async refresh(rawRefreshToken: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { refreshTokenHash: hashToken(rawRefreshToken) },
-    });
+  async refresh(rawRefreshToken: string): Promise<AuthSession> {
+    const grant = await this.sessions.rotate(rawRefreshToken);
 
-    if (
-      !user ||
-      !user.refreshTokenExpiresAt ||
-      user.refreshTokenExpiresAt < new Date()
-    ) {
+    if (!grant) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
-    const accessToken = await this.signAccessToken(user);
-    const refreshToken = await this.issueRefreshToken(user.id);
-
-    return { accessToken, refreshToken };
+    return {
+      user: grant.user,
+      accessToken: await this.signAccessToken(grant.user, grant.sessionId),
+      refreshToken: grant.refreshToken,
+    };
   }
 
-  async logout(userId: string) {
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { refreshTokenHash: null, refreshTokenExpiresAt: null },
-    });
+  async logout(rawRefreshToken: string) {
+    await this.sessions.revokeByRefreshToken(rawRefreshToken);
   }
 
   async getMe(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        role: true,
-        createdAt: true,
-      },
+      select: PUBLIC_USER_SELECT,
     });
 
     if (!user) {

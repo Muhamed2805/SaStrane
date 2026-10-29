@@ -16,7 +16,7 @@ type ListingActionsProps = {
 
 export function ListingActions({ listingId, clientId }: ListingActionsProps) {
   const router = useRouter();
-  const { user, token, openAuthModal } = useAuthStore();
+  const { user, openAuthModal } = useAuthStore();
   const { openApply, hasApplied } = useApplicationsStore();
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -24,10 +24,10 @@ export function ListingActions({ listingId, clientId }: ListingActionsProps) {
   const applied = hasApplied(listingId);
 
   const performDelete = async () => {
-    if (!token) return;
+    if (!user) return;
     setIsDeleting(true);
     try {
-      await listingsApi.delete(listingId, token);
+      await listingsApi.delete(listingId);
       toast.success('Oglas je obrisan.');
       router.push('/listings');
     } catch (err) {

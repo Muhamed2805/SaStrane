@@ -6,23 +6,47 @@ import {
   HttpStatus,
   Post,
   Req,
+  Res,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import type { Request } from 'express';
+import { ConfigService } from '@nestjs/config';
+import type { Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
-import { AuthService } from './auth.service';
+import { AuthService, type AuthSession } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { RegisterDto } from './dto/register.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import {
+  clearRefreshCookie,
+  readRefreshCookie,
+  setRefreshCookie,
+} from './refresh-cookie';
+import type { AuthenticatedUser } from './strategies/jwt.strategy';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  private readonly secureCookies: boolean;
+
+  constructor(
+    private readonly auth: AuthService,
+    config: ConfigService,
+  ) {
+    this.secureCookies = config.get<string>('NODE_ENV') === 'production';
+  }
+
+  // The refresh token goes into an httpOnly cookie; the body carries only
+  // what the client may read.
+  private respondWithSession(res: Response, session: AuthSession) {
+    if (session.refreshToken) {
+      setRefreshCookie(res, session.refreshToken, this.secureCookies);
+    }
+    return { user: session.user, accessToken: session.accessToken };
+  }
 
   // Stricter limits than the global default: these endpoints are the main
   // brute-force / credential-stuffing / signup-spam targets.
@@ -35,8 +59,13 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @Post('verify-email')
-  verifyEmail(@Body() dto: VerifyEmailDto) {
-    return this.auth.verifyEmail(dto);
+  async verifyEmail(
+    @Body() dto: VerifyEmailDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const session = await this.auth.verifyEmail(dto, req.get('user-agent'));
+    return this.respondWithSession(res, session);
   }
 
   @Throttle({ default: { limit: 3, ttl: 5 * 60_000 } })
@@ -61,29 +90,55 @@ export class AuthController {
   }
 
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
-  @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.auth.login(dto);
-  }
-
-  @Post('refresh')
-  refresh(@Body() dto: RefreshTokenDto) {
-    return this.auth.refresh(dto.refreshToken);
-  }
-
-  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
+  @Post('login')
+  async login(
+    @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const session = await this.auth.login(dto, req.get('user-agent'));
+    return this.respondWithSession(res, session);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('refresh')
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const refreshToken = readRefreshCookie(req);
+    if (!refreshToken) {
+      throw new UnauthorizedException('Missing refresh token');
+    }
+
+    try {
+      const session = await this.auth.refresh(refreshToken);
+      return this.respondWithSession(res, session);
+    } catch (error) {
+      // Remove a cookie that can no longer be used, so the browser stops
+      // sending it.
+      if (error instanceof UnauthorizedException) {
+        clearRefreshCookie(res, this.secureCookies);
+      }
+      throw error;
+    }
+  }
+
+  // Identified by the refresh cookie rather than the access token, so a
+  // user can sign out even after the access token has expired.
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Post('logout')
-  async logout(@Req() req: Request) {
-    const user = req.user as { id: string };
-    await this.auth.logout(user.id);
-    return { success: true };
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = readRefreshCookie(req);
+    if (refreshToken) await this.auth.logout(refreshToken);
+    clearRefreshCookie(res, this.secureCookies);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  async me(@Req() req: Request) {
-    const user = req.user as { id: string };
+  me(@Req() req: Request) {
+    const user = req.user as AuthenticatedUser;
     return this.auth.getMe(user.id);
   }
 }

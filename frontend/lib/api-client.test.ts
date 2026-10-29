@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, apiRequest } from './api-client';
+import { ApiError, apiRequest, statusError } from './api-client';
 
-const API_URL = 'http://localhost:4000';
+// Tests run without a window, like server-side rendering, so requests go to
+// the backend directly.
+const API_URL = 'http://localhost:4000/api';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -139,6 +141,16 @@ describe('apiRequest', () => {
 
     await expect(apiRequest('/listings')).rejects.toEqual(
       expect.objectContaining({ name: 'AbortError' }),
+    );
+  });
+
+  it('builds the standard error for a status the client detects', () => {
+    expect(statusError(401)).toEqual(
+      expect.objectContaining({
+        name: 'ApiError',
+        status: 401,
+        message: 'Sesija je istekla. Prijavi se ponovo.',
+      }),
     );
   });
 });

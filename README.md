@@ -40,6 +40,10 @@ cd frontend
 npm install
 npm run dev
 
+The frontend forwards `/api/*` to the backend, so the refresh cookie stays
+first-party. Set `BACKEND_URL` (default `http://localhost:4000`) before
+`npm run dev` or `npm run build`; the build fixes the value.
+
 ---
 
 ## Status

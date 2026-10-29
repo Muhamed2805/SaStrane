@@ -14,9 +14,8 @@ type ApplicationsState = {
     listingId: string,
     message: string,
     proposedPrice: string,
-    token: string,
   ) => Promise<void>;
-  syncAppliedIds: (token: string) => Promise<void>;
+  syncAppliedIds: () => Promise<void>;
   hasApplied: (listingId: string) => boolean;
   reset: () => void;
 };
@@ -33,13 +32,14 @@ export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
   closeApply: () =>
     set({ isApplyOpen: false, activeListingId: null, error: null }),
 
-  submitApplication: async (listingId, message, proposedPrice, token) => {
+  submitApplication: async (listingId, message, proposedPrice) => {
     set({ isSubmitting: true, error: null });
     try {
-      await applicationsApi.apply(
-        { listingId, message, proposedPrice: proposedPrice || undefined },
-        token,
-      );
+      await applicationsApi.apply({
+        listingId,
+        message,
+        proposedPrice: proposedPrice || undefined,
+      });
       set((state) => ({
         isApplyOpen: false,
         activeListingId: null,
@@ -51,9 +51,9 @@ export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
     }
   },
 
-  syncAppliedIds: async (token) => {
+  syncAppliedIds: async () => {
     try {
-      const listingIds = await applicationsApi.getAppliedListingIds(token);
+      const listingIds = await applicationsApi.getAppliedListingIds();
       const appliedListingIds = listingIds.reduce<Record<string, true>>(
         (acc, listingId) => {
           acc[listingId] = true;

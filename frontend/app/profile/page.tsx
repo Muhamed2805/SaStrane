@@ -18,6 +18,7 @@ import {
 import { useAuthStore } from '@/features/auth/store';
 import { listingsApi } from '@/features/listings/api';
 import { applicationsApi } from '@/features/applications/api';
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/lib/format-date';
 
 const ROLE_LABEL: Record<string, string> = {
@@ -39,7 +40,7 @@ const EMPTY_STATS: ProfileStats = {
 };
 
 export default function ProfilePage() {
-  const { user, token, openAuthModal } = useAuthStore();
+  const { user, status, openAuthModal } = useAuthStore();
   const [reloadCount, setReloadCount] = useState(0);
   const [loadResult, setLoadResult] = useState<{
     key: string;
@@ -48,27 +49,23 @@ export default function ProfilePage() {
   } | null>(null);
 
   const userId = user?.id;
-  const hasToken = Boolean(token);
   // Identifies the current load. Another user or a retry gets a new key, so
   // the placeholders show instead of stale numbers until that load finishes.
-  const loadKey = userId && hasToken ? `${userId}:${reloadCount}` : null;
+  const loadKey = userId ? `${userId}:${reloadCount}` : null;
   const result =
     loadKey !== null && loadResult?.key === loadKey ? loadResult : null;
   const isLoading = loadKey !== null && result === null;
   const stats = result?.stats ?? null;
   const error = result?.error ?? null;
 
-  // The token is read when the request starts instead of being a dependency:
-  // it rotates every few minutes, and a rotation must not reload the stats.
   useEffect(() => {
-    const currentToken = useAuthStore.getState().token;
-    if (!loadKey || !userId || !currentToken) return;
+    if (!loadKey || !userId) return;
 
     let ignore = false;
     Promise.all([
       listingsApi.getAll({ clientId: userId, limit: 1 }),
-      applicationsApi.getMyApplications(currentToken, { limit: 1 }),
-      applicationsApi.getReceivedApplications(currentToken, { limit: 1 }),
+      applicationsApi.getMyApplications({ limit: 1 }),
+      applicationsApi.getReceivedApplications({ limit: 1 }),
     ])
       .then(([listingsPage, applicationsPage, receivedPage]) => {
         if (ignore) return;
@@ -98,6 +95,19 @@ export default function ProfilePage() {
       ignore = true;
     };
   }, [loadKey, userId]);
+
+  if (status === 'loading') {
+    return (
+      <div className="space-y-6" aria-busy="true">
+        <Skeleton className="h-48 w-full rounded-3xl" />
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Skeleton className="h-28 rounded-2xl" />
+          <Skeleton className="h-28 rounded-2xl" />
+          <Skeleton className="h-28 rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (

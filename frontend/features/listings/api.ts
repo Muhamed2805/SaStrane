@@ -1,3 +1,4 @@
+import { authRequest } from "@/features/auth/session";
 import { apiRequest } from "@/lib/api-client";
 
 export type ListingFromApi = {
@@ -65,23 +66,18 @@ export const listingsApi = {
   getById: (id: string) =>
     apiRequest<ListingFromApi>(`/listings/${id}`, { cache: "no-store" }),
 
-  create: (payload: CreateListingPayload, token: string) =>
-    apiRequest<ListingFromApi>("/listings", {
+  create: (payload: CreateListingPayload) =>
+    authRequest<ListingFromApi>("/listings", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(payload),
     }),
 
-  update: (id: string, payload: UpdateListingPayload, token: string) =>
-    apiRequest<ListingFromApi>(`/listings/${id}`, {
+  update: (id: string, payload: UpdateListingPayload) =>
+    authRequest<ListingFromApi>(`/listings/${id}`, {
       method: "PATCH",
-      headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(payload),
     }),
 
-  delete: (id: string, token: string) =>
-    apiRequest<void>(`/listings/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+  delete: (id: string) =>
+    authRequest<void>(`/listings/${id}`, { method: "DELETE" }),
 };

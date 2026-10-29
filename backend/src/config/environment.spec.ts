@@ -12,6 +12,7 @@ describe('validateEnvironment', () => {
         NODE_ENV: 'development',
         PORT: 4000,
         JWT_EXPIRES_IN: '15m',
+        TRUST_PROXY_HOPS: 0,
       }),
     );
   });
@@ -28,6 +29,21 @@ describe('validateEnvironment', () => {
       expect(() =>
         validateEnvironment({ ...validEnvironment, JWT_EXPIRES_IN: value }),
       ).toThrow('JWT_EXPIRES_IN must be a positive number');
+    },
+  );
+
+  it('reads the number of trusted proxy hops', () => {
+    expect(
+      validateEnvironment({ ...validEnvironment, TRUST_PROXY_HOPS: ' 2 ' }),
+    ).toEqual(expect.objectContaining({ TRUST_PROXY_HOPS: 2 }));
+  });
+
+  it.each(['-1', '1.5', 'yes', '11'])(
+    'rejects the trusted proxy hop count %p',
+    (value) => {
+      expect(() =>
+        validateEnvironment({ ...validEnvironment, TRUST_PROXY_HOPS: value }),
+      ).toThrow('TRUST_PROXY_HOPS must be an integer between 0 and 10');
     },
   );
 
@@ -65,6 +81,8 @@ describe('validateEnvironment', () => {
         EMAIL_VERIFICATION_SECRET:
           'a-separate-email-secret-with-at-least-32-characters',
       }),
-    ).toEqual(expect.objectContaining({ NODE_ENV: 'production' }));
+    ).toEqual(
+      expect.objectContaining({ NODE_ENV: 'production', TRUST_PROXY_HOPS: 1 }),
+    );
   });
 });

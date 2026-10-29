@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const API_ORIGIN = /^http:\/\/(?:localhost|127\.0\.0\.1):4000/;
+// Browsers call the API through the app's own /api proxy.
+const API_ORIGIN = /^https?:\/\/[^/]+\/api/;
 const email = 'novi.korisnik@example.com';
 const validCode = '123456';
 
@@ -60,7 +61,6 @@ async function mockRegistrationApi(page: Page) {
         body: JSON.stringify({
           user: verifiedUser,
           accessToken: 'e2e-access-token',
-          refreshToken: 'e2e-refresh-token',
         }),
       });
     },
