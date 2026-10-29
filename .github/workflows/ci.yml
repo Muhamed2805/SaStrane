@@ -25,8 +25,25 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    # The same image as docker-compose.yml. The e2e tests create and migrate
+    # sastrane_test themselves.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: sastrane
+          POSTGRES_PASSWORD: sastrane
+          POSTGRES_DB: sastrane
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sastrane -d sastrane"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
     env:
-      DATABASE_URL: postgresql://ci:ci@localhost:5432/sastrane_ci
+      DATABASE_URL: postgresql://sastrane:sastrane@localhost:5432/sastrane
+      TEST_DATABASE_URL: postgresql://sastrane:sastrane@localhost:5432/sastrane_test
       JWT_SECRET: ci-only-secret-not-used-outside-tests
       JWT_EXPIRES_IN: 15m
     steps:
@@ -47,6 +64,16 @@ jobs:
 
       - name: Generate Prisma Client
         run: npx prisma generate
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      # Fails when schema.prisma changed without a migration.
+      - name: Check that the migrations match the schema
+        run: npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+
+      - name: Seed demo data
+        run: npx prisma db seed
 
       - name: Lint
         run: npm run lint

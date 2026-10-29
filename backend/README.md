@@ -6,11 +6,15 @@ architecture and setup of the whole project, see the
 
 ## Setup
 
+Start the database first with `docker compose up -d` in the repository
+root. Then run:
+
 ```bash
 cp .env.example .env
 npm install
 npx prisma generate
 npx prisma migrate deploy
+npx prisma db seed
 npm run start:dev
 ```
 
@@ -25,7 +29,8 @@ CLI. Variables already set in the environment win.
 
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
-| `DATABASE_URL` | Yes | | PostgreSQL URL. Use `sslmode=verify-full` for hosted databases. |
+| `DATABASE_URL` | Yes | | PostgreSQL URL. `.env.example` points at the Docker database. Add `sslmode=verify-full` for hosted databases. |
+| `TEST_DATABASE_URL` | No | The Docker database's `sastrane_test` | Used only by the e2e tests. The database name must end with `_test`. |
 | `JWT_SECRET` | Yes | | At least 32 characters in production. |
 | `JWT_EXPIRES_IN` | No | `15m` | Access token lifetime: a number followed by `s`, `m`, `h` or `d`. |
 | `PORT` | No | `4000` | |
@@ -46,7 +51,7 @@ CLI. Variables already set in the environment win.
 | `npm run lint` | Runs ESLint. |
 | `npm run typecheck` | Type-checks without emitting. |
 | `npm test` | Runs the unit tests (Jest). |
-| `npm run test:e2e` | Runs HTTP tests against the whole app with a mocked Prisma. |
+| `npm run test:e2e` | Runs HTTP tests against the whole app and a real PostgreSQL. |
 | `npm run test:cov` | Runs the unit tests with coverage. |
 
 ## Database
@@ -59,9 +64,31 @@ after every install and every schema change.
 | Task | Command |
 | --- | --- |
 | Apply the existing migrations | `npx prisma migrate deploy` |
+| Add the demo data | `npx prisma db seed` |
 | Create a migration after a schema change | `npx prisma migrate dev --name <change>` |
 | Check that the database matches the migrations | `npx prisma migrate status` |
 | Browse the data | `npx prisma studio` |
+| Start over with an empty database | `docker compose down -v`, then `docker compose up -d` and migrate again |
+
+The seed in `prisma/seed.ts` adds four users, nine jobs and six
+applications. Every demo user signs in with `demo-password-123`, for example
+as `amra@example.com`. The seed only adds missing rows, so it is safe to run
+again, and it refuses to run with `NODE_ENV=production`.
+
+## End-to-end tests
+
+`npm run test:e2e` needs PostgreSQL, such as the Docker database. Before the
+tests, it creates the database from `TEST_DATABASE_URL` when it is missing and
+applies the migrations. Each test starts with empty tables. To protect real
+data, the tests refuse a database whose name does not end with `_test`.
+
+The tests run the app with its real configuration. Only email delivery is
+replaced, so the tests can read the codes. The tests in
+`test/database-down.e2e-spec.ts` point the app at a closed port and check that
+it answers 503.
+
+Jest runs with `--experimental-vm-modules`, because the Prisma 7 client loads
+its query compiler with a dynamic `import()`.
 
 ## API
 
@@ -96,7 +123,8 @@ token's user must own the job.
 `{ items, total, page, limit, totalPages }`.
 
 **Errors.** Errors use the standard NestJS shape. Unique conflicts return
-409, and missing records return 404.
+409, and missing records return 404. When the database cannot be reached,
+routes that need it return 503.
 
 **Rate limits.** Each client IP gets 30 requests per minute. The sign-in,
 sign-up and email code routes have stricter limits.

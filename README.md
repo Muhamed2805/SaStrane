@@ -231,7 +231,7 @@ erDiagram
 ```text
 SaStrane/
 ├── backend/                 NestJS API
-│   ├── prisma/              Schema and migrations
+│   ├── prisma/              Schema, migrations and demo seed
 │   ├── src/
 │   │   ├── auth/            Sign-up, email codes, sessions, JWT
 │   │   ├── listings/        Jobs
@@ -239,27 +239,33 @@ SaStrane/
 │   │   ├── common/          Error filters and transforms
 │   │   ├── config/          Environment validation, CORS
 │   │   └── prisma/          Database client
-│   └── test/                End-to-end tests
+│   └── test/                End-to-end tests on PostgreSQL
 ├── frontend/                Next.js app
 │   ├── app/                 Routes
 │   ├── features/            Auth, listings, applications, landing
 │   ├── components/          Shared UI
 │   ├── lib/                 API client, formatting
 │   └── e2e/                 Playwright tests
-└── docs/screenshots/
+├── docs/screenshots/
+└── docker-compose.yml       Local PostgreSQL
 ```
 
 ## Getting started
 
-You need [Node.js 24](.nvmrc) with npm 11, and PostgreSQL. A hosted database
-such as [Neon](https://neon.tech) works too. For a local one, run:
+You need [Node.js 24](.nvmrc) with npm 11, and Docker for the local
+database.
+
+**1. Database.** From the repository root, start PostgreSQL 17 on
+`localhost:5432`:
 
 ```bash
-docker run -d --name sastrane-db -p 5432:5432 \
-  -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=sastrane postgres:17-alpine
+docker compose up -d
 ```
 
-**1. Backend.** It runs on <http://localhost:4000>.
+Set `POSTGRES_PORT` when port 5432 is taken. A hosted database such as
+[Neon](https://neon.tech) works too: put its URL in `backend/.env`.
+
+**2. Backend.** It runs on <http://localhost:4000>.
 
 ```bash
 cd backend
@@ -267,16 +273,16 @@ cp .env.example .env
 npm install
 npx prisma generate
 npx prisma migrate deploy
+npx prisma db seed
 npm run start:dev
 ```
 
-In `.env`, set
-`DATABASE_URL="postgresql://postgres:postgres@localhost:5432/sastrane"`.
-For development, the example values of the other variables work as they
-are. Email codes are printed in the backend terminal while `RESEND_API_KEY`
-is empty.
+The example `.env` works with the Docker database as it is. The seed adds
+demo users, jobs and applications. Sign in as `amra@example.com` with the
+password `demo-password-123`. Email codes for new accounts are printed in
+the backend terminal while `RESEND_API_KEY` is empty.
 
-**2. Frontend.** It runs on <http://localhost:3000>.
+**3. Frontend.** It runs on <http://localhost:3000>.
 
 ```bash
 cd frontend
@@ -298,18 +304,21 @@ covers the frontend scripts and tests.
 | --- | --- | --- |
 | Lint and types | `npm run lint`, `npm run typecheck` | `npm run lint`, `npm run typecheck` |
 | Unit tests | `npm test` (Jest) | `npm test` (Vitest) |
-| End-to-end | `npm run test:e2e` (Supertest, mocked Prisma) | `npm run test:e2e` (Playwright, mocked API) |
+| End-to-end | `npm run test:e2e` (Supertest, real PostgreSQL) | `npm run test:e2e` (Playwright, mocked API) |
 | Build | `npm run build` | `npm run build` |
 
+The backend end-to-end tests need the Docker database. They create their
+own `sastrane_test` database, apply the migrations and empty every table
+before each test, so they never touch your development data.
+
 GitHub Actions runs all of these for both apps on pushes and pull requests
-to `main`. Every Monday, Dependabot opens update PRs, grouped so that related
-packages move together.
+to `main`. The backend job also runs PostgreSQL. It applies the migrations,
+checks that they match `schema.prisma` and runs the seed. Every Monday,
+Dependabot opens update PRs, grouped so that related packages move together.
 
 ## Roadmap
 
-- **Developer setup:** Docker Compose with seed data, end-to-end tests
-  against a real PostgreSQL, and an OpenAPI spec with generated frontend
-  types.
+- **API contract:** an OpenAPI spec with generated frontend types.
 - **Jobs and applications:** an open and closed lifecycle for jobs, prices
   stored as numbers, fixed category and location lists, and the executor's
   email shown only after acceptance.

@@ -6,16 +6,25 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
 import { Prisma } from '../../generated/prisma/client';
+import { isDatabaseUnavailable } from '../../prisma/database-unavailable';
 
 // Turns database errors that reach the HTTP layer into proper status codes.
 // Without this filter, a race such as two parallel sign-ups with one email
-// fails with a generic 500 instead of a 409 the client can act on.
-export function toHttpException(
-  error: Prisma.PrismaClientKnownRequestError,
-): HttpException {
+// fails with a generic 500 instead of a 409 the client can act on, and a
+// database outage looks like a bug instead of a 503.
+// Returns undefined for errors that do not come from the database.
+export function toHttpException(error: unknown): HttpException | undefined {
+  if (isDatabaseUnavailable(error)) {
+    return new ServiceUnavailableException('Database unavailable');
+  }
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+    return undefined;
+  }
+
   switch (error.code) {
     // Unique constraint failed.
     case 'P2002':
@@ -31,17 +40,45 @@ export function toHttpException(
   }
 }
 
-@Catch(Prisma.PrismaClientKnownRequestError)
+// Lines of a Prisma message that only point at the calling code: the
+// "Invalid `prisma.user.findUnique()` invocation in" header, the file
+// position and the numbered source excerpt.
+const PRISMA_LOCATION_LINE =
+  /^(Invalid `.*` invocation|.*:\d+:\d+$|(→\s*)?\d+(\s|$))/;
+
+// One line for the log: the error class, its code and the problem, without
+// the source excerpt Prisma adds. Some messages, such as ECONNREFUSED, carry
+// no problem text at all.
+export function summarizeError(error: unknown) {
+  if (!(error instanceof Error)) return String(error);
+  const code = 'code' in error ? ` ${String(error.code)}` : '';
+  const problem = error.message
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line && !PRISMA_LOCATION_LINE.test(line))
+    .at(-1);
+  return `${error.name}${code}${problem ? `: ${problem}` : ''}`;
+}
+
+// Catches every error, because pg reports some outages as plain errors.
+// Errors that do not come from the database get Nest's default handling.
+@Catch()
 export class PrismaExceptionFilter extends BaseExceptionFilter {
   private readonly logger = new Logger(PrismaExceptionFilter.name);
 
-  catch(error: Prisma.PrismaClientKnownRequestError, host: ArgumentsHost) {
+  catch(error: unknown, host: ArgumentsHost) {
     const httpException = toHttpException(error);
+    if (!httpException) {
+      super.catch(error, host);
+      return;
+    }
 
-    if (httpException.getStatus() >= 500) {
+    if (httpException instanceof ServiceUnavailableException) {
+      this.logger.warn(`Database unavailable: ${summarizeError(error)}`);
+    } else if (httpException.getStatus() >= 500) {
       this.logger.error(
-        `Unhandled Prisma error ${error.code}: ${error.message}`,
-        error.stack,
+        `Unhandled Prisma error: ${summarizeError(error)}`,
+        error instanceof Error ? error.stack : undefined,
       );
     }
 
