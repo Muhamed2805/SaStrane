@@ -91,7 +91,7 @@ export function InboxView({
   initialTab?: InboxTab;
 }) {
   const router = useRouter();
-  const { user, token, openAuthModal } = useAuthStore();
+  const { user, status: authStatus, openAuthModal } = useAuthStore();
   const [activeTab, setActiveTab] = useState<InboxTab>(initialTab);
   const [myListings, setMyListings] = useState<ListingFromApi[]>([]);
   const [myApplications, setMyApplications] = useState<ApplicationFromApi[]>(
@@ -118,33 +118,22 @@ export function InboxView({
   const [loadingMore, setLoadingMore] = useState<InboxTab | null>(null);
 
   const userId = user?.id;
-  const hasToken = Boolean(token);
   // Identifies the current load. Another user or a retry gets a new key, so
   // the skeleton shows instead of stale data until that load finishes.
-  const loadKey = userId && hasToken ? `${userId}:${reloadCount}` : null;
+  const loadKey = userId ? `${userId}:${reloadCount}` : null;
   const isLoading = loadKey !== null && loadResult?.key !== loadKey;
   const error =
     loadKey !== null && loadResult?.key === loadKey ? loadResult.error : null;
   const reloadWorkspace = () => setReloadCount((count) => count + 1);
 
-  // The token is read when the request starts instead of being a dependency:
-  // it rotates every few minutes, and a rotation must not reload the
-  // workspace and drop the pages loaded with "Učitaj još".
   useEffect(() => {
-    const currentToken = useAuthStore.getState().token;
-    if (!loadKey || !userId || !currentToken) return;
+    if (!loadKey || !userId) return;
 
     let ignore = false;
     Promise.all([
       listingsApi.getAll({ clientId: userId, page: 1, limit: PAGE_SIZE }),
-      applicationsApi.getMyApplications(currentToken, {
-        page: 1,
-        limit: PAGE_SIZE,
-      }),
-      applicationsApi.getReceivedApplications(currentToken, {
-        page: 1,
-        limit: PAGE_SIZE,
-      }),
+      applicationsApi.getMyApplications({ page: 1, limit: PAGE_SIZE }),
+      applicationsApi.getReceivedApplications({ page: 1, limit: PAGE_SIZE }),
     ])
       .then(([listingsPageData, myPageData, receivedPageData]) => {
         if (ignore) return;
@@ -203,10 +192,10 @@ export function InboxView({
   };
 
   const loadMoreMyApplications = async () => {
-    if (!token || myPage >= myTotalPages) return;
+    if (!user || myPage >= myTotalPages) return;
     setLoadingMore('applications');
     try {
-      const nextPage = await applicationsApi.getMyApplications(token, {
+      const nextPage = await applicationsApi.getMyApplications({
         page: myPage + 1,
         limit: PAGE_SIZE,
       });
@@ -221,10 +210,10 @@ export function InboxView({
   };
 
   const loadMoreReceivedApplications = async () => {
-    if (!token || receivedPage >= receivedTotalPages) return;
+    if (!user || receivedPage >= receivedTotalPages) return;
     setLoadingMore('received');
     try {
-      const nextPage = await applicationsApi.getReceivedApplications(token, {
+      const nextPage = await applicationsApi.getReceivedApplications({
         page: receivedPage + 1,
         limit: PAGE_SIZE,
       });
@@ -244,11 +233,11 @@ export function InboxView({
     id: string,
     status: 'ACCEPTED' | 'REJECTED',
   ) => {
-    if (!token) return;
+    if (!user) return;
 
     setUpdatingId(id);
     try {
-      const updated = await applicationsApi.updateStatus(id, { status }, token);
+      const updated = await applicationsApi.updateStatus(id, { status });
       setReceivedApplications((current) =>
         current.map((application) =>
           application.id === updated.id
@@ -268,7 +257,17 @@ export function InboxView({
     }
   };
 
-  if (!user || !token) {
+  if (authStatus === 'loading') {
+    return (
+      <div className="space-y-4" aria-busy="true">
+        <ApplicationCardSkeleton />
+        <ApplicationCardSkeleton />
+        <ApplicationCardSkeleton />
+      </div>
+    );
+  }
+
+  if (!user) {
     return (
       <div className="mx-auto max-w-xl rounded-2xl border bg-white px-6 py-14 text-center shadow-sm">
         <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">

@@ -22,7 +22,7 @@ export function ListingApplications({
   listingId,
   clientId,
 }: ListingApplicationsProps) {
-  const { user, token } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
   const [applications, setApplications] = useState<ApplicationFromApi[]>([]);
   const [reloadCount, setReloadCount] = useState(0);
   const [loadResult, setLoadResult] = useState<{
@@ -31,23 +31,19 @@ export function ListingApplications({
   } | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const isOwner = user?.id === clientId;
-  const hasToken = Boolean(token);
   // Identifies the current load. Another listing or a retry gets a new key,
   // so the skeleton shows instead of stale data until that load finishes.
-  const loadKey = isOwner && hasToken ? `${listingId}:${reloadCount}` : null;
+  const loadKey = isOwner ? `${listingId}:${reloadCount}` : null;
   const isLoading = loadKey !== null && loadResult?.key !== loadKey;
   const error =
     loadKey !== null && loadResult?.key === loadKey ? loadResult.error : null;
 
-  // The token is read when the request starts instead of being a dependency:
-  // it rotates every few minutes, and a rotation must not reload the list.
   useEffect(() => {
-    const currentToken = useAuthStore.getState().token;
-    if (!loadKey || !currentToken) return;
+    if (!loadKey) return;
 
     let ignore = false;
     applicationsApi
-      .getForListing(listingId, currentToken)
+      .getForListing(listingId)
       .then((items) => {
         if (ignore) return;
         setApplications(items);
@@ -66,12 +62,12 @@ export function ListingApplications({
     };
   }, [loadKey, listingId]);
 
-  if (!isOwner || !token) return null;
+  if (!isOwner) return null;
 
   const handleStatusUpdate = async (id: string, status: DecidedStatus) => {
     setUpdatingId(id);
     try {
-      const updated = await applicationsApi.updateStatus(id, { status }, token);
+      const updated = await applicationsApi.updateStatus(id, { status });
       setApplications((current) =>
         current.map((application) =>
           application.id === updated.id ? updated : application,

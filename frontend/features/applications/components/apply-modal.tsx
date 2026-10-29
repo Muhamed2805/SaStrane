@@ -17,7 +17,7 @@ import { listingsApi, type ListingFromApi } from '@/features/listings/api';
 import { useApplicationsStore } from '../store';
 
 export function ApplyModal() {
-  const { token } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
   const {
     isApplyOpen,
     activeListingId,
@@ -90,14 +90,9 @@ export function ApplyModal() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!token) return;
+    if (!user) return;
 
-    await submitApplication(
-      activeListingId,
-      message.trim(),
-      price.trim(),
-      token,
-    );
+    await submitApplication(activeListingId, message.trim(), price.trim());
     if (!useApplicationsStore.getState().error) {
       setMessage('');
       setPrice('');

@@ -24,7 +24,7 @@ const listingsResponse = {
 
 async function mockListingsApi(page: Page) {
   await page.route(
-    /^http:\/\/(?:localhost|127\.0\.0\.1):4000\/listings(?:\?.*)?$/,
+    /^https?:\/\/[^/]+\/api\/listings(?:\?.*)?$/,
     async (route) => {
       await route.fulfill({
         status: 200,

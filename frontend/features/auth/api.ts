@@ -9,15 +9,11 @@ export type AuthUser = {
   createdAt: string;
 };
 
+// The refresh token never appears here: the server keeps it in an httpOnly
+// cookie that page scripts cannot read.
 export type AuthResponse = {
   user: AuthUser;
   accessToken: string;
-  refreshToken: string;
-};
-
-export type RefreshResponse = {
-  accessToken: string;
-  refreshToken: string;
 };
 
 export type RegisterResponse = {
@@ -75,21 +71,10 @@ export const authApi = {
       body: JSON.stringify({ email, code, password }),
     }),
 
-  me: (token: string) =>
-    apiRequest<AuthUser>('/auth/me', {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+  // Both use the refresh cookie, which the browser adds by itself.
+  refresh: () => apiRequest<AuthResponse>('/auth/refresh', { method: 'POST' }),
 
-  refresh: (refreshToken: string) =>
-    apiRequest<RefreshResponse>('/auth/refresh', {
-      method: 'POST',
-      body: JSON.stringify({ refreshToken }),
-    }),
-
-  logout: (token: string) =>
-    apiRequest<{ success: boolean }>('/auth/logout', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+  // keepalive lets the request finish when the page is closing.
+  logout: () =>
+    apiRequest<null>('/auth/logout', { method: 'POST', keepalive: true }),
 };

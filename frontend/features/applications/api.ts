@@ -1,4 +1,4 @@
-import { apiRequest } from "@/lib/api-client";
+import { authRequest } from "@/features/auth/session";
 
 export type ApplicationStatus = "PENDING" | "ACCEPTED" | "REJECTED";
 
@@ -53,44 +53,27 @@ function pageQuery(params: ApplicationsPageParams): string {
 }
 
 export const applicationsApi = {
-  apply: (payload: CreateApplicationPayload, token: string) =>
-    apiRequest<ApplicationFromApi>("/applications", {
+  apply: (payload: CreateApplicationPayload) =>
+    authRequest<ApplicationFromApi>("/applications", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(payload),
     }),
 
-  getAppliedListingIds: (token: string) =>
-    apiRequest<string[]>("/applications/my/listing-ids", {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+  getAppliedListingIds: () =>
+    authRequest<string[]>("/applications/my/listing-ids"),
 
-  getMyApplications: (token: string, params: ApplicationsPageParams = {}) =>
-    apiRequest<ApplicationsPage>(`/applications/my${pageQuery(params)}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+  getMyApplications: (params: ApplicationsPageParams = {}) =>
+    authRequest<ApplicationsPage>(`/applications/my${pageQuery(params)}`),
 
-  getReceivedApplications: (
-    token: string,
-    params: ApplicationsPageParams = {},
-  ) =>
-    apiRequest<ApplicationsPage>(`/applications/received${pageQuery(params)}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+  getReceivedApplications: (params: ApplicationsPageParams = {}) =>
+    authRequest<ApplicationsPage>(`/applications/received${pageQuery(params)}`),
 
-  getForListing: (listingId: string, token: string) =>
-    apiRequest<ApplicationFromApi[]>(`/applications/listing/${listingId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+  getForListing: (listingId: string) =>
+    authRequest<ApplicationFromApi[]>(`/applications/listing/${listingId}`),
 
-  updateStatus: (
-    id: string,
-    payload: UpdateApplicationStatusPayload,
-    token: string,
-  ) =>
-    apiRequest<ApplicationFromApi>(`/applications/${id}/status`, {
+  updateStatus: (id: string, payload: UpdateApplicationStatusPayload) =>
+    authRequest<ApplicationFromApi>(`/applications/${id}/status`, {
       method: "PATCH",
-      headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(payload),
     }),
 };

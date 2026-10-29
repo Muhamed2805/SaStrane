@@ -62,6 +62,24 @@ export function validateEnvironment(config: Record<string, unknown>) {
     throw new Error('PORT must be an integer between 1 and 65535');
   }
 
+  // Too high a value lets clients fake their IP and dodge rate limits; too
+  // low a value makes all users share the proxy's IP.
+  const rawTrustProxyHops =
+    typeof config.TRUST_PROXY_HOPS === 'string' &&
+    config.TRUST_PROXY_HOPS.trim()
+      ? config.TRUST_PROXY_HOPS.trim()
+      : nodeEnv === 'production'
+        ? '1'
+        : '0';
+  const trustProxyHops = Number(rawTrustProxyHops);
+  if (
+    !Number.isInteger(trustProxyHops) ||
+    trustProxyHops < 0 ||
+    trustProxyHops > 10
+  ) {
+    throw new Error('TRUST_PROXY_HOPS must be an integer between 0 and 10');
+  }
+
   if (nodeEnv === 'production') {
     validateSecret(jwtSecret, 'JWT_SECRET');
     requiredString(config, 'CORS_ORIGINS');
@@ -78,5 +96,6 @@ export function validateEnvironment(config: Record<string, unknown>) {
     JWT_SECRET: jwtSecret,
     JWT_EXPIRES_IN: jwtExpiresIn,
     PORT: port,
+    TRUST_PROXY_HOPS: trustProxyHops,
   };
 }

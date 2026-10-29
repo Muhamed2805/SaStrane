@@ -6,12 +6,14 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { SessionRevocationReason } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { createHash, createHmac } from 'crypto';
+import { createHmac } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
 import { UserRole } from './dto/register.dto';
 import { EmailService } from './email.service';
+import { SessionsService, type SessionGrant } from './sessions.service';
 
 jest.mock('bcrypt', () => ({
   compare: jest.fn(),
@@ -53,13 +55,42 @@ describe('AuthService', () => {
     sendVerificationCode: jest.fn<Promise<void>, [input: EmailInput]>(),
     sendPasswordResetCode: jest.fn<Promise<void>, [input: EmailInput]>(),
   };
+  const sessionsService = {
+    create: jest.fn<
+      ReturnType<SessionsService['create']>,
+      Parameters<SessionsService['create']>
+    >(),
+    rotate: jest.fn<
+      ReturnType<SessionsService['rotate']>,
+      Parameters<SessionsService['rotate']>
+    >(),
+    revokeByRefreshToken: jest.fn<Promise<void>, [rawToken: string]>(),
+    revokeAllForUser: jest.fn<
+      Promise<void>,
+      [userId: string, reason: SessionRevocationReason, db: unknown]
+    >(),
+  };
+  type TransactionCallback = (tx: unknown) => Promise<unknown>;
+  const prisma = {
+    user: userRepository,
+    $transaction: jest.fn<Promise<unknown>, [callback: TransactionCallback]>(),
+  };
+  // Interactive transactions run their callback with a client that behaves
+  // like the main one.
+  const runTransaction = (callback: TransactionCallback) => callback(prisma);
 
   const service = new AuthService(
-    { user: userRepository } as unknown as PrismaService,
+    prisma as unknown as PrismaService,
     jwtService as unknown as JwtService,
     configService as unknown as ConfigService,
     emailService as unknown as EmailService,
+    sessionsService as unknown as SessionsService,
   );
+
+  const issuedRefreshToken = {
+    value: 'new-refresh-token',
+    expiresAt: new Date('2026-10-29T12:00:00.000Z'),
+  };
 
   const user = {
     id: 'user-1',
@@ -72,10 +103,16 @@ describe('AuthService', () => {
     emailVerificationExpiresAt: null,
     emailVerificationSentAt: null,
     emailVerificationAttempts: 0,
-    refreshTokenHash: null,
-    refreshTokenExpiresAt: null,
     createdAt: new Date('2026-09-15T12:00:00.000Z'),
     updatedAt: new Date('2026-09-15T12:00:00.000Z'),
+  };
+
+  const publicUser = {
+    id: user.id,
+    email: user.email,
+    fullName: user.fullName,
+    role: user.role,
+    createdAt: user.createdAt,
   };
 
   beforeEach(() => {
@@ -84,6 +121,11 @@ describe('AuthService', () => {
       if (key === 'EMAIL_VERIFICATION_SECRET') return 'verification-secret';
       if (key === 'JWT_SECRET') return 'jwt-secret';
       return undefined;
+    });
+    prisma.$transaction.mockImplementation(runTransaction);
+    sessionsService.create.mockResolvedValue({
+      sessionId: 'session-1',
+      refreshToken: issuedRefreshToken,
     });
   });
 
@@ -203,16 +245,18 @@ describe('AuthService', () => {
   });
 
   describe('login', () => {
-    it('returns a safe user response and rotates the refresh token', async () => {
+    it('returns a safe user response and starts a new session', async () => {
       userRepository.findUnique.mockResolvedValue(user);
       compareMock.mockResolvedValue(true);
       jwtService.signAsync.mockResolvedValue('access-token');
-      userRepository.update.mockResolvedValue(user);
 
-      const result = await service.login({
-        email: 'USER@EXAMPLE.COM',
-        password: 'secure-password',
-      });
+      const result = await service.login(
+        {
+          email: 'USER@EXAMPLE.COM',
+          password: 'secure-password',
+        },
+        'Test Browser',
+      );
 
       expect(userRepository.findUnique).toHaveBeenCalledWith({
         where: { email: 'user@example.com' },
@@ -229,9 +273,19 @@ describe('AuthService', () => {
         createdAt: user.createdAt,
       });
       expect(result.user).not.toHaveProperty('passwordHash');
-      expect(userRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: user.id } }),
+      expect(sessionsService.create).toHaveBeenCalledWith(
+        user.id,
+        'Test Browser',
       );
+      // The session id lets every request check that the session is active.
+      expect(jwtService.signAsync).toHaveBeenCalledWith({
+        sub: user.id,
+        sid: 'session-1',
+        email: user.email,
+        role: user.role,
+      });
+      expect(result.accessToken).toBe('access-token');
+      expect(result.refreshToken).toBe(issuedRefreshToken);
     });
 
     it('rejects an unknown email without comparing a password', async () => {
@@ -260,7 +314,7 @@ describe('AuthService', () => {
       ).rejects.toThrow(UnauthorizedException);
 
       expect(jwtService.signAsync).not.toHaveBeenCalled();
-      expect(userRepository.update).not.toHaveBeenCalled();
+      expect(sessionsService.create).not.toHaveBeenCalled();
     });
 
     it('rejects a valid password until the email is verified', async () => {
@@ -278,7 +332,7 @@ describe('AuthService', () => {
       ).rejects.toThrow(ForbiddenException);
 
       expect(jwtService.signAsync).not.toHaveBeenCalled();
-      expect(userRepository.update).not.toHaveBeenCalled();
+      expect(sessionsService.create).not.toHaveBeenCalled();
     });
   });
 
@@ -296,18 +350,16 @@ describe('AuthService', () => {
         emailVerificationExpiresAt: new Date(Date.now() + 60_000),
         emailVerificationSentAt: new Date(),
       };
-      const verifiedUser = { ...pendingUser, emailVerifiedAt: new Date() };
       userRepository.findUnique.mockResolvedValue(pendingUser);
-      userRepository.update
-        .mockResolvedValueOnce(verifiedUser)
-        .mockResolvedValueOnce(verifiedUser);
+      userRepository.update.mockResolvedValue(publicUser);
       jwtService.signAsync.mockResolvedValue('access-token');
 
       const result = await service.verifyEmail({ email: user.email, code });
 
-      expect(result.user.email).toBe(user.email);
+      expect(result.user).toEqual(publicUser);
       expect(result.accessToken).toBe('access-token');
-      expect(result.refreshToken).toMatch(/^[a-f0-9]{64}$/);
+      expect(result.refreshToken).toBe(issuedRefreshToken);
+      expect(sessionsService.create).toHaveBeenCalledWith(user.id, undefined);
       const verificationUpdate = userRepository.update.mock.calls[0][0] as {
         where: { id: string };
         data: {
@@ -340,6 +392,7 @@ describe('AuthService', () => {
         data: { emailVerificationAttempts: { increment: 1 } },
       });
       expect(jwtService.signAsync).not.toHaveBeenCalled();
+      expect(sessionsService.create).not.toHaveBeenCalled();
     });
   });
 
@@ -473,6 +526,7 @@ describe('AuthService', () => {
       userRepository.findUnique.mockResolvedValue(resetUser);
       hashMock.mockResolvedValue('new-password-hash');
       userRepository.updateMany.mockResolvedValue({ count: 1 });
+      sessionsService.revokeAllForUser.mockResolvedValue(undefined);
 
       await expect(
         service.resetPassword({
@@ -491,10 +545,32 @@ describe('AuthService', () => {
           passwordResetExpiresAt: null,
           passwordResetSentAt: null,
           passwordResetAttempts: 0,
-          refreshTokenHash: null,
-          refreshTokenExpiresAt: null,
         },
       });
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      // Revoking inside the same transaction means a failure cannot leave the
+      // new password in place with old sessions still signed in.
+      expect(sessionsService.revokeAllForUser).toHaveBeenCalledWith(
+        user.id,
+        SessionRevocationReason.PASSWORD_RESET,
+        prisma,
+      );
+    });
+
+    it('rejects a code that a concurrent reset already used', async () => {
+      userRepository.findUnique.mockResolvedValue(resetUser);
+      hashMock.mockResolvedValue('new-password-hash');
+      userRepository.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.resetPassword({
+          email: user.email,
+          code,
+          password: 'new-secure-password',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(sessionsService.revokeAllForUser).not.toHaveBeenCalled();
     });
 
     it('counts an invalid code without hashing a new password', async () => {
@@ -537,70 +613,69 @@ describe('AuthService', () => {
   });
 
   describe('refresh', () => {
-    it('accepts a valid token and replaces it with a new refresh token', async () => {
-      const rawRefreshToken = 'valid-refresh-token';
-      userRepository.findUnique.mockResolvedValue({
-        ...user,
-        refreshTokenExpiresAt: new Date(Date.now() + 60_000),
-      });
+    const grant: SessionGrant = {
+      sessionId: 'session-1',
+      user: publicUser,
+      refreshToken: issuedRefreshToken,
+    };
+
+    it('signs a new access token for the rotated session', async () => {
+      sessionsService.rotate.mockResolvedValue(grant);
       jwtService.signAsync.mockResolvedValue('new-access-token');
-      userRepository.update.mockResolvedValue(user);
 
-      const result = await service.refresh(rawRefreshToken);
-
-      expect(userRepository.findUnique).toHaveBeenCalledWith({
-        where: {
-          refreshTokenHash: createHash('sha256')
-            .update(rawRefreshToken)
-            .digest('hex'),
-        },
+      await expect(service.refresh('current-refresh-token')).resolves.toEqual({
+        user: publicUser,
+        accessToken: 'new-access-token',
+        refreshToken: issuedRefreshToken,
       });
-      expect(result.accessToken).toBe('new-access-token');
-      expect(result.refreshToken).not.toBe(rawRefreshToken);
-      expect(userRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: user.id } }),
+
+      expect(sessionsService.rotate).toHaveBeenCalledWith(
+        'current-refresh-token',
       );
+      expect(jwtService.signAsync).toHaveBeenCalledWith({
+        sub: user.id,
+        sid: 'session-1',
+        email: user.email,
+        role: user.role,
+      });
     });
 
-    it.each([
-      ['unknown', null],
-      ['missing expiry', { ...user, refreshTokenExpiresAt: null }],
-      [
-        'expired',
-        { ...user, refreshTokenExpiresAt: new Date(Date.now() - 60_000) },
-      ],
-    ])('rejects a %s refresh token', async (_case, storedUser) => {
-      userRepository.findUnique.mockResolvedValue(storedUser);
+    it('keeps the current refresh token when a concurrent request rotated it', async () => {
+      sessionsService.rotate.mockResolvedValue({
+        ...grant,
+        refreshToken: null,
+      });
+      jwtService.signAsync.mockResolvedValue('new-access-token');
+
+      const result = await service.refresh('current-refresh-token');
+
+      expect(result.accessToken).toBe('new-access-token');
+      expect(result.refreshToken).toBeNull();
+    });
+
+    it('rejects a token that cannot be used', async () => {
+      sessionsService.rotate.mockResolvedValue(null);
 
       await expect(service.refresh('invalid-refresh-token')).rejects.toThrow(
         UnauthorizedException,
       );
 
       expect(jwtService.signAsync).not.toHaveBeenCalled();
-      expect(userRepository.update).not.toHaveBeenCalled();
     });
   });
 
-  it('revokes the stored refresh token on logout', async () => {
-    userRepository.update.mockResolvedValue(user);
+  it('revokes the session that owns the refresh token on logout', async () => {
+    sessionsService.revokeByRefreshToken.mockResolvedValue(undefined);
 
-    await service.logout(user.id);
+    await service.logout('current-refresh-token');
 
-    expect(userRepository.update).toHaveBeenCalledWith({
-      where: { id: user.id },
-      data: { refreshTokenHash: null, refreshTokenExpiresAt: null },
-    });
+    expect(sessionsService.revokeByRefreshToken).toHaveBeenCalledWith(
+      'current-refresh-token',
+    );
   });
 
   describe('getMe', () => {
     it('returns the public user profile', async () => {
-      const publicUser = {
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName,
-        role: user.role,
-        createdAt: user.createdAt,
-      };
       userRepository.findUnique.mockResolvedValue(publicUser);
 
       await expect(service.getMe(user.id)).resolves.toEqual(publicUser);

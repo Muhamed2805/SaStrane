@@ -43,7 +43,8 @@ const workspaceLinks = [
 ];
 
 export function Navbar() {
-  const { user, logout, openAuthModal, openRegistrationModal } = useAuthStore();
+  const { user, status, logout, openAuthModal, openRegistrationModal } =
+    useAuthStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -155,6 +156,12 @@ export function Navbar() {
                 Objavi oglas
               </Link>
             </div>
+          ) : status === 'loading' ? (
+            // Holds the space of the account buttons until the session is
+            // known, so a signed-in user does not see "Prijava" flash.
+            <div className="flex items-center border-l pl-6" aria-hidden="true">
+              <div className="h-10 w-44 animate-pulse rounded-lg bg-muted" />
+            </div>
           ) : (
             <div className="flex items-center gap-4 border-l pl-6">
               <button
@@ -236,7 +243,7 @@ export function Navbar() {
                 Odjavi se
               </button>
             </>
-          ) : (
+          ) : status === 'loading' ? null : (
             <>
               <button
                 className="py-1 text-left text-sm font-medium text-foreground"

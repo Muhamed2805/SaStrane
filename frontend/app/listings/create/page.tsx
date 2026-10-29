@@ -10,12 +10,22 @@ import {
   ListingForm,
   type ListingFormValues,
 } from '@/features/listings/components/listing-form';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function CreateListingPage() {
   const router = useRouter();
-  const { user, token, openAuthModal } = useAuthStore();
+  const { user, status, openAuthModal } = useAuthStore();
 
-  if (!user || !token) {
+  if (status === 'loading') {
+    return (
+      <div className="space-y-6" aria-busy="true">
+        <Skeleton className="h-24 w-full rounded-2xl" />
+        <Skeleton className="h-[640px] rounded-2xl" />
+      </div>
+    );
+  }
+
+  if (!user) {
     return (
       <div className="mx-auto max-w-xl rounded-2xl border bg-white px-6 py-14 text-center shadow-sm">
         <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -38,14 +48,11 @@ export default function CreateListingPage() {
   }
 
   const handleSubmit = async (values: ListingFormValues) => {
-    const listing = await listingsApi.create(
-      {
-        ...values,
-        budget: values.budget || undefined,
-        description: values.description || undefined,
-      },
-      token,
-    );
+    const listing = await listingsApi.create({
+      ...values,
+      budget: values.budget || undefined,
+      description: values.description || undefined,
+    });
     toast.success('Oglas je uspješno objavljen!');
     router.push(`/listings/${listing.id}`);
   };

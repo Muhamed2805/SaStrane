@@ -75,6 +75,12 @@ function getErrorMessage(payload: unknown, status: number): string {
   return 'Zahtjev nije uspio. Pokušaj ponovo.';
 }
 
+// An error with the standard message for an HTTP status, for failures the
+// client detects itself.
+export function statusError(status: number): ApiError {
+  return new ApiError(getErrorMessage(null, status), status);
+}
+
 function getErrorCode(payload: unknown): string | undefined {
   if (
     payload &&

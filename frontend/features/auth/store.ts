@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { useApplicationsStore } from '@/features/applications/store';
 import {
   ApiError,
@@ -8,13 +7,7 @@ import {
   type LoginPayload,
   type RegisterPayload,
 } from './api';
-
-// Only a genuine 401 means the token is actually invalid. Anything else
-// (rate limiting, a network blip, a 5xx) is transient and must not wipe
-// an otherwise-valid session.
-function isUnauthorized(err: unknown) {
-  return err instanceof ApiError && err.status === 401;
-}
+import { signOut, startSession, subscribeToSession } from './session';
 
 function authErrorMessage(err: unknown) {
   if (err instanceof ApiError && err.status === 429) {
@@ -24,17 +17,15 @@ function authErrorMessage(err: unknown) {
 }
 
 export type AuthModalTab =
-  | 'login'
-  | 'register'
-  | 'verify'
-  | 'forgot'
-  | 'reset'
-  | 'reset-success';
+  'login' | 'register' | 'verify' | 'forgot' | 'reset' | 'reset-success';
+
+// 'loading' until the app knows whether the browser has a session, so pages
+// can wait instead of briefly asking a signed-in user to sign in.
+export type AuthStatus = 'loading' | 'signed-in' | 'signed-out';
 
 type AuthState = {
   user: AuthUser | null;
-  token: string | null;
-  refreshToken: string | null;
+  status: AuthStatus;
   isLoading: boolean;
   error: string | null;
   isAuthModalOpen: boolean;
@@ -55,236 +46,167 @@ type AuthState = {
   requestPasswordReset: (email: string) => Promise<boolean>;
   resetPassword: (code: string, password: string) => Promise<boolean>;
   logout: () => void;
-  restoreSession: () => Promise<void>;
-  refreshAccessToken: () => Promise<void>;
 };
 
-function clearSession(set: (partial: Partial<AuthState>) => void) {
-  useApplicationsStore.getState().reset();
-  set({ user: null, token: null, refreshToken: null });
-}
+export const useAuthStore = create<AuthState>()((set, get) => ({
+  user: null,
+  status: 'loading',
+  isLoading: false,
+  error: null,
+  isAuthModalOpen: false,
+  authModalTab: 'login',
+  verificationEmail: null,
+  passwordResetEmail: null,
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      token: null,
-      refreshToken: null,
-      isLoading: false,
+  openAuthModal: () =>
+    set({
+      isAuthModalOpen: true,
+      authModalTab: 'login',
+      verificationEmail: null,
+      passwordResetEmail: null,
       error: null,
+    }),
+  openRegistrationModal: () =>
+    set({
+      isAuthModalOpen: true,
+      authModalTab: 'register',
+      verificationEmail: null,
+      passwordResetEmail: null,
+      error: null,
+    }),
+  closeAuthModal: () =>
+    set({
       isAuthModalOpen: false,
       authModalTab: 'login',
       verificationEmail: null,
       passwordResetEmail: null,
-
-      openAuthModal: () =>
-        set({
-          isAuthModalOpen: true,
-          authModalTab: 'login',
-          verificationEmail: null,
-          passwordResetEmail: null,
-          error: null,
-        }),
-      openRegistrationModal: () =>
-        set({
-          isAuthModalOpen: true,
-          authModalTab: 'register',
-          verificationEmail: null,
-          passwordResetEmail: null,
-          error: null,
-        }),
-      closeAuthModal: () =>
-        set({
-          isAuthModalOpen: false,
-          authModalTab: 'login',
-          verificationEmail: null,
-          passwordResetEmail: null,
-          error: null,
-        }),
-      clearError: () => set({ error: null }),
-      setAuthModalTab: (authModalTab) => set({ authModalTab, error: null }),
-
-      login: async (payload) => {
-        set({ isLoading: true, error: null });
-        try {
-          const { user, accessToken, refreshToken } =
-            await authApi.login(payload);
-          set({
-            user,
-            token: accessToken,
-            refreshToken,
-            isLoading: false,
-            isAuthModalOpen: false,
-          });
-        } catch (err) {
-          if (err instanceof ApiError && err.code === 'EMAIL_NOT_VERIFIED') {
-            set({
-              authModalTab: 'verify',
-              verificationEmail: payload.email.trim().toLowerCase(),
-              error: null,
-              isLoading: false,
-            });
-            return;
-          }
-          set({ error: authErrorMessage(err), isLoading: false });
-        }
-      },
-
-      register: async (payload) => {
-        set({ isLoading: true, error: null });
-        try {
-          const response = await authApi.register(payload);
-          set({
-            authModalTab: 'verify',
-            verificationEmail: response.email,
-            isLoading: false,
-          });
-        } catch (err) {
-          if (
-            err instanceof ApiError &&
-            err.code === 'EMAIL_VERIFICATION_PENDING'
-          ) {
-            set({
-              authModalTab: 'verify',
-              verificationEmail: payload.email.trim().toLowerCase(),
-              error: null,
-              isLoading: false,
-            });
-            return;
-          }
-          set({ error: authErrorMessage(err), isLoading: false });
-        }
-      },
-
-      verifyEmail: async (code) => {
-        const email = get().verificationEmail;
-        if (!email) return false;
-
-        set({ isLoading: true, error: null });
-        try {
-          const { user, accessToken, refreshToken } = await authApi.verifyEmail(
-            email,
-            code,
-          );
-          set({
-            user,
-            token: accessToken,
-            refreshToken,
-            isLoading: false,
-            isAuthModalOpen: false,
-            authModalTab: 'login',
-            verificationEmail: null,
-          });
-          return true;
-        } catch (err) {
-          set({ error: authErrorMessage(err), isLoading: false });
-          return false;
-        }
-      },
-
-      resendVerification: async () => {
-        const email = get().verificationEmail;
-        if (!email) return false;
-
-        set({ isLoading: true, error: null });
-        try {
-          await authApi.resendVerification(email);
-          set({ isLoading: false });
-          return true;
-        } catch (err) {
-          set({ error: authErrorMessage(err), isLoading: false });
-          return false;
-        }
-      },
-
-      requestPasswordReset: async (emailInput) => {
-        const email = emailInput.trim().toLowerCase();
-        set({ isLoading: true, error: null });
-        try {
-          await authApi.forgotPassword(email);
-          set({
-            authModalTab: 'reset',
-            passwordResetEmail: email,
-            isLoading: false,
-          });
-          return true;
-        } catch (err) {
-          set({ error: authErrorMessage(err), isLoading: false });
-          return false;
-        }
-      },
-
-      resetPassword: async (code, password) => {
-        const email = get().passwordResetEmail;
-        if (!email) return false;
-
-        set({ isLoading: true, error: null });
-        try {
-          await authApi.resetPassword(email, code, password);
-          set({
-            authModalTab: 'reset-success',
-            passwordResetEmail: null,
-            isLoading: false,
-          });
-          return true;
-        } catch (err) {
-          set({ error: authErrorMessage(err), isLoading: false });
-          return false;
-        }
-      },
-
-      logout: () => {
-        const token = get().token;
-        if (token) {
-          // best-effort: invalidate the refresh token server-side, don't block the UI on it
-          authApi.logout(token).catch(() => {});
-        }
-        clearSession(set);
-      },
-
-      restoreSession: async () => {
-        const { token, refreshToken } = get();
-        if (!token) return;
-
-        try {
-          const user = await authApi.me(token);
-          set({ user });
-          return;
-        } catch (err) {
-          if (!isUnauthorized(err)) return; // transient failure — keep the session, try again later
-          // access token has genuinely expired — fall through to a refresh attempt
-        }
-
-        if (refreshToken) {
-          try {
-            await get().refreshAccessToken();
-            const user = await authApi.me(get().token!);
-            set({ user });
-            return;
-          } catch (err) {
-            if (!isUnauthorized(err)) return; // transient failure — keep the session, try again later
-            // refresh token is also genuinely invalid/expired
-          }
-        }
-
-        clearSession(set);
-      },
-
-      refreshAccessToken: async () => {
-        const refreshToken = get().refreshToken;
-        if (!refreshToken) throw new Error('No refresh token');
-
-        const { accessToken, refreshToken: newRefreshToken } =
-          await authApi.refresh(refreshToken);
-        set({ token: accessToken, refreshToken: newRefreshToken });
-      },
+      error: null,
     }),
-    {
-      name: 'auth-storage',
-      partialize: (state) => ({
-        token: state.token,
-        refreshToken: state.refreshToken,
-      }),
-    },
-  ),
-);
+  clearError: () => set({ error: null }),
+  setAuthModalTab: (authModalTab) => set({ authModalTab, error: null }),
+
+  login: async (payload) => {
+    set({ isLoading: true, error: null });
+    try {
+      startSession(await authApi.login(payload));
+      set({ isLoading: false, isAuthModalOpen: false });
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'EMAIL_NOT_VERIFIED') {
+        set({
+          authModalTab: 'verify',
+          verificationEmail: payload.email.trim().toLowerCase(),
+          error: null,
+          isLoading: false,
+        });
+        return;
+      }
+      set({ error: authErrorMessage(err), isLoading: false });
+    }
+  },
+
+  register: async (payload) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await authApi.register(payload);
+      set({
+        authModalTab: 'verify',
+        verificationEmail: response.email,
+        isLoading: false,
+      });
+    } catch (err) {
+      if (
+        err instanceof ApiError &&
+        err.code === 'EMAIL_VERIFICATION_PENDING'
+      ) {
+        set({
+          authModalTab: 'verify',
+          verificationEmail: payload.email.trim().toLowerCase(),
+          error: null,
+          isLoading: false,
+        });
+        return;
+      }
+      set({ error: authErrorMessage(err), isLoading: false });
+    }
+  },
+
+  verifyEmail: async (code) => {
+    const email = get().verificationEmail;
+    if (!email) return false;
+
+    set({ isLoading: true, error: null });
+    try {
+      startSession(await authApi.verifyEmail(email, code));
+      set({
+        isLoading: false,
+        isAuthModalOpen: false,
+        authModalTab: 'login',
+        verificationEmail: null,
+      });
+      return true;
+    } catch (err) {
+      set({ error: authErrorMessage(err), isLoading: false });
+      return false;
+    }
+  },
+
+  resendVerification: async () => {
+    const email = get().verificationEmail;
+    if (!email) return false;
+
+    set({ isLoading: true, error: null });
+    try {
+      await authApi.resendVerification(email);
+      set({ isLoading: false });
+      return true;
+    } catch (err) {
+      set({ error: authErrorMessage(err), isLoading: false });
+      return false;
+    }
+  },
+
+  requestPasswordReset: async (emailInput) => {
+    const email = emailInput.trim().toLowerCase();
+    set({ isLoading: true, error: null });
+    try {
+      await authApi.forgotPassword(email);
+      set({
+        authModalTab: 'reset',
+        passwordResetEmail: email,
+        isLoading: false,
+      });
+      return true;
+    } catch (err) {
+      set({ error: authErrorMessage(err), isLoading: false });
+      return false;
+    }
+  },
+
+  resetPassword: async (code, password) => {
+    const email = get().passwordResetEmail;
+    if (!email) return false;
+
+    set({ isLoading: true, error: null });
+    try {
+      await authApi.resetPassword(email, code, password);
+      set({
+        authModalTab: 'reset-success',
+        passwordResetEmail: null,
+        isLoading: false,
+      });
+      return true;
+    } catch (err) {
+      set({ error: authErrorMessage(err), isLoading: false });
+      return false;
+    }
+  },
+
+  logout: () => signOut(),
+}));
+
+// The session also changes without a store action: when a refresh finds
+// the session ended, or another tab signs in or out.
+subscribeToSession((user) => {
+  if (!user) useApplicationsStore.getState().reset();
+  useAuthStore.setState({ user, status: user ? 'signed-in' : 'signed-out' });
+});
