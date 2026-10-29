@@ -6,12 +6,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { SessionRevocationReason } from '../generated/prisma/enums';
+import { SessionRevocationReason, UserRole } from '../generated/prisma/enums';
 import * as bcrypt from 'bcrypt';
 import { createHmac } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
-import { UserRole } from './dto/register.dto';
 import { EmailService } from './email.service';
 import { SessionsService, type SessionGrant } from './sessions.service';
 

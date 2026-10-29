@@ -1,52 +1,19 @@
 import { authRequest } from "@/features/auth/session";
+import type { components, operations } from "@/lib/api-schema";
 import { apiRequest } from "@/lib/api-client";
 
-export type ListingFromApi = {
-  id: string;
-  title: string;
-  category: string;
-  location: string;
-  budget: string | null;
-  description?: string | null;
-  createdAt: string;
-  client: {
-    id: string;
-    fullName: string;
-  };
-};
+// The types come from the backend's openapi.json. See lib/api-schema.d.ts.
+type Schemas = components["schemas"];
 
-export type ListingsPage = {
-  items: ListingFromApi[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-};
-
-export type GetAllListingsParams = {
-  page?: number;
-  limit?: number;
-  clientId?: string;
-  q?: string;
-  category?: string;
-  location?: string;
-};
-
-export type CreateListingPayload = {
-  title: string;
-  category: string;
-  location: string;
-  budget?: string;
-  description?: string;
-};
-
-export type UpdateListingPayload = Partial<{
-  title: string;
-  category: string;
-  location: string;
-  budget: string | null;
-  description: string | null;
-}>;
+// A job as lists show it, without the description.
+export type ListingSummary = Schemas["ListingSummaryDto"];
+export type Listing = Schemas["ListingDto"];
+export type ListingsPage = Schemas["ListingsPageDto"];
+export type GetAllListingsParams = NonNullable<
+  operations["listings_getAll"]["parameters"]["query"]
+>;
+export type CreateListingPayload = Schemas["CreateListingDto"];
+export type UpdateListingPayload = Schemas["UpdateListingDto"];
 
 export const listingsApi = {
   getAll: (params: GetAllListingsParams = {}, signal?: AbortSignal) => {
@@ -64,20 +31,21 @@ export const listingsApi = {
   },
 
   getById: (id: string) =>
-    apiRequest<ListingFromApi>(`/listings/${id}`, { cache: "no-store" }),
+    apiRequest<Listing>(`/listings/${id}`, { cache: "no-store" }),
 
   create: (payload: CreateListingPayload) =>
-    authRequest<ListingFromApi>("/listings", {
+    authRequest<Listing>("/listings", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
 
   update: (id: string, payload: UpdateListingPayload) =>
-    authRequest<ListingFromApi>(`/listings/${id}`, {
+    authRequest<Listing>(`/listings/${id}`, {
       method: "PATCH",
       body: JSON.stringify(payload),
     }),
 
+  // Answers 204 without a body.
   delete: (id: string) =>
-    authRequest<void>(`/listings/${id}`, { method: "DELETE" }),
+    authRequest<null>(`/listings/${id}`, { method: "DELETE" }),
 };

@@ -90,6 +90,10 @@ jobs:
       - name: Build
         run: npm run build
 
+      # Fails when a controller or DTO changed without npm run openapi.
+      - name: Check that openapi.json matches the code
+        run: node dist/openapi/generate.js && git diff --exit-code -- openapi.json
+
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
@@ -115,6 +119,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # Fails when openapi.json changed without npm run api:types.
+      - name: Check that the API types match openapi.json
+        run: npm run api:types -- --check
 
       - name: Lint
         run: npm run lint

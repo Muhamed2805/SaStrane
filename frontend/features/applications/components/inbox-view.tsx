@@ -15,9 +15,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store';
-import { listingsApi, type ListingFromApi } from '@/features/listings/api';
+import { listingsApi, type ListingSummary } from '@/features/listings/api';
 import { MyListingCard } from '@/features/listings/components/my-listing-card';
-import { applicationsApi, type ApplicationFromApi } from '../api';
+import {
+  applicationsApi,
+  type MyApplication,
+  type ReceivedApplication,
+} from '../api';
 import { ApplicationCardSkeleton } from './application-card-skeleton';
 import { MyApplicationCard } from './my-application-card';
 import { ReceivedApplicationCard } from './received-application-card';
@@ -93,12 +97,10 @@ export function InboxView({
   const router = useRouter();
   const { user, status: authStatus, openAuthModal } = useAuthStore();
   const [activeTab, setActiveTab] = useState<InboxTab>(initialTab);
-  const [myListings, setMyListings] = useState<ListingFromApi[]>([]);
-  const [myApplications, setMyApplications] = useState<ApplicationFromApi[]>(
-    [],
-  );
+  const [myListings, setMyListings] = useState<ListingSummary[]>([]);
+  const [myApplications, setMyApplications] = useState<MyApplication[]>([]);
   const [receivedApplications, setReceivedApplications] = useState<
-    ApplicationFromApi[]
+    ReceivedApplication[]
   >([]);
   const [reloadCount, setReloadCount] = useState(0);
   const [loadResult, setLoadResult] = useState<{

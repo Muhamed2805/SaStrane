@@ -2,12 +2,12 @@ import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerStorage, ThrottlerStorageService } from '@nestjs/throttler';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 import { EmailService } from '../src/auth/email.service';
 import { ROTATION_GRACE_MS } from '../src/auth/sessions.service';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { contractCheckedRequest } from './openapi-contract';
 import {
   CapturingEmailService,
   PASSWORD,
@@ -18,7 +18,8 @@ import {
 } from './helpers';
 
 // The app runs with its real configuration against the e2e database. Only
-// email delivery and the rate limiter's storage are swapped out.
+// email delivery and the rate limiter's storage are swapped out. Every
+// response must match openapi.json.
 
 // The app's real in-memory rate limiter, swapped for a fresh one before each
 // test. Otherwise limits such as the login one run out across tests.
@@ -46,6 +47,7 @@ const listingInput = {
 describe('App (e2e)', () => {
   const throttlerStorage = new ResettableThrottlerStorage();
   const emails = new CapturingEmailService();
+  const contractViolations: string[] = [];
   let app: NestExpressApplication;
   let prisma: PrismaService;
 
@@ -76,7 +78,12 @@ describe('App (e2e)', () => {
     throttlerStorage.reset();
   });
 
-  const http = () => request(app.getHttpServer());
+  afterEach(() => {
+    expect(contractViolations.splice(0)).toEqual([]);
+  });
+
+  const http = () =>
+    contractCheckedRequest(app.getHttpServer(), contractViolations);
 
   async function login(email: string, password = PASSWORD) {
     const response = await http()
@@ -358,6 +365,19 @@ describe('App (e2e)', () => {
       await http().post('/api/listings').send(listingInput).expect(401);
     });
 
+    it('returns a new job in the same shape as GET /api/listings/:id', async () => {
+      const { user, auth } = await signedInUser('Amra Hodžić');
+
+      const created = await postListing(auth);
+      const fetched = await http().get(`/api/listings/${created.id}`);
+
+      expect(created).toEqual(fetched.body);
+      expect(created).toMatchObject({
+        ...listingInput,
+        client: { id: user.id, fullName: 'Amra Hodžić' },
+      });
+    });
+
     it('filters jobs by category and location, and searches without case', async () => {
       const { auth } = await signedInUser();
       await postListing(auth);
@@ -447,11 +467,12 @@ describe('App (e2e)', () => {
         .send({ listingId: id, message: 'Mogu doći sutra poslijepodne.' })
         .expect(201);
 
-      await http()
+      const deleted = await http()
         .delete(`/api/listings/${id}`)
         .set('Authorization', owner.auth)
-        .expect(200);
+        .expect(204);
 
+      expect(deleted.text).toBe('');
       await http().get(`/api/listings/${id}`).expect(404);
       expect(await prisma.application.count()).toBe(0);
     });

@@ -7,9 +7,9 @@ import {
   Pencil,
 } from 'lucide-react';
 import { formatDate } from '@/lib/format-date';
-import type { ListingFromApi } from '../api';
+import type { ListingSummary } from '../api';
 
-export function MyListingCard({ listing }: { listing: ListingFromApi }) {
+export function MyListingCard({ listing }: { listing: ListingSummary }) {
   return (
     <article className="rounded-xl border bg-white p-5 shadow-sm transition-colors hover:border-primary/30">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">

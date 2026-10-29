@@ -10,6 +10,39 @@ import { CreateApplicationDto } from './dto/create-application.dto';
 import { ApplicationsQueryDto } from './dto/applications-query.dto';
 import { UpdateApplicationStatusDto } from './dto/update-application-status.dto';
 
+// The fields of the DTOs in application-response.dto.ts.
+const APPLICATION_SELECT = {
+  id: true,
+  listingId: true,
+  message: true,
+  proposedPrice: true,
+  status: true,
+  createdAt: true,
+} satisfies Prisma.ApplicationSelect;
+
+const LISTING_SELECT = {
+  select: { title: true, category: true, location: true },
+} satisfies Prisma.ListingDefaultArgs;
+
+const EXECUTOR_SELECT = {
+  select: { id: true, fullName: true, email: true },
+} satisfies Prisma.UserDefaultArgs;
+
+const MY_APPLICATION_SELECT = {
+  ...APPLICATION_SELECT,
+  listing: LISTING_SELECT,
+} satisfies Prisma.ApplicationSelect;
+
+const LISTING_APPLICATION_SELECT = {
+  ...APPLICATION_SELECT,
+  executor: EXECUTOR_SELECT,
+} satisfies Prisma.ApplicationSelect;
+
+const RECEIVED_APPLICATION_SELECT = {
+  ...LISTING_APPLICATION_SELECT,
+  listing: LISTING_SELECT,
+} satisfies Prisma.ApplicationSelect;
+
 @Injectable()
 export class ApplicationsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -33,14 +66,7 @@ export class ApplicationsService {
           message: dto.message,
           proposedPrice: dto.proposedPrice,
         },
-        select: {
-          id: true,
-          listingId: true,
-          message: true,
-          proposedPrice: true,
-          status: true,
-          createdAt: true,
-        },
+        select: APPLICATION_SELECT,
       });
     } catch (error) {
       if (
@@ -73,21 +99,7 @@ export class ApplicationsService {
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
-        select: {
-          id: true,
-          listingId: true,
-          message: true,
-          proposedPrice: true,
-          status: true,
-          createdAt: true,
-          listing: {
-            select: {
-              title: true,
-              category: true,
-              location: true,
-            },
-          },
-        },
+        select: MY_APPLICATION_SELECT,
       }),
       this.prisma.application.count({ where }),
     ]);
@@ -106,28 +118,7 @@ export class ApplicationsService {
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
-        select: {
-          id: true,
-          listingId: true,
-          message: true,
-          proposedPrice: true,
-          status: true,
-          createdAt: true,
-          listing: {
-            select: {
-              title: true,
-              category: true,
-              location: true,
-            },
-          },
-          executor: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true,
-            },
-          },
-        },
+        select: RECEIVED_APPLICATION_SELECT,
       }),
       this.prisma.application.count({ where }),
     ]);
@@ -149,21 +140,7 @@ export class ApplicationsService {
     return this.prisma.application.findMany({
       where: { listingId },
       orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        listingId: true,
-        message: true,
-        proposedPrice: true,
-        status: true,
-        createdAt: true,
-        executor: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-          },
-        },
-      },
+      select: LISTING_APPLICATION_SELECT,
     });
   }
 
@@ -191,21 +168,7 @@ export class ApplicationsService {
     return this.prisma.application.update({
       where: { id },
       data: { status: dto.status },
-      select: {
-        id: true,
-        listingId: true,
-        message: true,
-        proposedPrice: true,
-        status: true,
-        createdAt: true,
-        executor: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-          },
-        },
-      },
+      select: LISTING_APPLICATION_SELECT,
     });
   }
 }

@@ -18,6 +18,9 @@ updates:
       # The client, the CLI and the adapter must move together, majors too.
       prisma:
         patterns: ["prisma", "@prisma/*"]
+      # The framework packages share one release line, majors too.
+      nestjs:
+        patterns: ["@nestjs/*"]
       production-dependencies:
         dependency-type: production
         update-types: [minor, patch]

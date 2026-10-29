@@ -17,7 +17,7 @@ import {
 import {
   listingsApi,
   type GetAllListingsParams,
-  type ListingFromApi,
+  type ListingSummary,
 } from '../api';
 import { ListingCard } from './listing-card';
 import { ListingCardSkeleton } from './listing-card-skeleton';
@@ -63,7 +63,7 @@ export function ListingsFeed({
   initialCategory?: string;
   initialLocation?: string;
 }) {
-  const [listings, setListings] = useState<ListingFromApi[]>([]);
+  const [listings, setListings] = useState<ListingSummary[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);

@@ -53,6 +53,7 @@ CLI. Variables already set in the environment win.
 | `npm test` | Runs the unit tests (Jest). |
 | `npm run test:e2e` | Runs HTTP tests against the whole app and a real PostgreSQL. |
 | `npm run test:cov` | Runs the unit tests with coverage. |
+| `npm run openapi` | Builds the app and writes the API contract to `openapi.json`. |
 
 ## Database
 
@@ -90,6 +91,24 @@ it answers 503.
 Jest runs with `--experimental-vm-modules`, because the Prisma 7 client loads
 its query compiler with a dynamic `import()`.
 
+## API contract
+
+`openapi.json` describes every route, request and response. The
+`@nestjs/swagger` compiler plugin reads it from the controllers and the DTOs:
+the types, the validation decorators and the JSDoc comments. The response
+DTOs are in the `dto/*-response.dto.ts` files.
+
+- After a change to a controller or a DTO, run `npm run openapi` and commit
+  `openapi.json`. CI fails when the file is out of date.
+- The frontend generates its API types from this file with
+  `npm run api:types`.
+- The end-to-end tests check every response against the file. A test fails
+  when a status is not documented for its route, or when a body has a field
+  that is missing, has the wrong type, or is not in the contract.
+- In development, the interactive docs are at
+  <http://localhost:4000/api/docs> and the document at `/api/docs-json`.
+  Production does not serve them.
+
 ## API
 
 **Auth** is a Bearer access token, from login or refresh. **Owner** means the
@@ -109,9 +128,9 @@ token's user must own the job.
 | `POST` | `/api/auth/reset-password` | | Sets a new password and revokes all sessions. |
 | `GET` | `/api/listings` | | Lists jobs. Filters: `q`, `category`, `location`, `clientId`. Paging: `page`, `limit` (max 100). |
 | `GET` | `/api/listings/:id` | | Returns one job. |
-| `POST` | `/api/listings` | Bearer | Creates a job. |
+| `POST` | `/api/listings` | Bearer | Creates a job and returns it like `GET /api/listings/:id`. |
 | `PATCH` | `/api/listings/:id` | Owner | Updates a job. |
-| `DELETE` | `/api/listings/:id` | Owner | Deletes a job and its applications. |
+| `DELETE` | `/api/listings/:id` | Owner | Deletes a job and its applications. Returns 204. |
 | `POST` | `/api/applications` | Bearer | Applies to a job, once per job. |
 | `GET` | `/api/applications/my` | Bearer | Lists the applications you sent. |
 | `GET` | `/api/applications/my/listing-ids` | Bearer | Lists the IDs of the jobs you applied to. |
@@ -122,7 +141,11 @@ token's user must own the job.
 **Lists.** Paged lists return
 `{ items, total, page, limit, totalPages }`.
 
-**Errors.** Errors use the standard NestJS shape. Unique conflicts return
+**Errors.** Errors use the standard NestJS shape,
+`{ statusCode, message, error }`. Errors that the frontend must tell apart
+return `{ code, message }` instead, such as `EMAIL_NOT_VERIFIED` on login.
+`openapi.json` lists the codes and the error statuses of every route. Unique
+conflicts return
 409, and missing records return 404. When the database cannot be reached,
 routes that need it return 503.
 

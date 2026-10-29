@@ -130,6 +130,10 @@ flowchart LR
   straight from `BACKEND_URL`.
 - **Health check.** `GET /health` checks the database too, and returns 503
   when it does not answer.
+- **Typed API contract.** The backend writes `backend/openapi.json` from its
+  controllers and DTOs, and the frontend generates its API types from that
+  file. The backend end-to-end tests check every response against it, and
+  CI fails when the file or the types are out of date.
 
 ### Sign-in and sessions
 
@@ -238,13 +242,15 @@ SaStrane/
 │   │   ├── applications/    Applications to jobs
 │   │   ├── common/          Error filters and transforms
 │   │   ├── config/          Environment validation, CORS
+│   │   ├── openapi/         Generates the API contract
 │   │   └── prisma/          Database client
-│   └── test/                End-to-end tests on PostgreSQL
+│   ├── test/                End-to-end tests on PostgreSQL
+│   └── openapi.json         The API contract
 ├── frontend/                Next.js app
 │   ├── app/                 Routes
 │   ├── features/            Auth, listings, applications, landing
 │   ├── components/          Shared UI
-│   ├── lib/                 API client, formatting
+│   ├── lib/                 API client, generated API types, formatting
 │   └── e2e/                 Playwright tests
 ├── docs/screenshots/
 └── docker-compose.yml       Local PostgreSQL
@@ -306,6 +312,10 @@ covers the frontend scripts and tests.
 | Unit tests | `npm test` (Jest) | `npm test` (Vitest) |
 | End-to-end | `npm run test:e2e` (Supertest, real PostgreSQL) | `npm run test:e2e` (Playwright, mocked API) |
 | Build | `npm run build` | `npm run build` |
+| API contract | `npm run openapi` | `npm run api:types` |
+
+After a change to a controller or a DTO, run `npm run openapi` in `backend/`
+and then `npm run api:types` in `frontend/`, and commit both files.
 
 The backend end-to-end tests need the Docker database. They create their
 own `sastrane_test` database, apply the migrations and empty every table
@@ -313,12 +323,12 @@ before each test, so they never touch your development data.
 
 GitHub Actions runs all of these for both apps on pushes and pull requests
 to `main`. The backend job also runs PostgreSQL. It applies the migrations,
-checks that they match `schema.prisma` and runs the seed. Every Monday,
+checks that they match `schema.prisma` and runs the seed. Both jobs check
+that the API contract and the frontend types are up to date. Every Monday,
 Dependabot opens update PRs, grouped so that related packages move together.
 
 ## Roadmap
 
-- **API contract:** an OpenAPI spec with generated frontend types.
 - **Jobs and applications:** an open and closed lifecycle for jobs, prices
   stored as numbers, fixed category and location lists, and the executor's
   email shown only after acceptance.

@@ -1,0 +1,4 @@
+# Generated files. LF everywhere, so the checks that compare them with a
+# fresh generation pass on Windows too. GitHub collapses them in diffs.
+backend/openapi.json text eol=lf linguist-generated=true
+frontend/lib/api-schema.d.ts text eol=lf linguist-generated=true

@@ -5,8 +5,8 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store';
 import {
   applicationsApi,
-  type ApplicationFromApi,
   type ApplicationStatus,
+  type ListingApplication,
 } from '../api';
 import { ApplicationCardSkeleton } from './application-card-skeleton';
 import { ReceivedApplicationCard } from './received-application-card';
@@ -23,7 +23,7 @@ export function ListingApplications({
   clientId,
 }: ListingApplicationsProps) {
   const user = useAuthStore((state) => state.user);
-  const [applications, setApplications] = useState<ApplicationFromApi[]>([]);
+  const [applications, setApplications] = useState<ListingApplication[]>([]);
   const [reloadCount, setReloadCount] = useState(0);
   const [loadResult, setLoadResult] = useState<{
     key: string;
