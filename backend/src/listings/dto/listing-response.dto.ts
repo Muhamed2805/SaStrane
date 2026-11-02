@@ -1,4 +1,10 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { PageDto } from '../../common/dto/page.dto';
+import {
+  ListingCategory,
+  ListingLocation,
+  ListingStatus,
+} from '../../generated/prisma/enums';
 
 // The user who posted the job.
 export class ListingClientDto {
@@ -13,12 +19,18 @@ export class ListingSummaryDto {
 
   title!: string;
 
-  category!: string;
+  @ApiProperty({ enum: ListingCategory, enumName: 'ListingCategory' })
+  category!: ListingCategory;
 
-  location!: string;
+  @ApiProperty({ enum: ListingLocation, enumName: 'ListingLocation' })
+  location!: ListingLocation;
 
-  /** Free text, such as "50 KM". */
-  budget!: string | null;
+  /** Only OPEN jobs take applications. */
+  @ApiProperty({ enum: ListingStatus, enumName: 'ListingStatus' })
+  status!: ListingStatus;
+
+  /** In whole KM. Null means the price is agreed later. */
+  budget!: number | null;
 
   createdAt!: Date;
 

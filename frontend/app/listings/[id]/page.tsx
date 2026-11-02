@@ -9,10 +9,16 @@ import {
   UserRound,
 } from 'lucide-react';
 import { listingsApi } from '@/features/listings/api';
+import { ClosedBadge } from '@/features/listings/components/closed-badge';
 import { ListingActions } from '@/features/listings/components/listing-actions';
 import { ListingCard } from '@/features/listings/components/listing-card';
+import {
+  CATEGORY_LABELS,
+  LOCATION_LABELS,
+} from '@/features/listings/constants';
 import { ListingApplications } from '@/features/applications/components/listing-applications';
 import { formatDate } from '@/lib/format-date';
+import { formatPrice } from '@/lib/format-price';
 import { ApiError } from '@/lib/api-client';
 
 type PageProps = {
@@ -34,7 +40,7 @@ export default async function ListingDetailsPage({ params }: PageProps) {
   }
 
   const relatedListings = await listingsApi
-    .getAll({ category: listing.category, limit: 4 })
+    .getAll({ category: listing.category, status: 'OPEN', limit: 4 })
     .then((response) =>
       response.items.filter((item) => item.id !== listing.id).slice(0, 3),
     )
@@ -61,12 +67,13 @@ export default async function ListingDetailsPage({ params }: PageProps) {
           <header className="rounded-2xl border bg-white p-6 shadow-sm sm:p-8">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                {listing.category}
+                {CATEGORY_LABELS[listing.category]}
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
                 <MapPin className="size-3.5 text-primary" aria-hidden="true" />
-                {listing.location}
+                {LOCATION_LABELS[listing.location]}
               </span>
+              <ClosedBadge status={listing.status} />
             </div>
 
             <h1 className="mt-5 text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
@@ -105,7 +112,7 @@ export default async function ListingDetailsPage({ params }: PageProps) {
                   Kategorija
                 </dt>
                 <dd className="mt-2 text-sm font-semibold">
-                  {listing.category}
+                  {CATEGORY_LABELS[listing.category]}
                 </dd>
               </div>
               <div className="rounded-xl bg-muted/60 p-4">
@@ -114,7 +121,7 @@ export default async function ListingDetailsPage({ params }: PageProps) {
                   Lokacija
                 </dt>
                 <dd className="mt-2 text-sm font-semibold">
-                  {listing.location}
+                  {LOCATION_LABELS[listing.location]}
                 </dd>
               </div>
             </dl>
@@ -127,12 +134,13 @@ export default async function ListingDetailsPage({ params }: PageProps) {
               Predviđeni budžet
             </p>
             <p className="mt-2 text-3xl font-bold text-brand-orange-dark">
-              {listing.budget || 'Po dogovoru'}
+              {formatPrice(listing.budget)}
             </p>
             <div className="my-6 border-t" />
             <ListingActions
               listingId={listing.id}
               clientId={listing.client.id}
+              status={listing.status}
             />
             <div className="mt-5 flex gap-3 rounded-xl bg-primary/[0.06] p-4">
               <ShieldCheck
@@ -189,7 +197,7 @@ export default async function ListingDetailsPage({ params }: PageProps) {
               </h2>
             </div>
             <Link
-              href={`/listings?category=${encodeURIComponent(listing.category)}`}
+              href={`/listings?category=${listing.category}`}
               className="text-sm font-semibold text-primary hover:underline"
             >
               Pogledaj sve

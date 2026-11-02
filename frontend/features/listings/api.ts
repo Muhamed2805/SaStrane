@@ -14,6 +14,9 @@ export type GetAllListingsParams = NonNullable<
 >;
 export type CreateListingPayload = Schemas["CreateListingDto"];
 export type UpdateListingPayload = Schemas["UpdateListingDto"];
+export type ListingCategory = Schemas["ListingCategory"];
+export type ListingLocation = Schemas["ListingLocation"];
+export type ListingStatus = Schemas["ListingStatus"];
 
 export const listingsApi = {
   getAll: (params: GetAllListingsParams = {}, signal?: AbortSignal) => {
@@ -24,6 +27,7 @@ export const listingsApi = {
     if (params.q) searchParams.set("q", params.q);
     if (params.category) searchParams.set("category", params.category);
     if (params.location) searchParams.set("location", params.location);
+    if (params.status) searchParams.set("status", params.status);
     const query = searchParams.toString();
     return apiRequest<ListingsPage>(`/listings${query ? `?${query}` : ""}`, {
       signal,
@@ -43,6 +47,13 @@ export const listingsApi = {
     authRequest<Listing>(`/listings/${id}`, {
       method: "PATCH",
       body: JSON.stringify(payload),
+    }),
+
+  // A closed job takes no new applications.
+  updateStatus: (id: string, status: ListingStatus) =>
+    authRequest<Listing>(`/listings/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
     }),
 
   // Answers 204 without a body.

@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   FileText,
   LoaderCircle,
+  Lock,
   MapPin,
   Send,
   Tag,
@@ -14,6 +15,12 @@ import {
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store';
 import { listingsApi, type Listing } from '@/features/listings/api';
+import {
+  CATEGORY_LABELS,
+  LOCATION_LABELS,
+  MAX_PRICE_KM,
+} from '@/features/listings/constants';
+import { formatPrice, parsePrice } from '@/lib/format-price';
 import { useApplicationsStore } from '../store';
 
 export function ApplyModal() {
@@ -92,7 +99,7 @@ export function ApplyModal() {
     event.preventDefault();
     if (!user) return;
 
-    await submitApplication(activeListingId, message.trim(), price.trim());
+    await submitApplication(activeListingId, message.trim(), parsePrice(price));
     if (!useApplicationsStore.getState().error) {
       setMessage('');
       setPrice('');
@@ -102,6 +109,7 @@ export function ApplyModal() {
 
   const currentListing =
     listingDetails?.id === activeListingId ? listingDetails : null;
+  const isClosed = currentListing?.status === 'CLOSED';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -147,18 +155,18 @@ export function ApplyModal() {
               <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
                   <Tag className="size-3.5 text-primary" aria-hidden="true" />
-                  {currentListing.category}
+                  {CATEGORY_LABELS[currentListing.category]}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <MapPin
                     className="size-3.5 text-primary"
                     aria-hidden="true"
                   />
-                  {currentListing.location}
+                  {LOCATION_LABELS[currentListing.location]}
                 </span>
                 <span className="inline-flex items-center gap-1.5 font-semibold text-brand-orange-dark">
                   <Banknote className="size-3.5" aria-hidden="true" />
-                  {currentListing.budget || 'Po dogovoru'}
+                  {formatPrice(currentListing.budget)}
                 </span>
               </div>
             ) : null}
@@ -172,6 +180,23 @@ export function ApplyModal() {
               <h3 className="mt-4 font-bold">Prijava je već poslana</h3>
               <p className="mt-2 text-sm text-muted-foreground">
                 Status prijave možeš pratiti u sekciji „Moje prijave“.
+              </p>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="mt-5 rounded-lg border bg-white px-5 py-2.5 text-sm font-semibold hover:bg-muted"
+              >
+                Zatvori
+              </button>
+            </div>
+          ) : isClosed ? (
+            <div className="mt-6 rounded-xl border bg-muted/40 p-6 text-center">
+              <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <Lock className="size-6" aria-hidden="true" />
+              </span>
+              <h3 className="mt-4 font-bold">Oglas je zatvoren</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Klijent više ne prima nove prijave za ovaj posao.
               </p>
               <button
                 type="button"
@@ -218,20 +243,15 @@ export function ApplyModal() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between gap-3">
-                  <label
-                    htmlFor="application-price"
-                    className="text-sm font-semibold"
-                  >
-                    Predložena cijena{' '}
-                    <span className="font-normal text-muted-foreground">
-                      (opcionalno)
-                    </span>
-                  </label>
-                  <span className="text-xs text-muted-foreground">
-                    {price.length}/60
+                <label
+                  htmlFor="application-price"
+                  className="text-sm font-semibold"
+                >
+                  Predložena cijena{' '}
+                  <span className="font-normal text-muted-foreground">
+                    (opcionalno)
                   </span>
-                </div>
+                </label>
                 <div className="relative mt-2">
                   <Banknote
                     className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-primary"
@@ -239,13 +259,31 @@ export function ApplyModal() {
                   />
                   <input
                     id="application-price"
-                    className="h-12 w-full rounded-lg border bg-background pr-4 pl-11 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:ring-3 focus:ring-primary/10"
-                    placeholder="npr. 50 KM ili 20 KM/h"
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={MAX_PRICE_KM}
+                    step={1}
+                    className="h-12 w-full rounded-lg border bg-background pr-14 pl-11 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:ring-3 focus:ring-primary/10"
+                    placeholder="npr. 50"
                     value={price}
-                    maxLength={60}
+                    aria-describedby="application-price-hint"
                     onChange={(event) => setPrice(event.target.value)}
                   />
+                  <span
+                    className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-sm font-semibold text-muted-foreground"
+                    aria-hidden="true"
+                  >
+                    KM
+                  </span>
                 </div>
+                <p
+                  id="application-price-hint"
+                  className="mt-2 text-xs text-muted-foreground"
+                >
+                  Cijeli iznos u KM. Ostavi prazno ako cijenu dogovarate
+                  kasnije.
+                </p>
               </div>
 
               {error ? (

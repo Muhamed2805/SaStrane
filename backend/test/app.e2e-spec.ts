@@ -38,9 +38,9 @@ class ResettableThrottlerStorage implements ThrottlerStorage {
 
 const listingInput = {
   title: 'Košenje dvorišta i orezivanje živice',
-  category: 'Košenje trave',
-  location: 'Ilidža',
-  budget: '60 KM',
+  category: 'LAWN_MOWING',
+  location: 'ILIDZA',
+  budget: 60,
   description: 'Dvorište od oko 400 m², kosilicu imam.',
 };
 
@@ -374,26 +374,50 @@ describe('App (e2e)', () => {
       expect(created).toEqual(fetched.body);
       expect(created).toMatchObject({
         ...listingInput,
+        status: 'OPEN',
         client: { id: user.id, fullName: 'Amra Hodžić' },
       });
     });
 
-    it('filters jobs by category and location, and searches without case', async () => {
+    it('accepts only the fixed categories and locations', async () => {
+      const { auth } = await signedInUser();
+
+      await http()
+        .post('/api/listings')
+        .set('Authorization', auth)
+        .send({ ...listingInput, category: 'Košenje trave' })
+        .expect(400);
+      await http()
+        .get('/api/listings')
+        .query({ location: 'Ilidža' })
+        .expect(400);
+      expect(await prisma.listing.count()).toBe(0);
+    });
+
+    it('filters jobs by category, location and status, and searches without case', async () => {
       const { auth } = await signedInUser();
       await postListing(auth);
-      await postListing(auth, {
+      const { id: closedId } = await postListing(auth, {
         title: 'Generalno čišćenje stana',
-        category: 'Čišćenje',
-        location: 'Mostar',
+        category: 'CLEANING',
+        location: 'MOSTAR',
+      });
+      await prisma.listing.update({
+        where: { id: closedId },
+        data: { status: 'CLOSED' },
       });
 
       const byCategory = await http()
         .get('/api/listings')
-        .query({ category: 'Čišćenje' })
+        .query({ category: 'CLEANING' })
         .expect(200);
       const byLocation = await http()
         .get('/api/listings')
-        .query({ location: 'Ilidža' })
+        .query({ location: 'ILIDZA' })
+        .expect(200);
+      const open = await http()
+        .get('/api/listings')
+        .query({ status: 'OPEN' })
         .expect(200);
       const bySearch = await http()
         .get('/api/listings')
@@ -406,7 +430,11 @@ describe('App (e2e)', () => {
       });
       expect(byLocation.body).toMatchObject({
         total: 1,
-        items: [{ location: 'Ilidža' }],
+        items: [{ location: 'ILIDZA' }],
+      });
+      expect(open.body).toMatchObject({
+        total: 1,
+        items: [{ title: listingInput.title, status: 'OPEN' }],
       });
       expect(bySearch.body).toMatchObject({
         total: 1,
@@ -442,7 +470,7 @@ describe('App (e2e)', () => {
       await http()
         .patch(`/api/listings/${id}`)
         .set('Authorization', other.auth)
-        .send({ budget: '1 KM' })
+        .send({ budget: 1 })
         .expect(403);
       await http()
         .delete(`/api/listings/${id}`)
@@ -452,9 +480,49 @@ describe('App (e2e)', () => {
       const updated = await http()
         .patch(`/api/listings/${id}`)
         .set('Authorization', owner.auth)
-        .send({ budget: '80 KM' })
+        .send({ budget: 80 })
         .expect(200);
-      expect(updated.body).toMatchObject({ budget: '80 KM' });
+      expect(updated.body).toMatchObject({ budget: 80 });
+    });
+
+    it('clears the budget, but never a required field', async () => {
+      const { auth } = await signedInUser();
+      const { id } = await postListing(auth);
+
+      await http()
+        .patch(`/api/listings/${id}`)
+        .set('Authorization', auth)
+        .send({ title: null })
+        .expect(400);
+      const cleared = await http()
+        .patch(`/api/listings/${id}`)
+        .set('Authorization', auth)
+        .send({ budget: null })
+        .expect(200);
+
+      expect(cleared.body).toMatchObject({
+        title: listingInput.title,
+        budget: null,
+      });
+    });
+
+    it('lets only the owner close and reopen a job', async () => {
+      const owner = await signedInUser();
+      const other = await signedInUser();
+      const { id } = await postListing(owner.auth);
+      const setStatus = (auth: string, status: string) =>
+        http()
+          .patch(`/api/listings/${id}/status`)
+          .set('Authorization', auth)
+          .send({ status });
+
+      await setStatus(other.auth, 'CLOSED').expect(403);
+      await setStatus(owner.auth, 'DONE').expect(400);
+      const closed = await setStatus(owner.auth, 'CLOSED').expect(200);
+      expect(closed.body).toMatchObject({ id, status: 'CLOSED' });
+
+      const reopened = await setStatus(owner.auth, 'OPEN').expect(200);
+      expect(reopened.body).toMatchObject({ id, status: 'OPEN' });
     });
 
     it('deletes a job together with its applications', async () => {
@@ -492,7 +560,7 @@ describe('App (e2e)', () => {
       const application = await http()
         .post('/api/applications')
         .set('Authorization', executor.auth)
-        .send({ listingId, message, proposedPrice: '55 KM' })
+        .send({ listingId, message, proposedPrice: 55 })
         .expect(201);
       return {
         client,
@@ -536,8 +604,29 @@ describe('App (e2e)', () => {
         .expect(404);
     });
 
-    it('shows the client the application and lets them accept it', async () => {
-      const { client, executor, applicationId } = await listingWithApplicant();
+    it('takes no applications to a closed job', async () => {
+      const client = await signedInUser();
+      const executor = await signedInUser();
+      const { id: listingId } = await postListing(client.auth);
+      await http()
+        .patch(`/api/listings/${listingId}/status`)
+        .set('Authorization', client.auth)
+        .send({ status: 'CLOSED' })
+        .expect(200);
+
+      const response = await http()
+        .post('/api/applications')
+        .set('Authorization', executor.auth)
+        .send({ listingId, message })
+        .expect(409);
+
+      expect(response.body).toMatchObject({ code: 'LISTING_CLOSED' });
+      expect(await prisma.application.count()).toBe(0);
+    });
+
+    it('shows the client the application, and the email only after accepting it', async () => {
+      const { client, executor, listingId, applicationId } =
+        await listingWithApplicant();
 
       const received = await http()
         .get('/api/applications/received')
@@ -545,14 +634,34 @@ describe('App (e2e)', () => {
         .expect(200);
       expect(received.body).toMatchObject({
         total: 1,
-        items: [{ id: applicationId, message, status: 'PENDING' }],
+        items: [
+          {
+            id: applicationId,
+            message,
+            proposedPrice: 55,
+            status: 'PENDING',
+            executor: { id: executor.user.id, email: null },
+            listing: { title: listingInput.title, status: 'OPEN' },
+          },
+        ],
       });
+      const forListing = await http()
+        .get(`/api/applications/listing/${listingId}`)
+        .set('Authorization', client.auth)
+        .expect(200);
+      expect(forListing.body).toMatchObject([
+        { id: applicationId, executor: { email: null } },
+      ]);
 
-      await http()
+      const accepted = await http()
         .patch(`/api/applications/${applicationId}/status`)
         .set('Authorization', client.auth)
         .send({ status: 'ACCEPTED' })
         .expect(200);
+      expect(accepted.body).toMatchObject({
+        status: 'ACCEPTED',
+        executor: { email: executor.user.email },
+      });
 
       const sent = await http()
         .get('/api/applications/my')
@@ -562,6 +671,56 @@ describe('App (e2e)', () => {
         total: 1,
         items: [{ id: applicationId, status: 'ACCEPTED' }],
       });
+    });
+
+    it('treats a decision as final', async () => {
+      const { client, applicationId } = await listingWithApplicant();
+      const decide = (status: string) =>
+        http()
+          .patch(`/api/applications/${applicationId}/status`)
+          .set('Authorization', client.auth)
+          .send({ status });
+
+      await decide('REJECTED').expect(200);
+      const second = await decide('ACCEPTED').expect(409);
+
+      expect(second.body).toMatchObject({
+        code: 'APPLICATION_ALREADY_DECIDED',
+      });
+      expect(await prisma.application.findFirst()).toMatchObject({
+        status: 'REJECTED',
+      });
+    });
+
+    it('lets only one of two decisions sent at once go through', async () => {
+      const { client, applicationId } = await listingWithApplicant();
+
+      const statuses = await Promise.all(
+        ['ACCEPTED', 'REJECTED'].map(async (status) => {
+          const response = await http()
+            .patch(`/api/applications/${applicationId}/status`)
+            .set('Authorization', client.auth)
+            .send({ status });
+          return response.status;
+        }),
+      );
+
+      expect(statuses.sort()).toEqual([200, 409]);
+    });
+
+    it('still lets the client decide after closing the job', async () => {
+      const { client, listingId, applicationId } = await listingWithApplicant();
+      await http()
+        .patch(`/api/listings/${listingId}/status`)
+        .set('Authorization', client.auth)
+        .send({ status: 'CLOSED' })
+        .expect(200);
+
+      await http()
+        .patch(`/api/applications/${applicationId}/status`)
+        .set('Authorization', client.auth)
+        .send({ status: 'ACCEPTED' })
+        .expect(200);
     });
 
     it('lets only the client decide on an application', async () => {

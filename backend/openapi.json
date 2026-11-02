@@ -599,9 +599,34 @@
     },
     "/api/listings": {
       "get": {
-        "description": "`q` searches the title, description and category without regard\nto case. `category` and `location` must match exactly.",
+        "description": "`q` searches the title and the description without regard to\ncase. The other filters must match exactly. The job list on the site\nasks for OPEN jobs only.",
         "operationId": "listings_getAll",
         "parameters": [
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ListingCategory"
+            }
+          },
+          {
+            "name": "location",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ListingLocation"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Leave it out for jobs in any status.",
+            "schema": {
+              "$ref": "#/components/schemas/ListingStatus"
+            }
+          },
           {
             "name": "page",
             "required": false,
@@ -634,24 +659,6 @@
           },
           {
             "name": "q",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "maxLength": 120,
-              "type": "string"
-            }
-          },
-          {
-            "name": "category",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "maxLength": 60,
-              "type": "string"
-            }
-          },
-          {
-            "name": "location",
             "required": false,
             "in": "query",
             "schema": {
@@ -1025,6 +1032,113 @@
         ]
       }
     },
+    "/api/listings/{id}/status": {
+      "patch": {
+        "description": "A closed job takes no new applications. The client can still\naccept or reject the ones already sent.",
+        "operationId": "listings_updateStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateListingStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The status is not OPEN or CLOSED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The job belongs to another user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The job does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the email service is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Opens or closes the user's own job.",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
     "/api/applications": {
       "post": {
         "operationId": "applications_create",
@@ -1091,7 +1205,7 @@
             }
           },
           "409": {
-            "description": "The user has already applied to this job.",
+            "description": "The user has already applied to this job, or the job is closed (LISTING_CLOSED).",
             "content": {
               "application/json": {
                 "schema": {
@@ -1283,6 +1397,7 @@
     },
     "/api/applications/received": {
       "get": {
+        "description": "An executor's email is null until their application is\naccepted.",
         "operationId": "applications_getReceived",
         "parameters": [
           {
@@ -1372,6 +1487,7 @@
     },
     "/api/applications/listing/{listingId}": {
       "get": {
+        "description": "An executor's email is null until their application is\naccepted.",
         "operationId": "applications_getForListing",
         "parameters": [
           {
@@ -1461,6 +1577,7 @@
     },
     "/api/applications/{id}/status": {
       "patch": {
+        "description": "The decision is final. Accepting shows the client the\nexecutor's email.",
         "operationId": "applications_updateStatus",
         "parameters": [
           {
@@ -1525,6 +1642,16 @@
           },
           "404": {
             "description": "The application does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The application has been accepted or rejected already (APPLICATION_ALREADY_DECIDED).",
             "content": {
               "application/json": {
                 "schema": {
@@ -1662,7 +1789,7 @@
           },
           "code": {
             "type": "string",
-            "description": "Set when the client needs to tell this error apart from others with the\nsame status: EMAIL_NOT_VERIFIED, EMAIL_ALREADY_REGISTERED or\nEMAIL_VERIFICATION_PENDING."
+            "description": "Set when the client needs to tell this error apart from others with the\nsame status: EMAIL_NOT_VERIFIED, EMAIL_ALREADY_REGISTERED,\nEMAIL_VERIFICATION_PENDING, LISTING_CLOSED or\nAPPLICATION_ALREADY_DECIDED."
           }
         },
         "required": [
@@ -1885,6 +2012,39 @@
           "password"
         ]
       },
+      "ListingCategory": {
+        "type": "string",
+        "enum": [
+          "LAWN_MOWING",
+          "CAR_WASH",
+          "MOVING",
+          "IT_HELP",
+          "CLEANING",
+          "ASSEMBLY",
+          "DELIVERY",
+          "OTHER"
+        ]
+      },
+      "ListingLocation": {
+        "type": "string",
+        "enum": [
+          "SARAJEVO",
+          "ILIDZA",
+          "STUP",
+          "VOGOSCA",
+          "MOSTAR",
+          "BANJA_LUKA",
+          "TUZLA",
+          "ZENICA"
+        ]
+      },
+      "ListingStatus": {
+        "type": "string",
+        "enum": [
+          "OPEN",
+          "CLOSED"
+        ]
+      },
       "ListingClientDto": {
         "type": "object",
         "properties": {
@@ -1903,22 +2063,38 @@
       "ListingSummaryDto": {
         "type": "object",
         "properties": {
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingCategory"
+              }
+            ]
+          },
+          "location": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingLocation"
+              }
+            ]
+          },
+          "status": {
+            "description": "Only OPEN jobs take applications.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingStatus"
+              }
+            ]
+          },
           "id": {
             "type": "string"
           },
           "title": {
             "type": "string"
           },
-          "category": {
-            "type": "string"
-          },
-          "location": {
-            "type": "string"
-          },
           "budget": {
-            "type": "string",
+            "type": "number",
             "nullable": true,
-            "description": "Free text, such as \"50 KM\"."
+            "description": "In whole KM. Null means the price is agreed later."
           },
           "createdAt": {
             "format": "date-time",
@@ -1929,10 +2105,11 @@
           }
         },
         "required": [
-          "id",
-          "title",
           "category",
           "location",
+          "status",
+          "id",
+          "title",
           "budget",
           "createdAt",
           "client"
@@ -1975,22 +2152,38 @@
       "ListingDto": {
         "type": "object",
         "properties": {
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingCategory"
+              }
+            ]
+          },
+          "location": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingLocation"
+              }
+            ]
+          },
+          "status": {
+            "description": "Only OPEN jobs take applications.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingStatus"
+              }
+            ]
+          },
           "id": {
             "type": "string"
           },
           "title": {
             "type": "string"
           },
-          "category": {
-            "type": "string"
-          },
-          "location": {
-            "type": "string"
-          },
           "budget": {
-            "type": "string",
+            "type": "number",
             "nullable": true,
-            "description": "Free text, such as \"50 KM\"."
+            "description": "In whole KM. Null means the price is agreed later."
           },
           "createdAt": {
             "format": "date-time",
@@ -2005,10 +2198,11 @@
           }
         },
         "required": [
-          "id",
-          "title",
           "category",
           "location",
+          "status",
+          "id",
+          "title",
           "budget",
           "createdAt",
           "client",
@@ -2018,21 +2212,29 @@
       "CreateListingDto": {
         "type": "object",
         "properties": {
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingCategory"
+              }
+            ]
+          },
+          "location": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingLocation"
+              }
+            ]
+          },
           "title": {
             "type": "string",
             "maxLength": 120
           },
-          "category": {
-            "type": "string",
-            "maxLength": 60
-          },
-          "location": {
-            "type": "string",
-            "maxLength": 120
-          },
           "budget": {
-            "type": "string",
-            "maxLength": 60
+            "type": "number",
+            "description": "In whole KM. Leave it out when the price is agreed later.",
+            "minimum": 1,
+            "maximum": 100000
           },
           "description": {
             "type": "string",
@@ -2040,30 +2242,38 @@
           }
         },
         "required": [
-          "title",
           "category",
-          "location"
+          "location",
+          "title"
         ]
       },
       "UpdateListingDto": {
         "type": "object",
         "properties": {
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingCategory"
+              }
+            ]
+          },
+          "location": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingLocation"
+              }
+            ]
+          },
           "title": {
             "type": "string",
             "maxLength": 120
           },
-          "category": {
-            "type": "string",
-            "maxLength": 60
-          },
-          "location": {
-            "type": "string",
-            "maxLength": 120
-          },
           "budget": {
-            "type": "string",
+            "type": "number",
             "nullable": true,
-            "maxLength": 60
+            "description": "In whole KM. Null means the price is agreed later.",
+            "minimum": 1,
+            "maximum": 100000
           },
           "description": {
             "type": "string",
@@ -2071,6 +2281,21 @@
             "maxLength": 2000
           }
         }
+      },
+      "UpdateListingStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
       },
       "CreateApplicationDto": {
         "type": "object",
@@ -2085,8 +2310,10 @@
             "maxLength": 2000
           },
           "proposedPrice": {
-            "type": "string",
-            "maxLength": 60
+            "type": "number",
+            "description": "In whole KM. Leave it out to agree on the price later.",
+            "minimum": 1,
+            "maximum": 100000
           }
         },
         "required": [
@@ -2100,12 +2327,14 @@
           "PENDING",
           "ACCEPTED",
           "REJECTED"
-        ]
+        ],
+        "description": "A decision is final: only a PENDING application can change."
       },
       "ApplicationDto": {
         "type": "object",
         "properties": {
           "status": {
+            "description": "A decision is final: only a PENDING application can change.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/ApplicationStatus"
@@ -2122,9 +2351,9 @@
             "type": "string"
           },
           "proposedPrice": {
-            "type": "string",
+            "type": "number",
             "nullable": true,
-            "description": "Free text, such as \"50 KM\"."
+            "description": "In whole KM. Null means the price is agreed later."
           },
           "createdAt": {
             "format": "date-time",
@@ -2143,26 +2372,43 @@
       "ApplicationListingDto": {
         "type": "object",
         "properties": {
-          "title": {
-            "type": "string"
-          },
           "category": {
-            "type": "string"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingCategory"
+              }
+            ]
           },
           "location": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingLocation"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingStatus"
+              }
+            ]
+          },
+          "title": {
             "type": "string"
           }
         },
         "required": [
-          "title",
           "category",
-          "location"
+          "location",
+          "status",
+          "title"
         ]
       },
       "MyApplicationDto": {
         "type": "object",
         "properties": {
           "status": {
+            "description": "A decision is final: only a PENDING application can change.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/ApplicationStatus"
@@ -2179,9 +2425,9 @@
             "type": "string"
           },
           "proposedPrice": {
-            "type": "string",
+            "type": "number",
             "nullable": true,
-            "description": "Free text, such as \"50 KM\"."
+            "description": "In whole KM. Null means the price is agreed later."
           },
           "createdAt": {
             "format": "date-time",
@@ -2245,7 +2491,9 @@
             "type": "string"
           },
           "email": {
-            "type": "string"
+            "type": "string",
+            "nullable": true,
+            "description": "Null until the client accepts the application."
           }
         },
         "required": [
@@ -2258,6 +2506,7 @@
         "type": "object",
         "properties": {
           "status": {
+            "description": "A decision is final: only a PENDING application can change.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/ApplicationStatus"
@@ -2274,9 +2523,9 @@
             "type": "string"
           },
           "proposedPrice": {
-            "type": "string",
+            "type": "number",
             "nullable": true,
-            "description": "Free text, such as \"50 KM\"."
+            "description": "In whole KM. Null means the price is agreed later."
           },
           "createdAt": {
             "format": "date-time",
@@ -2338,6 +2587,7 @@
         "type": "object",
         "properties": {
           "status": {
+            "description": "A decision is final: only a PENDING application can change.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/ApplicationStatus"
@@ -2354,9 +2604,9 @@
             "type": "string"
           },
           "proposedPrice": {
-            "type": "string",
+            "type": "number",
             "nullable": true,
-            "description": "Free text, such as \"50 KM\"."
+            "description": "In whole KM. Null means the price is agreed later."
           },
           "createdAt": {
             "format": "date-time",

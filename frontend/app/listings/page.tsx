@@ -1,7 +1,7 @@
 import { ListingsFeed } from '@/features/listings/components/listings-feed';
 import {
-  LISTING_CATEGORIES,
-  LISTING_LOCATIONS,
+  isListingCategory,
+  isListingLocation,
 } from '@/features/listings/constants';
 
 export default async function ListingsPage({
@@ -11,8 +11,13 @@ export default async function ListingsPage({
 }) {
   const params = await searchParams;
   const query = typeof params.q === 'string' ? params.q : '';
-  const category = LISTING_CATEGORIES.find((item) => item === params.category);
-  const location = LISTING_LOCATIONS.find((item) => item === params.location);
+  // An unknown code in the URL turns its filter off.
+  const category = isListingCategory(params.category)
+    ? params.category
+    : undefined;
+  const location = isListingLocation(params.location)
+    ? params.location
+    : undefined;
 
   return (
     <div className="space-y-8">
@@ -29,8 +34,8 @@ export default async function ListingsPage({
 
       <ListingsFeed
         initialQuery={query}
-        initialCategory={category ?? 'Sve'}
-        initialLocation={location ?? 'Sve'}
+        initialCategory={category}
+        initialLocation={location}
       />
     </div>
   );

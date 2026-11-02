@@ -1,6 +1,12 @@
 import Link from 'next/link';
 import { Banknote, CalendarDays, Check, Mail, MapPin, X } from 'lucide-react';
+import { ClosedBadge } from '@/features/listings/components/closed-badge';
+import {
+  CATEGORY_LABELS,
+  LOCATION_LABELS,
+} from '@/features/listings/constants';
 import { formatDate } from '@/lib/format-date';
+import { formatPrice } from '@/lib/format-price';
 import type {
   ApplicationListing,
   ApplicationStatus,
@@ -41,12 +47,13 @@ export function ReceivedApplicationCard({
             </Link>
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
               <span className="rounded-full bg-primary/10 px-2.5 py-1 font-medium text-primary">
-                {listing.category}
+                {CATEGORY_LABELS[listing.category]}
               </span>
               <span className="inline-flex items-center gap-1.5 py-1">
                 <MapPin className="size-3.5 text-primary" aria-hidden="true" />
-                {listing.location}
+                {LOCATION_LABELS[listing.location]}
               </span>
+              <ClosedBadge status={listing.status} />
             </div>
           </div>
           <ApplicationStatusBadge status={application.status} />
@@ -65,13 +72,20 @@ export function ReceivedApplicationCard({
           <p className="truncate text-sm font-semibold">
             {application.executor.fullName}
           </p>
-          <a
-            href={`mailto:${application.executor.email}`}
-            className="mt-1 flex items-center gap-1.5 truncate text-xs text-muted-foreground hover:text-primary"
-          >
-            <Mail className="size-3.5" aria-hidden="true" />
-            {application.executor.email}
-          </a>
+          {application.executor.email ? (
+            <a
+              href={`mailto:${application.executor.email}`}
+              className="mt-1 flex items-center gap-1.5 truncate text-xs text-muted-foreground hover:text-primary"
+            >
+              <Mail className="size-3.5" aria-hidden="true" />
+              {application.executor.email}
+            </a>
+          ) : (
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Mail className="size-3.5" aria-hidden="true" />
+              Email je vidljiv nakon prihvatanja.
+            </p>
+          )}
         </div>
       </div>
 
@@ -80,12 +94,10 @@ export function ReceivedApplicationCard({
       </blockquote>
 
       <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
-        {application.proposedPrice ? (
-          <span className="inline-flex items-center gap-1.5 font-semibold text-brand-orange-dark">
-            <Banknote className="size-3.5" aria-hidden="true" />
-            Ponuda: {application.proposedPrice}
-          </span>
-        ) : null}
+        <span className="inline-flex items-center gap-1.5 font-semibold text-brand-orange-dark">
+          <Banknote className="size-3.5" aria-hidden="true" />
+          Ponuda: {formatPrice(application.proposedPrice)}
+        </span>
         <span className="inline-flex items-center gap-1.5">
           <CalendarDays className="size-3.5 text-primary" aria-hidden="true" />
           Primljeno {formatDate(application.createdAt)}

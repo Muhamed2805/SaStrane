@@ -12,6 +12,7 @@ describe('ListingsService', () => {
     count: jest.fn(),
     findUnique: jest.fn(),
     update: jest.fn(),
+    delete: jest.fn(),
   };
 
   const service = new ListingsService({
@@ -32,8 +33,9 @@ describe('ListingsService', () => {
           page: 2,
           limit: 5,
           q: 'trava',
-          category: 'Košenje trave',
-          location: 'Sarajevo',
+          category: 'LAWN_MOWING',
+          location: 'SARAJEVO',
+          status: 'OPEN',
         }),
       ).resolves.toEqual({
         items: [],
@@ -44,12 +46,12 @@ describe('ListingsService', () => {
       });
 
       const where = {
-        category: 'Košenje trave',
-        location: 'Sarajevo',
+        category: 'LAWN_MOWING',
+        location: 'SARAJEVO',
+        status: 'OPEN',
         OR: [
           { title: { contains: 'trava', mode: 'insensitive' } },
           { description: { contains: 'trava', mode: 'insensitive' } },
-          { category: { contains: 'trava', mode: 'insensitive' } },
         ],
       };
 
@@ -65,8 +67,9 @@ describe('ListingsService', () => {
       const updatedListing = {
         id: 'listing-1',
         title: 'Updated title',
-        category: 'IT pomoć',
-        location: 'Sarajevo',
+        category: 'IT_HELP',
+        location: 'SARAJEVO',
+        status: 'OPEN',
         budget: null,
         description: null,
         createdAt: new Date(),
@@ -111,6 +114,43 @@ describe('ListingsService', () => {
         service.update('listing-1', { title: 'Updated title' }, 'user-1'),
       ).rejects.toThrow(ForbiddenException);
       expect(listingRepository.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateStatus', () => {
+    it('closes a listing owned by the authenticated user', async () => {
+      listingRepository.findUnique.mockResolvedValue({ clientId: 'user-1' });
+      listingRepository.update.mockResolvedValue({ status: 'CLOSED' });
+
+      await expect(
+        service.updateStatus('listing-1', { status: 'CLOSED' }, 'user-1'),
+      ).resolves.toEqual({ status: 'CLOSED' });
+      expect(listingRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'listing-1' },
+          data: { status: 'CLOSED' },
+        }),
+      );
+    });
+
+    it('rejects a status change from a user who does not own the listing', async () => {
+      listingRepository.findUnique.mockResolvedValue({ clientId: 'user-2' });
+
+      await expect(
+        service.updateStatus('listing-1', { status: 'CLOSED' }, 'user-1'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(listingRepository.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('delete', () => {
+    it('rejects deleting a missing listing', async () => {
+      listingRepository.findUnique.mockResolvedValue(null);
+
+      await expect(service.delete('missing', 'user-1')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(listingRepository.delete).not.toHaveBeenCalled();
     });
   });
 });

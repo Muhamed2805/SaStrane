@@ -1,6 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { PageDto } from '../../common/dto/page.dto';
-import { ApplicationStatus } from '../../generated/prisma/enums';
+import {
+  ApplicationStatus,
+  ListingCategory,
+  ListingLocation,
+  ListingStatus,
+} from '../../generated/prisma/enums';
 
 export class ApplicationDto {
   id!: string;
@@ -9,9 +14,10 @@ export class ApplicationDto {
 
   message!: string;
 
-  /** Free text, such as "50 KM". */
-  proposedPrice!: string | null;
+  /** In whole KM. Null means the price is agreed later. */
+  proposedPrice!: number | null;
 
+  /** A decision is final: only a PENDING application can change. */
   @ApiProperty({ enum: ApplicationStatus, enumName: 'ApplicationStatus' })
   status!: ApplicationStatus;
 
@@ -22,9 +28,14 @@ export class ApplicationDto {
 export class ApplicationListingDto {
   title!: string;
 
-  category!: string;
+  @ApiProperty({ enum: ListingCategory, enumName: 'ListingCategory' })
+  category!: ListingCategory;
 
-  location!: string;
+  @ApiProperty({ enum: ListingLocation, enumName: 'ListingLocation' })
+  location!: ListingLocation;
+
+  @ApiProperty({ enum: ListingStatus, enumName: 'ListingStatus' })
+  status!: ListingStatus;
 }
 
 // The user who applied. Only the job's client sees this.
@@ -33,7 +44,8 @@ export class ApplicationExecutorDto {
 
   fullName!: string;
 
-  email!: string;
+  /** Null until the client accepts the application. */
+  email!: string | null;
 }
 
 // An application as the executor who sent it sees it.

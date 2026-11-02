@@ -13,7 +13,7 @@ type ApplicationsState = {
   submitApplication: (
     listingId: string,
     message: string,
-    proposedPrice: string,
+    proposedPrice: number | null,
   ) => Promise<void>;
   syncAppliedIds: () => Promise<void>;
   hasApplied: (listingId: string) => boolean;
@@ -38,7 +38,7 @@ export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
       await applicationsApi.apply({
         listingId,
         message,
-        proposedPrice: proposedPrice || undefined,
+        proposedPrice: proposedPrice ?? undefined,
       });
       set((state) => ({
         isApplyOpen: false,

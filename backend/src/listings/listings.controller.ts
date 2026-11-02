@@ -24,6 +24,7 @@ import { CreateListingDto } from './dto/create-listing.dto';
 import { ListingDto, ListingsPageDto } from './dto/listing-response.dto';
 import { ListingsQueryDto } from './dto/listings-query.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
+import { UpdateListingStatusDto } from './dto/update-listing-status.dto';
 import { ListingsService } from './listings.service';
 
 @ApiTags('listings')
@@ -35,8 +36,9 @@ export class ListingsController {
   /**
    * Lists jobs, newest first.
    *
-   * @remarks `q` searches the title, description and category without regard
-   * to case. `category` and `location` must match exactly.
+   * @remarks `q` searches the title and the description without regard to
+   * case. The other filters must match exactly. The job list on the site
+   * asks for OPEN jobs only.
    */
   @ApiErrors({ 400: 'A query parameter is invalid.' })
   @Get()
@@ -81,6 +83,30 @@ export class ListingsController {
   ): Promise<ListingDto> {
     const user = req.user as { id: string };
     return this.listings.update(id, dto, user.id);
+  }
+
+  /**
+   * Opens or closes the user's own job.
+   *
+   * @remarks A closed job takes no new applications. The client can still
+   * accept or reject the ones already sent.
+   */
+  @ApiBearerAuth()
+  @ApiErrors({
+    ...SIGNED_IN_ERRORS,
+    400: 'The status is not OPEN or CLOSED.',
+    403: 'The job belongs to another user.',
+    404: 'The job does not exist.',
+  })
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/status')
+  updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateListingStatusDto,
+    @Req() req: Request,
+  ): Promise<ListingDto> {
+    const user = req.user as { id: string };
+    return this.listings.updateStatus(id, dto, user.id);
   }
 
   /** Deletes the user's own job together with its applications. */

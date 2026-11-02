@@ -15,8 +15,9 @@ describe('ApplicationsService', () => {
     create: jest.fn(),
     findMany: jest.fn(),
     findUnique: jest.fn(),
+    findUniqueOrThrow: jest.fn(),
     count: jest.fn(),
-    update: jest.fn(),
+    updateMany: jest.fn(),
   };
 
   const service = new ApplicationsService({
@@ -32,7 +33,7 @@ describe('ApplicationsService', () => {
     const dto = {
       listingId: 'listing-1',
       message: 'Mogu završiti posao sutra.',
-      proposedPrice: '50 KM',
+      proposedPrice: 50,
     };
 
     it('creates an application for a listing owned by another user', async () => {
@@ -40,6 +41,7 @@ describe('ApplicationsService', () => {
       listingRepository.findUnique.mockResolvedValue({
         id: 'listing-1',
         clientId: 'client-1',
+        status: 'OPEN',
       });
       applicationRepository.create.mockResolvedValue(created);
 
@@ -72,10 +74,25 @@ describe('ApplicationsService', () => {
       expect(applicationRepository.create).not.toHaveBeenCalled();
     });
 
+    it('rejects an application to a closed listing', async () => {
+      listingRepository.findUnique.mockResolvedValue({
+        id: 'listing-1',
+        clientId: 'client-1',
+        status: 'CLOSED',
+      });
+
+      await expect(service.create(dto, 'executor-1')).rejects.toMatchObject({
+        status: 409,
+        response: { code: 'LISTING_CLOSED' },
+      });
+      expect(applicationRepository.create).not.toHaveBeenCalled();
+    });
+
     it('maps the database unique constraint to a conflict response', async () => {
       listingRepository.findUnique.mockResolvedValue({
         id: 'listing-1',
         clientId: 'client-1',
+        status: 'OPEN',
       });
       applicationRepository.create.mockRejectedValue(
         new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
@@ -108,16 +125,17 @@ describe('ApplicationsService', () => {
     });
   });
 
+  const executor = { id: 'executor-1', fullName: 'Kenan', email: 'k@x.ba' };
+
   describe('getReceivedApplications', () => {
     it('returns an owner-scoped page of applications', async () => {
-      const applications = [{ id: 'application-1' }];
-      applicationRepository.findMany.mockResolvedValue(applications);
+      applicationRepository.findMany.mockResolvedValue([]);
       applicationRepository.count.mockResolvedValue(12);
 
       await expect(
         service.getReceivedApplications('client-1', { page: 2, limit: 5 }),
       ).resolves.toEqual({
-        items: applications,
+        items: [],
         total: 12,
         page: 2,
         limit: 5,
@@ -135,18 +153,54 @@ describe('ApplicationsService', () => {
       );
       expect(applicationRepository.count).toHaveBeenCalledWith({ where });
     });
+
+    it('shows the executor email only on accepted applications', async () => {
+      applicationRepository.findMany.mockResolvedValue([
+        { id: 'pending', status: 'PENDING', executor },
+        { id: 'accepted', status: 'ACCEPTED', executor },
+        { id: 'rejected', status: 'REJECTED', executor },
+      ]);
+      applicationRepository.count.mockResolvedValue(3);
+
+      const page = await service.getReceivedApplications('client-1', {});
+
+      expect(page.items.map((item) => item.executor.email)).toEqual([
+        null,
+        'k@x.ba',
+        null,
+      ]);
+    });
+  });
+
+  describe('getForListing', () => {
+    it('hides the email of executors who are not accepted', async () => {
+      listingRepository.findUnique.mockResolvedValue({ clientId: 'client-1' });
+      applicationRepository.findMany.mockResolvedValue([
+        { id: 'pending', status: 'PENDING', executor },
+      ]);
+
+      await expect(
+        service.getForListing('listing-1', 'client-1'),
+      ).resolves.toEqual([
+        {
+          id: 'pending',
+          status: 'PENDING',
+          executor: { ...executor, email: null },
+        },
+      ]);
+    });
   });
 
   describe('updateStatus', () => {
-    it('allows the listing owner to update an application status', async () => {
-      applicationRepository.findUnique.mockResolvedValue({
-        id: 'application-1',
-        status: 'PENDING',
-        listing: { clientId: 'client-1' },
-      });
-      applicationRepository.update.mockResolvedValue({
+    const ownApplication = { listing: { clientId: 'client-1' } };
+
+    it('decides a pending application and shows the email once accepted', async () => {
+      applicationRepository.findUnique.mockResolvedValue(ownApplication);
+      applicationRepository.updateMany.mockResolvedValue({ count: 1 });
+      applicationRepository.findUniqueOrThrow.mockResolvedValue({
         id: 'application-1',
         status: 'ACCEPTED',
+        executor,
       });
 
       await expect(
@@ -155,13 +209,28 @@ describe('ApplicationsService', () => {
           { status: 'ACCEPTED' },
           'client-1',
         ),
-      ).resolves.toEqual({ id: 'application-1', status: 'ACCEPTED' });
-      expect(applicationRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'application-1' },
-          data: { status: 'ACCEPTED' },
-        }),
-      );
+      ).resolves.toEqual({ id: 'application-1', status: 'ACCEPTED', executor });
+      expect(applicationRepository.updateMany).toHaveBeenCalledWith({
+        where: { id: 'application-1', status: 'PENDING' },
+        data: { status: 'ACCEPTED' },
+      });
+    });
+
+    it('treats a decision as final', async () => {
+      applicationRepository.findUnique.mockResolvedValue(ownApplication);
+      applicationRepository.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.updateStatus(
+          'application-1',
+          { status: 'REJECTED' },
+          'client-1',
+        ),
+      ).rejects.toMatchObject({
+        status: 409,
+        response: { code: 'APPLICATION_ALREADY_DECIDED' },
+      });
+      expect(applicationRepository.findUniqueOrThrow).not.toHaveBeenCalled();
     });
 
     it('rejects a status update for a missing application', async () => {
@@ -170,13 +239,11 @@ describe('ApplicationsService', () => {
       await expect(
         service.updateStatus('missing', { status: 'REJECTED' }, 'client-1'),
       ).rejects.toThrow(NotFoundException);
-      expect(applicationRepository.update).not.toHaveBeenCalled();
+      expect(applicationRepository.updateMany).not.toHaveBeenCalled();
     });
 
     it('rejects a status update from a non-owner', async () => {
       applicationRepository.findUnique.mockResolvedValue({
-        id: 'application-1',
-        status: 'PENDING',
         listing: { clientId: 'client-2' },
       });
 
@@ -187,7 +254,7 @@ describe('ApplicationsService', () => {
           'client-1',
         ),
       ).rejects.toThrow(ForbiddenException);
-      expect(applicationRepository.update).not.toHaveBeenCalled();
+      expect(applicationRepository.updateMany).not.toHaveBeenCalled();
     });
   });
 });

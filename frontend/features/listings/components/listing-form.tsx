@@ -14,17 +14,31 @@ import {
   Save,
   Type,
 } from 'lucide-react';
+import type {
+  ListingCategory,
+  ListingLocation,
+} from '@/features/listings/api';
 import {
+  CATEGORY_LABELS,
   LISTING_CATEGORIES,
   LISTING_LOCATIONS,
+  LOCATION_LABELS,
+  MAX_PRICE_KM,
 } from '@/features/listings/constants';
+import { parsePrice } from '@/lib/format-price';
 
+// What the fields hold. The budget stays text while the user types.
 export type ListingFormValues = {
   title: string;
-  category: string;
-  location: string;
+  category: ListingCategory;
+  location: ListingLocation;
   budget: string;
   description: string;
+};
+
+// What the form submits. A null budget means the price is agreed later.
+export type ListingFormResult = Omit<ListingFormValues, 'budget'> & {
+  budget: number | null;
 };
 
 type ListingFormProps = {
@@ -32,7 +46,7 @@ type ListingFormProps = {
   submitLabel: string;
   submittingLabel: string;
   cancelHref: string;
-  onSubmit: (values: ListingFormValues) => Promise<void>;
+  onSubmit: (values: ListingFormResult) => Promise<void>;
 };
 
 const EMPTY_VALUES: ListingFormValues = {
@@ -75,7 +89,10 @@ export function ListingForm({
     return () => window.removeEventListener('beforeunload', warnBeforeLeaving);
   }, [isDirty, isSubmitting]);
 
-  const updateField = (field: keyof ListingFormValues, value: string) => {
+  const updateField = <Field extends keyof ListingFormValues>(
+    field: Field,
+    value: ListingFormValues[Field],
+  ) => {
     setValues((current) => ({ ...current, [field]: value }));
     if (error) setError(null);
   };
@@ -90,7 +107,7 @@ export function ListingForm({
         title: values.title.trim(),
         category: values.category,
         location: values.location,
-        budget: values.budget.trim(),
+        budget: parsePrice(values.budget),
         description: values.description.trim(),
       });
     } catch (submitError) {
@@ -175,12 +192,15 @@ export function ListingForm({
                   className={`${inputClassName} h-12 appearance-none pr-10 pl-11`}
                   value={values.category}
                   onChange={(event) =>
-                    updateField('category', event.target.value)
+                    updateField(
+                      'category',
+                      event.target.value as ListingCategory,
+                    )
                   }
                 >
                   {LISTING_CATEGORIES.map((category) => (
                     <option key={category} value={category}>
-                      {category}
+                      {CATEGORY_LABELS[category]}
                     </option>
                   ))}
                 </select>
@@ -205,12 +225,15 @@ export function ListingForm({
                   className={`${inputClassName} h-12 appearance-none pr-10 pl-11`}
                   value={values.location}
                   onChange={(event) =>
-                    updateField('location', event.target.value)
+                    updateField(
+                      'location',
+                      event.target.value as ListingLocation,
+                    )
                   }
                 >
                   {LISTING_LOCATIONS.map((location) => (
                     <option key={location} value={location}>
-                      {location}
+                      {LOCATION_LABELS[location]}
                     </option>
                   ))}
                 </select>
@@ -254,17 +277,12 @@ export function ListingForm({
           </div>
 
           <div>
-            <div className="flex items-center justify-between gap-4">
-              <label className="text-sm font-semibold" htmlFor="budget">
-                Predviđeni budžet{' '}
-                <span className="font-normal text-muted-foreground">
-                  (opcionalno)
-                </span>
-              </label>
-              <span className="text-xs text-muted-foreground">
-                {values.budget.length}/60
+            <label className="text-sm font-semibold" htmlFor="budget">
+              Predviđeni budžet{' '}
+              <span className="font-normal text-muted-foreground">
+                (opcionalno)
               </span>
-            </div>
+            </label>
             <div className="relative mt-2">
               <Banknote
                 className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-primary"
@@ -272,13 +290,30 @@ export function ListingForm({
               />
               <input
                 id="budget"
-                className={`${inputClassName} h-12 pr-4 pl-11`}
-                placeholder="npr. 50 KM, 20 KM/h ili po dogovoru"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={MAX_PRICE_KM}
+                step={1}
+                className={`${inputClassName} h-12 pr-14 pl-11`}
+                placeholder="npr. 50"
                 value={values.budget}
-                maxLength={60}
+                aria-describedby="budget-hint"
                 onChange={(event) => updateField('budget', event.target.value)}
               />
+              <span
+                className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-sm font-semibold text-muted-foreground"
+                aria-hidden="true"
+              >
+                KM
+              </span>
             </div>
+            <p
+              id="budget-hint"
+              className="mt-2 text-xs leading-5 text-muted-foreground"
+            >
+              Cijeli iznos u KM. Ostavi prazno ako je cijena po dogovoru.
+            </p>
           </div>
 
           {error ? (

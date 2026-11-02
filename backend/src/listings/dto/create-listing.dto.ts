@@ -1,6 +1,18 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
+import { MAX_PRICE_KM } from '../../common/price';
 import { trimString } from '../../common/transforms/trim-string.transform';
+import { ListingCategory, ListingLocation } from '../../generated/prisma/enums';
 
 export class CreateListingDto {
   @Transform(trimString)
@@ -9,23 +21,20 @@ export class CreateListingDto {
   @MaxLength(120)
   title!: string;
 
-  @Transform(trimString)
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(60)
-  category!: string;
+  @ApiProperty({ enum: ListingCategory, enumName: 'ListingCategory' })
+  @IsEnum(ListingCategory)
+  category!: ListingCategory;
 
-  @Transform(trimString)
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(120)
-  location!: string;
+  @ApiProperty({ enum: ListingLocation, enumName: 'ListingLocation' })
+  @IsEnum(ListingLocation)
+  location!: ListingLocation;
 
-  @Transform(trimString)
+  /** In whole KM. Leave it out when the price is agreed later. */
   @IsOptional()
-  @IsString()
-  @MaxLength(60)
-  budget?: string;
+  @IsInt()
+  @Min(1)
+  @Max(MAX_PRICE_KM)
+  budget?: number;
 
   @Transform(trimString)
   @IsOptional()
