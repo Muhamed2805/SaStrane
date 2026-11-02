@@ -1,36 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { listingsApi, type ListingSummary } from '@/features/listings/api';
+import { useQuery } from '@tanstack/react-query';
 import { ListingCard } from '@/features/listings/components/listing-card';
 import { ListingCardSkeleton } from '@/features/listings/components/listing-card-skeleton';
+import { listingsQuery } from '@/features/listings/queries';
 
 export function LatestListings() {
-  const [listings, setListings] = useState<ListingSummary[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    listingsApi
-      .getAll({ page: 1, limit: 4, status: 'OPEN' }, controller.signal)
-      .then((response) => setListings(response.items))
-      .catch((requestError: unknown) => {
-        if (
-          requestError instanceof DOMException &&
-          requestError.name === 'AbortError'
-        ) {
-          return;
-        }
-        setError(true);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setIsLoading(false);
-      });
-
-    return () => controller.abort();
-  }, []);
+  const { data, isPending, isError } = useQuery(
+    listingsQuery({ page: 1, limit: 4, status: 'OPEN' }),
+  );
+  const listings = data?.items ?? [];
+  const isLoading = isPending && !isError;
+  const error = isError && !data;
 
   if (isLoading) {
     return (

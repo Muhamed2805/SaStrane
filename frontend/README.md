@@ -20,6 +20,7 @@ The app runs on <http://localhost:3000>.
 | Variable | Default | Notes |
 | --- | --- | --- |
 | `BACKEND_URL` | `http://localhost:4000` | The backend origin. Browsers reach it through the `/api/*` rewrite, and server rendering calls it directly. The build fixes the rewrite, so set it before `npm run dev` or `npm run build`. |
+| `SITE_URL` | `http://localhost:3000` | The public address of the site. Canonical links and link previews use it. Set it before `npm run build`. |
 
 ## Scripts
 
@@ -46,6 +47,29 @@ The request and response types come from the backend's `openapi.json`.
 changes, run the script and commit the result. CI fails when the file is out
 of date.
 
+## Data
+
+[TanStack Query](https://tanstack.com/query) holds the data from the API.
+
+- **Query options.** `features/*/queries.ts` define the query keys and
+  options. The signed-in user's data is under `['user', userId, ...]`, and
+  signing out or switching users removes it.
+- **Server rendering.** `/listings` fetches the first page on the server and
+  passes it to the browser cache with `HydrationBoundary`. The job detail
+  page stores its job in the cache too, for the apply dialog and the edit
+  page. The server does not retry failed requests: the browser fetches
+  what is missing.
+- **Changes.** A change stores the API's answer in the cache, then reloads
+  the lists it affects. Client errors (4xx) are not retried.
+- **URL filters.** The job list reads its search, filters and page from the
+  URL with `features/listings/search-params.ts`, on the server and in the
+  browser alike. Changes go to the URL with the History API, so they need no
+  server round trip. Typing replaces the history entry, other changes add
+  one, so Back steps through filters, not keystrokes.
+- **Metadata.** The root layout sets the title template and link previews.
+  The job detail page builds its title and description from the job. Pages
+  with private data are `noindex`.
+
 ## Structure
 
 | Folder | Contents |
@@ -56,5 +80,5 @@ of date.
 | `features/applications/` | Applying and the workspace |
 | `features/landing/` | Home page sections |
 | `components/` | Navbar, footer, auth provider and UI primitives |
-| `lib/` | API client, generated API types, API URL, and date and price formatting |
+| `lib/` | API and query clients, paging helpers, site metadata, generated API types, API URL, and date and price formatting |
 | `e2e/` | Playwright tests |

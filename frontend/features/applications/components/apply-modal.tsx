@@ -1,6 +1,7 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Banknote,
   CheckCircle2,
@@ -14,51 +15,43 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store';
-import { listingsApi, type Listing } from '@/features/listings/api';
 import {
   CATEGORY_LABELS,
   LOCATION_LABELS,
   MAX_PRICE_KM,
 } from '@/features/listings/constants';
+import { listingKeys, listingQuery } from '@/features/listings/queries';
+import { ApiError } from '@/lib/api-client';
 import { formatPrice, parsePrice } from '@/lib/format-price';
+import { useApplyToListing, useAppliedListingIds } from '../hooks';
 import { useApplicationsStore } from '../store';
 
 export function ApplyModal() {
+  const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
-  const {
-    isApplyOpen,
-    activeListingId,
-    closeApply,
-    submitApplication,
-    hasApplied,
-    isSubmitting,
-    error,
-  } = useApplicationsStore();
+  const { isApplyOpen, activeListingId, closeApply } = useApplicationsStore();
+  const appliedListingIds = useAppliedListingIds();
+  const application = useApplyToListing(user?.id ?? '');
+  const isSubmitting = application.isPending;
+  // Stable across renders, unlike the mutation result itself.
+  const resetApplication = application.reset;
+  const error = application.error?.message ?? null;
 
-  const [listingDetails, setListingDetails] = useState<Listing | null>(
-    null,
-  );
+  // The job page usually has this job cached already.
+  const { data: currentListing } = useQuery({
+    ...listingQuery(activeListingId ?? ''),
+    enabled: Boolean(activeListingId),
+  });
+
   const [message, setMessage] = useState('');
   const [price, setPrice] = useState('');
 
-  useEffect(() => {
-    if (!activeListingId) return;
-
-    let cancelled = false;
-
-    listingsApi
-      .getById(activeListingId)
-      .then((listing) => {
-        if (!cancelled) setListingDetails(listing);
-      })
-      .catch(() => {
-        if (!cancelled) setListingDetails(null);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeListingId]);
+  const resetAndClose = () => {
+    setMessage('');
+    setPrice('');
+    application.reset();
+    closeApply();
+  };
 
   useEffect(() => {
     if (!isApplyOpen) return;
@@ -67,6 +60,7 @@ export function ApplyModal() {
       if (event.key === 'Escape' && !isSubmitting) {
         setMessage('');
         setPrice('');
+        resetApplication();
         closeApply();
       }
     };
@@ -79,37 +73,47 @@ export function ApplyModal() {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [closeApply, isApplyOpen, isSubmitting]);
-
-  const alreadyApplied = useMemo(() => {
-    if (!activeListingId) return false;
-    return hasApplied(activeListingId);
-  }, [activeListingId, hasApplied]);
+  }, [closeApply, isApplyOpen, isSubmitting, resetApplication]);
 
   if (!isApplyOpen || !activeListingId) return null;
 
+  const alreadyApplied = appliedListingIds?.has(activeListingId) ?? false;
+  const isClosed = currentListing?.status === 'CLOSED';
+
   const handleClose = () => {
     if (isSubmitting) return;
-    setMessage('');
-    setPrice('');
-    closeApply();
+    resetAndClose();
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!user) return;
 
-    await submitApplication(activeListingId, message.trim(), parsePrice(price));
-    if (!useApplicationsStore.getState().error) {
-      setMessage('');
-      setPrice('');
-      toast.success('Prijava je uspješno poslana!');
-    }
+    application.mutate(
+      {
+        listingId: activeListingId,
+        message: message.trim(),
+        proposedPrice: parsePrice(price) ?? undefined,
+      },
+      {
+        onSuccess: () => {
+          resetAndClose();
+          toast.success('Prijava je uspješno poslana!');
+        },
+        onError: (submitError) => {
+          // The job was closed after the page loaded: show it as closed.
+          if (
+            submitError instanceof ApiError &&
+            submitError.code === 'LISTING_CLOSED'
+          ) {
+            void queryClient.invalidateQueries({
+              queryKey: listingKeys.detail(activeListingId),
+            });
+          }
+        },
+      },
+    );
   };
-
-  const currentListing =
-    listingDetails?.id === activeListingId ? listingDetails : null;
-  const isClosed = currentListing?.status === 'CLOSED';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

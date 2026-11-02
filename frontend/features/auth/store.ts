@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useApplicationsStore } from '@/features/applications/store';
+import { removeUserQueries } from '@/lib/query-client';
 import {
   ApiError,
   authApi,
@@ -207,6 +208,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 // The session also changes without a store action: when a refresh finds
 // the session ended, or another tab signs in or out.
 subscribeToSession((user) => {
-  if (!user) useApplicationsStore.getState().reset();
+  // Another user's cached data must never show.
+  removeUserQueries(user?.id);
+  if (!user) useApplicationsStore.getState().closeApply();
   useAuthStore.setState({ user, status: user ? 'signed-in' : 'signed-out' });
 });

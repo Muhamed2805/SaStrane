@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Check,
   Lock,
@@ -14,8 +15,11 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store';
+import { useAppliedListingIds } from '@/features/applications/hooks';
+import { applicationKeys } from '@/features/applications/queries';
 import { useApplicationsStore } from '@/features/applications/store';
 import { listingsApi, type ListingStatus } from '@/features/listings/api';
+import { listingKeys, listingSaved } from '@/features/listings/queries';
 import { cn } from '@/lib/utils';
 
 type ListingActionsProps = {
@@ -30,20 +34,27 @@ export function ListingActions({
   status,
 }: ListingActionsProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user, openAuthModal } = useAuthStore();
-  const { openApply, hasApplied } = useApplicationsStore();
+  const openApply = useApplicationsStore((state) => state.openApply);
+  const appliedListingIds = useAppliedListingIds();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isChangingStatus, setIsChangingStatus] = useState(false);
 
   const isOwner = user?.id === clientId;
   const isClosed = status === 'CLOSED';
-  const applied = hasApplied(listingId);
+  const applied = appliedListingIds?.has(listingId) ?? false;
 
   // The page is rendered on the server, so a refresh shows the new status.
   const toggleStatus = async () => {
+    if (!user) return;
     setIsChangingStatus(true);
     try {
-      await listingsApi.updateStatus(listingId, isClosed ? 'OPEN' : 'CLOSED');
+      const listing = await listingsApi.updateStatus(
+        listingId,
+        isClosed ? 'OPEN' : 'CLOSED',
+      );
+      listingSaved(queryClient, user.id, listing);
       toast.success(
         isClosed
           ? 'Oglas je ponovo otvoren za prijave.'
@@ -62,6 +73,15 @@ export function ListingActions({
     setIsDeleting(true);
     try {
       await listingsApi.delete(listingId);
+      queryClient.removeQueries({ queryKey: listingKeys.detail(listingId) });
+      void queryClient.invalidateQueries({ queryKey: listingKeys.lists() });
+      void queryClient.invalidateQueries({
+        queryKey: listingKeys.owned(user.id),
+      });
+      // Its applications are gone too.
+      void queryClient.invalidateQueries({
+        queryKey: applicationKeys.all(user.id),
+      });
       toast.success('Oglas je obrisan.');
       router.push('/listings');
     } catch (err) {

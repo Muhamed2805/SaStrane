@@ -2,10 +2,12 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { BriefcaseBusiness, ChevronRight, LockKeyhole } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store';
 import { listingsApi } from '@/features/listings/api';
+import { listingSaved } from '@/features/listings/queries';
 import {
   ListingForm,
   type ListingFormResult,
@@ -14,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function CreateListingPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user, status, openAuthModal } = useAuthStore();
 
   if (status === 'loading') {
@@ -53,6 +56,7 @@ export default function CreateListingPage() {
       budget: values.budget ?? undefined,
       description: values.description || undefined,
     });
+    listingSaved(queryClient, user.id, listing);
     toast.success('Oglas je uspješno objavljen!');
     router.push(`/listings/${listing.id}`);
   };
