@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/store';
+import { useUnreadCount } from '@/features/messages/hooks';
 import { BrandLogo } from './brand-logo';
 
 const NavLink = ({
@@ -35,6 +36,33 @@ const NavLink = ({
   );
 };
 
+// Links to the conversations, with the number of unread messages.
+const MessagesLink = ({
+  unread,
+  onClick,
+}: {
+  unread: number | undefined;
+  onClick?: () => void;
+}) => {
+  const count = unread ?? 0;
+
+  return (
+    <Link
+      href="/messages"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+    >
+      Poruke
+      {count > 0 ? (
+        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-orange px-1.5 text-[11px] font-bold text-white">
+          {count > 99 ? '99+' : count}
+          <span className="sr-only"> nepročitanih</span>
+        </span>
+      ) : null}
+    </Link>
+  );
+};
+
 const workspaceLinks = [
   { href: '/profile', label: 'Moj profil', icon: UserRound },
   { href: '/inbox?tab=listings', label: 'Moji oglasi', icon: ClipboardList },
@@ -45,6 +73,7 @@ const workspaceLinks = [
 export function Navbar() {
   const { user, status, logout, openAuthModal, openRegistrationModal } =
     useAuthStore();
+  const unread = useUnreadCount();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -83,6 +112,7 @@ export function Navbar() {
           {user ? (
             <NavLink href="/inbox?tab=applications" label="Moje prijave" />
           ) : null}
+          {user ? <MessagesLink unread={unread} /> : null}
 
           {user ? (
             <div className="flex items-center gap-3 border-l pl-6">
@@ -181,7 +211,7 @@ export function Navbar() {
         </nav>
 
         <button
-          className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted md:hidden"
+          className="relative flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted md:hidden"
           onClick={() => setIsMenuOpen((open) => !open)}
           aria-label={isMenuOpen ? 'Zatvori meni' : 'Otvori meni'}
           aria-expanded={isMenuOpen}
@@ -192,6 +222,12 @@ export function Navbar() {
           ) : (
             <Menu className="h-5 w-5" />
           )}
+          {!isMenuOpen && unread ? (
+            <span
+              className="absolute right-1.5 top-1.5 size-2 rounded-full bg-brand-orange"
+              aria-hidden="true"
+            />
+          ) : null}
         </button>
       </div>
 
@@ -218,6 +254,7 @@ export function Navbar() {
                   {user.email}
                 </p>
               </div>
+              <MessagesLink unread={unread} onClick={closeMenu} />
               {workspaceLinks.map((item) => (
                 <NavLink
                   key={item.href}

@@ -1,11 +1,20 @@
+'use client';
+
 import Link from 'next/link';
-import { Banknote, CalendarDays, ChevronRight, MapPin } from 'lucide-react';
+import {
+  Banknote,
+  CalendarDays,
+  ChevronRight,
+  MapPin,
+  MessageCircle,
+} from 'lucide-react';
 import { ClosedBadge } from '@/features/listings/components/closed-badge';
 import {
   CATEGORY_LABELS,
   LOCATION_LABELS,
 } from '@/features/listings/constants';
 import { formatDate } from '@/lib/format-date';
+import { useOpenConversation } from '@/features/messages/hooks';
 import { formatPrice } from '@/lib/format-price';
 import type { MyApplication } from '../api';
 import { ApplicationStatusBadge } from './application-status-badge';
@@ -15,6 +24,8 @@ export function MyApplicationCard({
 }: {
   application: MyApplication;
 }) {
+  const { open: openConversation, isOpening } = useOpenConversation();
+
   return (
     <article className="rounded-xl border bg-white p-5 shadow-sm transition-colors hover:border-primary/30">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
@@ -57,13 +68,26 @@ export function MyApplicationCard({
             Poslano {formatDate(application.createdAt)}
           </span>
         </div>
-        <Link
-          href={`/listings/${application.listingId}`}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-primary"
-        >
-          Otvori oglas
-          <ChevronRight className="size-3.5" aria-hidden="true" />
-        </Link>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            disabled={isOpening}
+            onClick={() =>
+              openConversation({ listingId: application.listingId })
+            }
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-primary disabled:opacity-50"
+          >
+            <MessageCircle className="size-3.5" aria-hidden="true" />
+            Poruka klijentu
+          </button>
+          <Link
+            href={`/listings/${application.listingId}`}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-primary"
+          >
+            Otvori oglas
+            <ChevronRight className="size-3.5" aria-hidden="true" />
+          </Link>
+        </div>
       </div>
     </article>
   );

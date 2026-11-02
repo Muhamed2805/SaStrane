@@ -51,6 +51,14 @@ be both.
 - A workspace shows your jobs, the applications you sent and the ones you
   received, each with its status.
 
+**Messages**
+- An executor can message the client of an open job, before or after
+  applying. The client can message anyone who applied to their job.
+- Each job has one conversation per executor. It stays open after the job
+  closes, but a closed job takes no new conversations.
+- The navbar shows the number of unread messages. Open conversations check
+  for new messages every few seconds.
+
 **Accounts**
 - Sign up as a client, an executor or both, then confirm the email address
   with a 6-digit code.
@@ -191,6 +199,9 @@ erDiagram
   Listing ||--o{ Application : receives
   User ||--o{ Session : "signs in with"
   Session ||--o{ RefreshToken : rotates
+  Listing ||--o{ Conversation : "is discussed in"
+  User ||--o{ Conversation : "takes part in"
+  Conversation ||--o{ Message : holds
 
   User {
     string id PK
@@ -229,6 +240,21 @@ erDiagram
     string tokenHash UK
     datetime rotatedAt
   }
+  Conversation {
+    string id PK
+    string listingId FK "unique with executorId"
+    string clientId FK
+    string executorId FK
+    datetime lastMessageAt
+    int clientUnread
+    int executorUnread
+  }
+  Message {
+    string id PK
+    string conversationId FK
+    string senderId FK
+    string body "up to 2000 characters"
+  }
 ```
 
 ## Tech stack
@@ -252,6 +278,7 @@ SaStrane/
 │   │   ├── auth/            Sign-up, email codes, sessions, JWT
 │   │   ├── listings/        Jobs
 │   │   ├── applications/    Applications to jobs
+│   │   ├── conversations/   Messages between clients and executors
 │   │   ├── common/          Error filters and transforms
 │   │   ├── config/          Environment validation, CORS
 │   │   ├── openapi/         Generates the API contract
@@ -260,7 +287,7 @@ SaStrane/
 │   └── openapi.json         The API contract
 ├── frontend/                Next.js app
 │   ├── app/                 Routes
-│   ├── features/            Auth, listings, applications, landing
+│   ├── features/            Auth, listings, applications, messages, landing
 │   ├── components/          Shared UI
 │   ├── lib/                 API and query clients, generated API types, formatting
 │   └── e2e/                 Playwright tests

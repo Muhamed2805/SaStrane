@@ -13,7 +13,7 @@ export async function resetDatabase(prisma: PrismaService) {
     { name: string }[]
   >`SELECT current_database() AS name`;
   assertTestDatabaseName(name);
-  await prisma.$executeRaw`TRUNCATE "Application", "Listing", "RefreshToken", "Session", "User" CASCADE`;
+  await prisma.$executeRaw`TRUNCATE "Message", "Conversation", "Application", "Listing", "RefreshToken", "Session", "User" CASCADE`;
 }
 
 let userCount = 0;
