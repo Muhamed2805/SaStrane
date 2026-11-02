@@ -48,6 +48,8 @@ be both.
 - The client sees every application to their jobs and accepts or rejects
   it. The decision is final, and the client sees the executor's email only
   after accepting.
+- The executor gets an email when their application is accepted or
+  rejected.
 - A workspace shows your jobs, the applications you sent and the ones you
   received, each with its status.
 
@@ -133,7 +135,7 @@ flowchart LR
   proxy --> edge
   pages -- "server-side fetch<br/>(job list, job detail)" --> edge
   edge --> modules --> orm --> db
-  modules -- "email codes" --> resend
+  modules -- "email codes and notices" --> resend
 ```
 
 - **Same-origin API.** The browser calls `/api/*` on the frontend's own
@@ -276,6 +278,7 @@ SaStrane/
 │   ├── prisma/              Schema, migrations and demo seed
 │   ├── src/
 │   │   ├── auth/            Sign-up, email codes, sessions, JWT
+│   │   ├── email/           Transactional emails through Resend
 │   │   ├── listings/        Jobs
 │   │   ├── applications/    Applications to jobs
 │   │   ├── conversations/   Messages between clients and executors

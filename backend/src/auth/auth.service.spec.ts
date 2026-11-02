@@ -23,7 +23,7 @@ import bcrypt from 'bcrypt';
 import { createHmac } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuthService } from './auth.service.js';
-import { EmailService } from './email.service.js';
+import { EmailService } from '../email/email.service.js';
 import { SessionsService, type SessionGrant } from './sessions.service.js';
 
 // The service imports bcrypt's default export.

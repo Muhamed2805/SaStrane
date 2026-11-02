@@ -2,10 +2,12 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { ApplicationStatus, ListingStatus } from '../generated/prisma/enums.js';
+import { EmailService } from '../email/email.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateApplicationDto } from './dto/create-application.dto.js';
 import { ApplicationsQueryDto } from './dto/applications-query.dto.js';
@@ -54,7 +56,12 @@ function hideContactUntilAccepted<
 
 @Injectable()
 export class ApplicationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(ApplicationsService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly email: EmailService,
+  ) {}
 
   async create(dto: CreateApplicationDto, executorId: string) {
     const listing = await this.prisma.listing.findUnique({
@@ -174,7 +181,15 @@ export class ApplicationsService {
   ) {
     const application = await this.prisma.application.findUnique({
       where: { id },
-      select: { listing: { select: { clientId: true } } },
+      select: {
+        listing: {
+          select: {
+            clientId: true,
+            title: true,
+            client: { select: { fullName: true } },
+          },
+        },
+      },
     });
 
     if (!application) throw new NotFoundException('Application not found');
@@ -195,11 +210,28 @@ export class ApplicationsService {
       });
     }
 
-    return hideContactUntilAccepted(
-      await this.prisma.application.findUniqueOrThrow({
-        where: { id },
-        select: LISTING_APPLICATION_SELECT,
-      }),
-    );
+    const decided = await this.prisma.application.findUniqueOrThrow({
+      where: { id },
+      select: LISTING_APPLICATION_SELECT,
+    });
+
+    // The decision is already saved, so a failed email must not fail the
+    // request. The client does not wait for the email provider either.
+    this.email
+      .sendApplicationDecision({
+        email: decided.executor.email,
+        fullName: decided.executor.fullName,
+        listingId: decided.listingId,
+        listingTitle: application.listing.title,
+        clientName: application.listing.client.fullName,
+        accepted: decided.status === ApplicationStatus.ACCEPTED,
+      })
+      .catch((error: unknown) => {
+        this.logger.error(
+          `Application decision email for ${id} failed: ${(error as Error).message}`,
+        );
+      });
+
+    return hideContactUntilAccepted(decided);
   }
 }

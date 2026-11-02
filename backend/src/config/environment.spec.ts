@@ -81,9 +81,40 @@ describe('validateEnvironment', () => {
         EMAIL_FROM: 'SaStrane <noreply@sastrane.example>',
         EMAIL_VERIFICATION_SECRET:
           'a-separate-email-secret-with-at-least-32-characters',
+        APP_URL: 'https://sastrane.example/',
       }),
     ).toEqual(
-      expect.objectContaining({ NODE_ENV: 'production', TRUST_PROXY_HOPS: 1 }),
+      expect.objectContaining({
+        NODE_ENV: 'production',
+        TRUST_PROXY_HOPS: 1,
+        APP_URL: 'https://sastrane.example',
+      }),
     );
+  });
+
+  it('requires the web app URL in production', () => {
+    expect(() =>
+      validateEnvironment({
+        ...validEnvironment,
+        NODE_ENV: 'production',
+        CORS_ORIGINS: 'https://sastrane.example',
+        RESEND_API_KEY: 'resend-key',
+        EMAIL_FROM: 'SaStrane <noreply@sastrane.example>',
+        EMAIL_VERIFICATION_SECRET:
+          'a-separate-email-secret-with-at-least-32-characters',
+      }),
+    ).toThrow('APP_URL is required');
+  });
+
+  it('defaults the web app URL outside production and checks it', () => {
+    expect(validateEnvironment(validEnvironment)).toEqual(
+      expect.objectContaining({ APP_URL: 'http://localhost:3000' }),
+    );
+    expect(() =>
+      validateEnvironment({ ...validEnvironment, APP_URL: 'ftp://x.example' }),
+    ).toThrow('APP_URL must use http or https');
+    expect(() =>
+      validateEnvironment({ ...validEnvironment, APP_URL: 'not a url' }),
+    ).toThrow('APP_URL must be a valid URL');
   });
 });

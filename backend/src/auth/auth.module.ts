@@ -4,10 +4,10 @@ import { JwtModule } from '@nestjs/jwt';
 import type { StringValue } from 'ms';
 import { PassportModule } from '@nestjs/passport';
 
+import { EmailModule } from '../email/email.module.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
-import { EmailService } from './email.service.js';
 import { JWT_ALGORITHM } from './jwt.constants.js';
 import { SessionsService } from './sessions.service.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
@@ -15,6 +15,7 @@ import { JwtStrategy } from './strategies/jwt.strategy.js';
 @Module({
   imports: [
     PrismaModule,
+    EmailModule,
     PassportModule,
     // registerAsync reads the validated configuration after ConfigModule has
     // loaded .env, instead of reading process.env while this file is imported.
@@ -30,6 +31,6 @@ import { JwtStrategy } from './strategies/jwt.strategy.js';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, EmailService, SessionsService, JwtStrategy],
+  providers: [AuthService, SessionsService, JwtStrategy],
 })
 export class AuthModule {}

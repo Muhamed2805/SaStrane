@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ConflictException,
   ForbiddenException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { EmailService } from '../email/email.service.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ApplicationsService } from './applications.service.js';
@@ -21,10 +23,15 @@ describe('ApplicationsService', () => {
     updateMany: vi.fn(),
   };
 
-  const service = new ApplicationsService({
-    listing: listingRepository,
-    application: applicationRepository,
-  } as unknown as PrismaService);
+  const email = { sendApplicationDecision: vi.fn() };
+
+  const service = new ApplicationsService(
+    {
+      listing: listingRepository,
+      application: applicationRepository,
+    } as unknown as PrismaService,
+    email as unknown as EmailService,
+  );
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -193,16 +200,28 @@ describe('ApplicationsService', () => {
   });
 
   describe('updateStatus', () => {
-    const ownApplication = { listing: { clientId: 'client-1' } };
+    const ownApplication = {
+      listing: {
+        clientId: 'client-1',
+        title: 'Košenje trave',
+        client: { fullName: 'Amra' },
+      },
+    };
 
-    it('decides a pending application and shows the email once accepted', async () => {
+    function decidedAs(status: 'ACCEPTED' | 'REJECTED') {
       applicationRepository.findUnique.mockResolvedValue(ownApplication);
       applicationRepository.updateMany.mockResolvedValue({ count: 1 });
       applicationRepository.findUniqueOrThrow.mockResolvedValue({
         id: 'application-1',
-        status: 'ACCEPTED',
+        listingId: 'listing-1',
+        status,
         executor,
       });
+    }
+
+    it('decides a pending application and shows the email once accepted', async () => {
+      decidedAs('ACCEPTED');
+      email.sendApplicationDecision.mockResolvedValue(undefined);
 
       await expect(
         service.updateStatus(
@@ -210,11 +229,60 @@ describe('ApplicationsService', () => {
           { status: 'ACCEPTED' },
           'client-1',
         ),
-      ).resolves.toEqual({ id: 'application-1', status: 'ACCEPTED', executor });
+      ).resolves.toEqual({
+        id: 'application-1',
+        listingId: 'listing-1',
+        status: 'ACCEPTED',
+        executor,
+      });
       expect(applicationRepository.updateMany).toHaveBeenCalledWith({
         where: { id: 'application-1', status: 'PENDING' },
         data: { status: 'ACCEPTED' },
       });
+    });
+
+    it('emails the executor about the decision', async () => {
+      decidedAs('REJECTED');
+      email.sendApplicationDecision.mockResolvedValue(undefined);
+
+      await service.updateStatus(
+        'application-1',
+        { status: 'REJECTED' },
+        'client-1',
+      );
+
+      expect(email.sendApplicationDecision).toHaveBeenCalledWith({
+        email: executor.email,
+        fullName: executor.fullName,
+        listingId: 'listing-1',
+        listingTitle: 'Košenje trave',
+        clientName: 'Amra',
+        accepted: false,
+      });
+    });
+
+    it('keeps the decision when the email fails', async () => {
+      decidedAs('ACCEPTED');
+      const logged = vi
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+      email.sendApplicationDecision.mockRejectedValue(
+        new Error('provider down'),
+      );
+
+      await expect(
+        service.updateStatus(
+          'application-1',
+          { status: 'ACCEPTED' },
+          'client-1',
+        ),
+      ).resolves.toMatchObject({ status: 'ACCEPTED' });
+      await vi.waitFor(() =>
+        expect(logged).toHaveBeenCalledWith(
+          expect.stringContaining('provider down'),
+        ),
+      );
+      logged.mockRestore();
     });
 
     it('treats a decision as final', async () => {
@@ -232,6 +300,7 @@ describe('ApplicationsService', () => {
         response: { code: 'APPLICATION_ALREADY_DECIDED' },
       });
       expect(applicationRepository.findUniqueOrThrow).not.toHaveBeenCalled();
+      expect(email.sendApplicationDecision).not.toHaveBeenCalled();
     });
 
     it('rejects a status update for a missing application', async () => {

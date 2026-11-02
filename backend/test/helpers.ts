@@ -34,9 +34,16 @@ export function createUser(
   });
 }
 
-// Stands in for EmailService and keeps the codes it was asked to send.
+// Stands in for EmailService and keeps the emails it was asked to send.
 export class CapturingEmailService {
   private readonly sent: { kind: string; email: string; code: string }[] = [];
+  readonly decisions: {
+    email: string;
+    listingId: string;
+    listingTitle: string;
+    clientName: string;
+    accepted: boolean;
+  }[] = [];
 
   sendVerificationCode(input: { email: string; code: string }) {
     this.sent.push({ kind: 'verification', ...input });
@@ -45,6 +52,24 @@ export class CapturingEmailService {
 
   sendPasswordResetCode(input: { email: string; code: string }) {
     this.sent.push({ kind: 'password-reset', ...input });
+    return Promise.resolve();
+  }
+
+  sendApplicationDecision(input: {
+    email: string;
+    listingId: string;
+    listingTitle: string;
+    clientName: string;
+    accepted: boolean;
+  }) {
+    const { email, listingId, listingTitle, clientName, accepted } = input;
+    this.decisions.push({
+      email,
+      listingId,
+      listingTitle,
+      clientName,
+      accepted,
+    });
     return Promise.resolve();
   }
 
@@ -58,6 +83,7 @@ export class CapturingEmailService {
 
   clear() {
     this.sent.length = 0;
+    this.decisions.length = 0;
   }
 }
 
