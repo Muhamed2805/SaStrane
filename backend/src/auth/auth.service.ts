@@ -18,7 +18,7 @@ import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { VerifyEmailDto } from './dto/verify-email.dto.js';
-import { EmailService } from './email.service.js';
+import { EmailService } from '../email/email.service.js';
 import {
   PUBLIC_USER_SELECT,
   toPublicUser,

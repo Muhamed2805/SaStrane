@@ -4,11 +4,43 @@ import { ConfigService } from '@nestjs/config';
 import { EmailService } from './email.service.js';
 
 function createService(values: Record<string, string | undefined>) {
-  const config = { get: vi.fn((key: string) => values[key]) };
+  const read = (key: string) => values[key];
+  const config = {
+    get: vi.fn(read),
+    getOrThrow: vi.fn((key: string) => {
+      const value = read(key);
+      if (value === undefined) throw new Error(`${key} is missing`);
+      return value;
+    }),
+  };
   return new EmailService(config as unknown as ConfigService);
 }
 
 const input = { email: 'user@example.com', fullName: 'Test', code: '123456' };
+
+const decision = {
+  email: 'kenan@example.com',
+  fullName: 'Kenan',
+  listingId: 'listing-1',
+  listingTitle: 'Košenje <trave>',
+  clientName: 'Amra',
+  accepted: true,
+};
+
+type SentEmail = {
+  to: string[];
+  subject: string;
+  html: string;
+  tags: unknown[];
+};
+
+// The JSON body of the first request sent to Resend.
+function sentBody(fetchMock: {
+  mock: { calls: Parameters<typeof fetch>[] };
+}): SentEmail {
+  const [, init] = fetchMock.mock.calls[0];
+  return JSON.parse(init?.body as string) as SentEmail;
+}
 
 describe('EmailService', () => {
   const fetchMock =
@@ -49,6 +81,41 @@ describe('EmailService', () => {
 
     const [, init] = fetchMock.mock.calls[0];
     expect(init?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('sends an accepted application email with a link to the job', async () => {
+    fetchMock.mockResolvedValue(new Response('{}', { status: 200 }));
+    const service = createService({
+      RESEND_API_KEY: 'key',
+      APP_URL: 'https://sastrane.example',
+    });
+
+    await service.sendApplicationDecision(decision);
+
+    const body = sentBody(fetchMock);
+    expect(body.to).toEqual(['kenan@example.com']);
+    expect(body.subject).toBe('Tvoja prijava je prihvaćena');
+    expect(body.html).toContain('https://sastrane.example/listings/listing-1');
+    expect(body.html).toContain('Košenje &lt;trave&gt;');
+    expect(body.html).not.toContain('<trave>');
+    expect(body.tags).toEqual([
+      { name: 'category', value: 'application_decision' },
+    ]);
+  });
+
+  it('sends a rejected application email that points to other jobs', async () => {
+    fetchMock.mockResolvedValue(new Response('{}', { status: 200 }));
+    const service = createService({
+      RESEND_API_KEY: 'key',
+      APP_URL: 'https://sastrane.example',
+    });
+
+    await service.sendApplicationDecision({ ...decision, accepted: false });
+
+    const body = sentBody(fetchMock);
+    expect(body.subject).toBe('Odgovor na tvoju prijavu');
+    expect(body.html).toContain('href="https://sastrane.example/listings"');
+    expect(body.html).not.toContain('Amra');
   });
 
   it('maps a network failure or timeout to 503', async () => {

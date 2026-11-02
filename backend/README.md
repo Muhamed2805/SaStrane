@@ -36,8 +36,9 @@ CLI. Variables already set in the environment win.
 | `PORT` | No | `4000` | |
 | `NODE_ENV` | No | `development` | `development`, `test` or `production`. |
 | `CORS_ORIGINS` | In production | | Comma-separated frontend origins. |
+| `APP_URL` | In production | `http://localhost:3000` | The web app's public address, used for links in emails. |
 | `TRUST_PROXY_HOPS` | No | `1` in production, else `0` | Proxies in front of the API that add to `X-Forwarded-For`. Rate limits use the client IP. See `.env.example`. |
-| `RESEND_API_KEY` | In production | | When it is empty in development, email codes are printed in the terminal. |
+| `RESEND_API_KEY` | In production | | When it is empty in development, the backend prints email codes and notices in the terminal instead of sending them. |
 | `EMAIL_FROM` | In production | | For example `SaStrane <noreply@your-domain.com>`. |
 | `EMAIL_VERIFICATION_SECRET` | In production | | Hashes the email codes. At least 32 characters, and different from `JWT_SECRET`. |
 
@@ -173,6 +174,9 @@ two sides of the conversation.
 - A decision is final. Deciding on an application that is not `PENDING`
   returns 409 with the code `APPLICATION_ALREADY_DECIDED`.
 - The executor's email is `null` until the client accepts the application.
+- After a decision, the executor gets an email with the result and a link
+  to the job. It is sent after the response. A failed email is logged, and
+  the decision stays.
 
 **Conversations.**
 - There is one conversation per job and user, between the job's client and

@@ -1,5 +1,6 @@
 const MINIMUM_SECRET_LENGTH = 32;
 const DEFAULT_JWT_EXPIRES_IN = '15m';
+const DEFAULT_APP_URL = 'http://localhost:3000';
 
 // An explicit unit is required: jsonwebtoken reads a unitless string such as
 // "900" as milliseconds, which would make every access token expire at once.
@@ -24,6 +25,22 @@ function validateDatabaseUrl(value: string) {
   if (url.protocol !== 'postgresql:' && url.protocol !== 'postgres:') {
     throw new Error('DATABASE_URL must use the PostgreSQL protocol');
   }
+}
+
+// The web app's public address, used for links in emails. Returned without
+// a trailing slash so paths can be appended.
+function validateAppUrl(value: string) {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error('APP_URL must be a valid URL');
+  }
+
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    throw new Error('APP_URL must use http or https');
+  }
+  return value.replace(/\/+$/, '');
 }
 
 function validateSecret(value: string, key: string) {
@@ -87,7 +104,14 @@ export function validateEnvironment(config: Record<string, unknown>) {
     requiredString(config, 'EMAIL_FROM');
     const emailSecret = requiredString(config, 'EMAIL_VERIFICATION_SECRET');
     validateSecret(emailSecret, 'EMAIL_VERIFICATION_SECRET');
+    requiredString(config, 'APP_URL');
   }
+
+  const appUrl = validateAppUrl(
+    typeof config.APP_URL === 'string' && config.APP_URL.trim()
+      ? config.APP_URL.trim()
+      : DEFAULT_APP_URL,
+  );
 
   return {
     ...config,
@@ -97,5 +121,6 @@ export function validateEnvironment(config: Record<string, unknown>) {
     JWT_EXPIRES_IN: jwtExpiresIn,
     PORT: port,
     TRUST_PROXY_HOPS: trustProxyHops,
+    APP_URL: appUrl,
   };
 }

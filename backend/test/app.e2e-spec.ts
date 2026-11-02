@@ -13,7 +13,7 @@ import { ThrottlerStorage, ThrottlerStorageService } from '@nestjs/throttler';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/app.setup.js';
-import { EmailService } from '../src/auth/email.service.js';
+import { EmailService } from '../src/email/email.service.js';
 import { ROTATION_GRACE_MS } from '../src/auth/sessions.service.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { contractCheckedRequest } from './openapi-contract.js';
@@ -671,6 +671,15 @@ describe('App (e2e)', () => {
         status: 'ACCEPTED',
         executor: { email: executor.user.email },
       });
+      expect(emails.decisions).toEqual([
+        {
+          email: executor.user.email,
+          listingId,
+          listingTitle: listingInput.title,
+          clientName: 'Amra Hodžić',
+          accepted: true,
+        },
+      ]);
 
       const sent = await http()
         .get('/api/applications/my')
@@ -696,6 +705,8 @@ describe('App (e2e)', () => {
       expect(second.body).toMatchObject({
         code: 'APPLICATION_ALREADY_DECIDED',
       });
+      // Only the decision that went through tells the executor.
+      expect(emails.decisions).toMatchObject([{ accepted: false }]);
       expect(await prisma.application.findFirst()).toMatchObject({
         status: 'REJECTED',
       });
@@ -715,6 +726,7 @@ describe('App (e2e)', () => {
       );
 
       expect(statuses.sort()).toEqual([200, 409]);
+      expect(emails.decisions).toHaveLength(1);
     });
 
     it('still lets the client decide after closing the job', async () => {
@@ -743,6 +755,7 @@ describe('App (e2e)', () => {
       expect(await prisma.application.findFirst()).toMatchObject({
         status: 'PENDING',
       });
+      expect(emails.decisions).toEqual([]);
     });
   });
 
