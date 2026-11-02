@@ -1,12 +1,13 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { PrismaService } from './prisma/prisma.service';
+import { AppController } from './app.controller.js';
+import { AppService } from './app.service.js';
+import { PrismaService } from './prisma/prisma.service.js';
 
 describe('AppController', () => {
   let appController: AppController;
   const prisma = {
-    $queryRaw: jest.fn<Promise<unknown>, []>(),
+    $queryRaw: vi.fn<() => Promise<unknown>>(),
   };
 
   beforeEach(async () => {

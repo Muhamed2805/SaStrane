@@ -23,27 +23,27 @@ import {
   ApiErrors,
   COMMON_ERRORS,
   SIGNED_IN_ERRORS,
-} from '../openapi/api-errors.decorator';
-import { AuthService, type AuthSession } from './auth.service';
+} from '../openapi/api-errors.decorator.js';
+import { AuthService, type AuthSession } from './auth.service.js';
 import {
   AuthSessionDto,
   PublicUserDto,
   RegistrationDto,
   SuccessDto,
-} from './dto/auth-response.dto';
-import { LoginDto } from './dto/login.dto';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { RegisterDto } from './dto/register.dto';
-import { ResendVerificationDto } from './dto/resend-verification.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
-import { VerifyEmailDto } from './dto/verify-email.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
+} from './dto/auth-response.dto.js';
+import { LoginDto } from './dto/login.dto.js';
+import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
+import { RegisterDto } from './dto/register.dto.js';
+import { ResendVerificationDto } from './dto/resend-verification.dto.js';
+import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import { VerifyEmailDto } from './dto/verify-email.dto.js';
+import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import {
   clearRefreshCookie,
   readRefreshCookie,
   setRefreshCookie,
-} from './refresh-cookie';
-import type { AuthenticatedUser } from './strategies/jwt.strategy';
+} from './refresh-cookie.js';
+import type { AuthenticatedUser } from './strategies/jwt.strategy.js';
 
 // Shared by verify-email and reset-password.
 const WRONG_CODE = 'A field is invalid, or the code is wrong or has expired.';

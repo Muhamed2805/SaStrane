@@ -3,8 +3,8 @@
 generator client {
   provider            = "prisma-client"
   output              = "../src/generated/prisma"
-  moduleFormat        = "cjs"
-  importFileExtension = ""
+  moduleFormat        = "esm"
+  importFileExtension = "js"
 }
 
 // The connection URL is in prisma.config.ts.

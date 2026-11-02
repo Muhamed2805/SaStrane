@@ -1,10 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { PageDto } from '../../common/dto/page.dto';
+import { PageDto } from '../../common/dto/page.dto.js';
 import {
   ListingCategory,
   ListingLocation,
   ListingStatus,
-} from '../../generated/prisma/enums';
+} from '../../generated/prisma/enums.js';
 
 // The user who posted the job.
 export class ListingClientDto {

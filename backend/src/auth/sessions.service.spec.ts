@@ -1,12 +1,13 @@
-import { SessionRevocationReason } from '../generated/prisma/enums';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SessionRevocationReason } from '../generated/prisma/enums.js';
 import { createHash } from 'crypto';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service.js';
 import {
   REFRESH_TOKEN_IDLE_TTL_MS,
   ROTATION_GRACE_MS,
   SESSION_MAX_AGE_MS,
   SessionsService,
-} from './sessions.service';
+} from './sessions.service.js';
 
 type Call = [input: unknown];
 
@@ -25,24 +26,24 @@ describe('SessionsService', () => {
   };
 
   const sessionRepository = {
-    create: jest.fn<Promise<unknown>, Call>(),
-    deleteMany: jest.fn<Promise<unknown>, Call>(),
-    findFirst: jest.fn<Promise<unknown>, Call>(),
-    update: jest.fn<Promise<unknown>, Call>(),
-    updateMany: jest.fn<Promise<{ count: number }>, Call>(),
+    create: vi.fn<(...args: Call) => Promise<unknown>>(),
+    deleteMany: vi.fn<(...args: Call) => Promise<unknown>>(),
+    findFirst: vi.fn<(...args: Call) => Promise<unknown>>(),
+    update: vi.fn<(...args: Call) => Promise<unknown>>(),
+    updateMany: vi.fn<(...args: Call) => Promise<{ count: number }>>(),
   };
   const refreshTokenRepository = {
-    create: jest.fn<Promise<unknown>, Call>(),
-    deleteMany: jest.fn<Promise<unknown>, Call>(),
-    findUnique: jest.fn<Promise<unknown>, Call>(),
-    updateMany: jest.fn<Promise<{ count: number }>, Call>(),
+    create: vi.fn<(...args: Call) => Promise<unknown>>(),
+    deleteMany: vi.fn<(...args: Call) => Promise<unknown>>(),
+    findUnique: vi.fn<(...args: Call) => Promise<unknown>>(),
+    updateMany: vi.fn<(...args: Call) => Promise<{ count: number }>>(),
   };
   type TransactionInput =
     Promise<unknown>[] | ((tx: unknown) => Promise<unknown>);
   const prisma = {
     session: sessionRepository,
     refreshToken: refreshTokenRepository,
-    $transaction: jest.fn<Promise<unknown>, [input: TransactionInput]>(),
+    $transaction: vi.fn<(input: TransactionInput) => Promise<unknown>>(),
   };
   const runTransaction = (input: TransactionInput) =>
     Array.isArray(input) ? Promise.all(input) : input(prisma);
@@ -70,16 +71,16 @@ describe('SessionsService', () => {
   }
 
   beforeEach(() => {
-    jest.resetAllMocks();
-    jest.useFakeTimers();
-    jest.setSystemTime(now);
+    vi.resetAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
     prisma.$transaction.mockImplementation(runTransaction);
     sessionRepository.updateMany.mockResolvedValue({ count: 1 });
     refreshTokenRepository.updateMany.mockResolvedValue({ count: 1 });
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   describe('create', () => {

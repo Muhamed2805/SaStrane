@@ -3,9 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule } from '@nestjs/swagger';
-import { AppModule } from './app.module';
-import { configureApp } from './app.setup';
-import { createOpenApiDocument } from './openapi/openapi';
+import { AppModule } from './app.module.js';
+import { configureApp } from './app.setup.js';
+import { createOpenApiDocument } from './openapi/openapi.js';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);

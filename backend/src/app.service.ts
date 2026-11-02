@@ -1,6 +1,6 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-import { HealthDto } from './health.dto';
-import { PrismaService } from './prisma/prisma.service';
+import { HealthDto } from './health.dto.js';
+import { PrismaService } from './prisma/prisma.service.js';
 
 @Injectable()
 export class AppService {

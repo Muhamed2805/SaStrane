@@ -1,26 +1,28 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EmailService } from './email.service';
+import { EmailService } from './email.service.js';
 
 function createService(values: Record<string, string | undefined>) {
-  const config = { get: jest.fn((key: string) => values[key]) };
+  const config = { get: vi.fn((key: string) => values[key]) };
   return new EmailService(config as unknown as ConfigService);
 }
 
 const input = { email: 'user@example.com', fullName: 'Test', code: '123456' };
 
 describe('EmailService', () => {
-  const fetchMock = jest.fn<Promise<Response>, Parameters<typeof fetch>>();
+  const fetchMock =
+    vi.fn<(...args: Parameters<typeof fetch>) => Promise<Response>>();
 
   beforeEach(() => {
     fetchMock.mockReset();
     global.fetch = fetchMock;
-    jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-    jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('logs the code instead of sending in development without an API key', async () => {

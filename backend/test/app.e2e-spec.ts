@@ -1,13 +1,22 @@
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'vitest';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerStorage, ThrottlerStorageService } from '@nestjs/throttler';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { AppModule } from '../src/app.module';
-import { configureApp } from '../src/app.setup';
-import { EmailService } from '../src/auth/email.service';
-import { ROTATION_GRACE_MS } from '../src/auth/sessions.service';
-import { PrismaService } from '../src/prisma/prisma.service';
-import { contractCheckedRequest } from './openapi-contract';
+import { AppModule } from '../src/app.module.js';
+import { configureApp } from '../src/app.setup.js';
+import { EmailService } from '../src/auth/email.service.js';
+import { ROTATION_GRACE_MS } from '../src/auth/sessions.service.js';
+import { PrismaService } from '../src/prisma/prisma.service.js';
+import { contractCheckedRequest } from './openapi-contract.js';
 import {
   CapturingEmailService,
   PASSWORD,
@@ -15,7 +24,7 @@ import {
   createUser,
   resetDatabase,
   setCookieHeader,
-} from './helpers';
+} from './helpers.js';
 
 // The app runs with its real configuration against the e2e database. Only
 // email delivery and the rate limiter's storage are swapped out. Every

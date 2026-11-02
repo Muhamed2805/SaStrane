@@ -9,12 +9,12 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { trimString } from '../../common/transforms/trim-string.transform';
+import { trimString } from '../../common/transforms/trim-string.transform.js';
 import {
   ListingCategory,
   ListingLocation,
   ListingStatus,
-} from '../../generated/prisma/enums';
+} from '../../generated/prisma/enums.js';
 
 export class ListingsQueryDto {
   @IsOptional()

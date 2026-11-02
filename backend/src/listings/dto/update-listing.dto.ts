@@ -10,10 +10,13 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { MAX_PRICE_KM } from '../../common/price';
-import { trimString } from '../../common/transforms/trim-string.transform';
-import { IsOmittable } from '../../common/validation/is-omittable';
-import { ListingCategory, ListingLocation } from '../../generated/prisma/enums';
+import { MAX_PRICE_KM } from '../../common/price.js';
+import { trimString } from '../../common/transforms/trim-string.transform.js';
+import { IsOmittable } from '../../common/validation/is-omittable.js';
+import {
+  ListingCategory,
+  ListingLocation,
+} from '../../generated/prisma/enums.js';
 
 // Every field is optional. Only budget and description can be cleared with
 // null.

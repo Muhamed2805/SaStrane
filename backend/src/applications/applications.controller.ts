@@ -11,22 +11,22 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import {
   ApiErrors,
   COMMON_ERRORS,
   SIGNED_IN_ERRORS,
-} from '../openapi/api-errors.decorator';
-import { ApplicationsService } from './applications.service';
+} from '../openapi/api-errors.decorator.js';
+import { ApplicationsService } from './applications.service.js';
 import {
   ApplicationDto,
   ListingApplicationDto,
   MyApplicationsPageDto,
   ReceivedApplicationsPageDto,
-} from './dto/application-response.dto';
-import { ApplicationsQueryDto } from './dto/applications-query.dto';
-import { CreateApplicationDto } from './dto/create-application.dto';
-import { UpdateApplicationStatusDto } from './dto/update-application-status.dto';
+} from './dto/application-response.dto.js';
+import { ApplicationsQueryDto } from './dto/applications-query.dto.js';
+import { CreateApplicationDto } from './dto/create-application.dto.js';
+import { UpdateApplicationStatusDto } from './dto/update-application-status.dto.js';
 
 @ApiTags('applications')
 @ApiBearerAuth()

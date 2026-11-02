@@ -3,8 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
-import { API_PREFIX } from './common/http.constants';
-import { isCorsOriginAllowed, parseCorsOrigins } from './config/cors';
+import { API_PREFIX } from './common/http.constants.js';
+import { isCorsOriginAllowed, parseCorsOrigins } from './config/cors.js';
 
 // Shared by main.ts and the e2e tests, so the tests exercise the same
 // security headers, CORS rules and validation as the running server.

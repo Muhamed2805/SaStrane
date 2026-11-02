@@ -1,4 +1,5 @@
-import { validateEnvironment } from './environment';
+import { describe, expect, it } from 'vitest';
+import { validateEnvironment } from './environment.js';
 
 const validEnvironment = {
   DATABASE_URL: 'postgresql://user:password@localhost:5432/sastrane',

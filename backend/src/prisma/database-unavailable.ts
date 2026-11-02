@@ -1,4 +1,4 @@
-import { Prisma } from '../generated/prisma/client';
+import { Prisma } from '../generated/prisma/client.js';
 
 // Tells a database that cannot be reached right now apart from a failed
 // query. Prisma 7 with the pg adapter reports an outage in several shapes,

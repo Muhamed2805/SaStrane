@@ -9,8 +9,8 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { MAX_PRICE_KM } from '../../common/price';
-import { trimString } from '../../common/transforms/trim-string.transform';
+import { MAX_PRICE_KM } from '../../common/price.js';
+import { trimString } from '../../common/transforms/trim-string.transform.js';
 
 export class CreateApplicationDto {
   @IsString()

@@ -8,13 +8,13 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { trimString } from '../../common/transforms/trim-string.transform';
+import { trimString } from '../../common/transforms/trim-string.transform.js';
 import {
   EMAIL_MAX_LENGTH,
   PASSWORD_MAX_BYTES,
   PASSWORD_MAX_BYTES_MESSAGE,
   PASSWORD_MIN_LENGTH,
-} from './credential-limits';
+} from './credential-limits.js';
 
 export class ResetPasswordDto {
   @Transform(trimString)

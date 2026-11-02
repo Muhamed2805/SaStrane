@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
-import { REFRESH_COOKIE_NAME } from '../auth/refresh-cookie';
+import { REFRESH_COOKIE_NAME } from '../auth/refresh-cookie.js';
 
 const DESCRIPTION = `The API of SaStrane, a marketplace for small local jobs.
 

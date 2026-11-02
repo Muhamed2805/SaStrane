@@ -9,8 +9,8 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
-import { Prisma } from '../../generated/prisma/client';
-import { isDatabaseUnavailable } from '../../prisma/database-unavailable';
+import { Prisma } from '../../generated/prisma/client.js';
+import { isDatabaseUnavailable } from '../../prisma/database-unavailable.js';
 
 // Turns database errors that reach the HTTP layer into proper status codes.
 // Without this filter, a race such as two parallel sign-ups with one email

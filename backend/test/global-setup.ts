@@ -1,10 +1,10 @@
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '../src/generated/prisma/client';
-import { assertTestDatabaseName, TEST_DATABASE_URL } from './test-database';
+import { PrismaClient } from '../src/generated/prisma/client.js';
+import { assertTestDatabaseName, TEST_DATABASE_URL } from './test-database.js';
 
-const backendDir = join(__dirname, '..');
+const backendDir = join(import.meta.dirname, '..');
 
 async function createDatabaseIfMissing(url: URL, name: string) {
   const maintenanceUrl = new URL(url);

@@ -4,12 +4,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '../generated/prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateListingDto } from './dto/create-listing.dto';
-import { ListingsQueryDto } from './dto/listings-query.dto';
-import { UpdateListingDto } from './dto/update-listing.dto';
-import { UpdateListingStatusDto } from './dto/update-listing-status.dto';
+import { Prisma } from '../generated/prisma/client.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { CreateListingDto } from './dto/create-listing.dto.js';
+import { ListingsQueryDto } from './dto/listings-query.dto.js';
+import { UpdateListingDto } from './dto/update-listing.dto.js';
+import { UpdateListingStatusDto } from './dto/update-listing-status.dto.js';
 
 // The fields of ListingSummaryDto and ListingDto.
 const LISTING_SUMMARY_SELECT = {

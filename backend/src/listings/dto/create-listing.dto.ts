@@ -10,9 +10,12 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { MAX_PRICE_KM } from '../../common/price';
-import { trimString } from '../../common/transforms/trim-string.transform';
-import { ListingCategory, ListingLocation } from '../../generated/prisma/enums';
+import { MAX_PRICE_KM } from '../../common/price.js';
+import { trimString } from '../../common/transforms/trim-string.transform.js';
+import {
+  ListingCategory,
+  ListingLocation,
+} from '../../generated/prisma/enums.js';
 
 export class CreateListingDto {
   @Transform(trimString)

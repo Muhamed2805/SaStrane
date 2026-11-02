@@ -50,10 +50,23 @@ CLI. Variables already set in the environment win.
 | `npm run start:prod` | Runs `dist/main.js`. |
 | `npm run lint` | Runs ESLint. |
 | `npm run typecheck` | Type-checks without emitting. |
-| `npm test` | Runs the unit tests (Jest). |
+| `npm test` | Runs the unit tests (Vitest). |
 | `npm run test:e2e` | Runs HTTP tests against the whole app and a real PostgreSQL. |
 | `npm run test:cov` | Runs the unit tests with coverage. |
 | `npm run openapi` | Builds the app and writes the API contract to `openapi.json`. |
+
+## ES modules
+
+The backend is native ES modules (`"type": "module"`), as NestJS 12 is.
+
+- Relative imports end in `.js`, also when the source file is `.ts`, for
+  example `import { AppModule } from './app.module.js'`.
+- Use `import.meta.dirname` instead of `__dirname`.
+- Prisma generates its client as ES modules too (`moduleFormat = "esm"` in
+  `schema.prisma`).
+- The tests run on Vitest. SWC compiles them through `unplugin-swc`, because
+  Nest needs the decorator metadata that Vitest's default transform does not
+  emit. The settings are in `vitest.config.ts`.
 
 ## Database
 
@@ -88,8 +101,7 @@ replaced, so the tests can read the codes. The tests in
 `test/database-down.e2e-spec.ts` point the app at a closed port and check that
 it answers 503.
 
-Jest runs with `--experimental-vm-modules`, because the Prisma 7 client loads
-its query compiler with a dynamic `import()`.
+The e2e files share one database, so they run one after another.
 
 ## API contract
 

@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsIn, IsNotEmpty } from 'class-validator';
-import { ApplicationStatus } from '../../generated/prisma/enums';
+import { ApplicationStatus } from '../../generated/prisma/enums.js';
 
 // An application starts as PENDING. The client can only move it on.
 const DECISIONS = [ApplicationStatus.ACCEPTED, ApplicationStatus.REJECTED];

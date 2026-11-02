@@ -1719,16 +1719,16 @@
         "type": "object",
         "properties": {
           "status": {
-            "type": "string",
             "enum": [
               "ok"
-            ]
+            ],
+            "type": "string"
           },
           "database": {
-            "type": "string",
             "enum": [
               "up"
-            ]
+            ],
+            "type": "string"
           },
           "timestamp": {
             "type": "string",
@@ -1745,16 +1745,16 @@
         "type": "object",
         "properties": {
           "status": {
-            "type": "string",
             "enum": [
               "error"
-            ]
+            ],
+            "type": "string"
           },
           "database": {
-            "type": "string",
             "enum": [
               "down"
-            ]
+            ],
+            "type": "string"
           }
         },
         "required": [

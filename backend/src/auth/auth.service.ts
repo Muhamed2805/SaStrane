@@ -9,22 +9,25 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { SessionRevocationReason } from '../generated/prisma/enums';
-import * as bcrypt from 'bcrypt';
+import { SessionRevocationReason } from '../generated/prisma/enums.js';
+import bcrypt from 'bcrypt';
 import { createHmac, randomInt, timingSafeEqual } from 'crypto';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from '../prisma/prisma.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
-import { VerifyEmailDto } from './dto/verify-email.dto';
-import { EmailService } from './email.service';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { RegisterDto } from './dto/register.dto.js';
+import { LoginDto } from './dto/login.dto.js';
+import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import { VerifyEmailDto } from './dto/verify-email.dto.js';
+import { EmailService } from './email.service.js';
 import {
   PUBLIC_USER_SELECT,
   toPublicUser,
   type PublicUser,
-} from './public-user';
-import { SessionsService, type IssuedRefreshToken } from './sessions.service';
+} from './public-user.js';
+import {
+  SessionsService,
+  type IssuedRefreshToken,
+} from './sessions.service.js';
 
 export type AccessTokenPayload = {
   sub: string;

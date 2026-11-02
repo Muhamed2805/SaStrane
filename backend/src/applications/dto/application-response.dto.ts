@@ -1,11 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { PageDto } from '../../common/dto/page.dto';
+import { PageDto } from '../../common/dto/page.dto.js';
 import {
   ApplicationStatus,
   ListingCategory,
   ListingLocation,
   ListingStatus,
-} from '../../generated/prisma/enums';
+} from '../../generated/prisma/enums.js';
 
 export class ApplicationDto {
   id!: string;
