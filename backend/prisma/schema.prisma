@@ -24,6 +24,37 @@ enum ApplicationStatus {
   REJECTED
 }
 
+// The fixed lists of job categories and places. The frontend shows each
+// value by its Bosnian name.
+enum ListingCategory {
+  LAWN_MOWING
+  CAR_WASH
+  MOVING
+  IT_HELP
+  CLEANING
+  ASSEMBLY
+  DELIVERY
+  OTHER
+}
+
+enum ListingLocation {
+  SARAJEVO
+  ILIDZA
+  STUP
+  VOGOSCA
+  MOSTAR
+  BANJA_LUKA
+  TUZLA
+  ZENICA
+}
+
+// Only OPEN jobs take applications. The client closes a job when it is
+// taken, and can open it again.
+enum ListingStatus {
+  OPEN
+  CLOSED
+}
+
 enum SessionRevocationReason {
   LOGOUT
   PASSWORD_RESET
@@ -90,12 +121,14 @@ model RefreshToken {
   @@index([sessionId])
 }
 
+// Prices are whole KM. A null price is agreed later.
 model Listing {
-  id          String  @id @default(cuid())
+  id          String          @id @default(cuid())
   title       String
-  category    String
-  location    String
-  budget      String?
+  category    ListingCategory
+  location    ListingLocation
+  status      ListingStatus   @default(OPEN)
+  budget      Int?
   description String?
 
   clientId String
@@ -105,6 +138,9 @@ model Listing {
   updatedAt DateTime @updatedAt
 
   applications Application[]
+
+  @@index([status, createdAt])
+  @@index([clientId, createdAt])
 }
 
 model Application {
@@ -113,7 +149,7 @@ model Application {
   executorId String
 
   message       String
-  proposedPrice String?
+  proposedPrice Int?
   status        ApplicationStatus @default(PENDING)
 
   createdAt DateTime @default(now())

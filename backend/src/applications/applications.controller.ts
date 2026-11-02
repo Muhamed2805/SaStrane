@@ -41,7 +41,7 @@ export class ApplicationsController {
     400: 'A field is missing or invalid.',
     403: "The job is the user's own.",
     404: 'The job does not exist.',
-    409: 'The user has already applied to this job.',
+    409: 'The user has already applied to this job, or the job is closed (LISTING_CLOSED).',
   })
   @Post()
   create(
@@ -70,7 +70,12 @@ export class ApplicationsController {
     return this.applications.getMyApplications(user.id, query);
   }
 
-  /** Lists the applications to all of the user's jobs. */
+  /**
+   * Lists the applications to all of the user's jobs.
+   *
+   * @remarks An executor's email is null until their application is
+   * accepted.
+   */
   @ApiErrors({ 400: 'A query parameter is invalid.' })
   @Get('received')
   getReceived(
@@ -81,7 +86,12 @@ export class ApplicationsController {
     return this.applications.getReceivedApplications(user.id, query);
   }
 
-  /** Lists the applications to one of the user's jobs, newest first. */
+  /**
+   * Lists the applications to one of the user's jobs, newest first.
+   *
+   * @remarks An executor's email is null until their application is
+   * accepted.
+   */
   @ApiErrors({
     403: 'The job belongs to another user.',
     404: 'The job does not exist.',
@@ -95,11 +105,17 @@ export class ApplicationsController {
     return this.applications.getForListing(listingId, user.id);
   }
 
-  /** Accepts or rejects an application to one of the user's jobs. */
+  /**
+   * Accepts or rejects an application to one of the user's jobs.
+   *
+   * @remarks The decision is final. Accepting shows the client the
+   * executor's email.
+   */
   @ApiErrors({
     400: 'The status is not ACCEPTED or REJECTED.',
     403: "The application is for another user's job.",
     404: 'The application does not exist.',
+    409: 'The application has been accepted or rejected already (APPLICATION_ALREADY_DECIDED).',
   })
   @Patch(':id/status')
   updateStatus(

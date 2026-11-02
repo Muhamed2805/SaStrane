@@ -8,7 +8,7 @@ import { useAuthStore } from '@/features/auth/store';
 import { listingsApi } from '@/features/listings/api';
 import {
   ListingForm,
-  type ListingFormValues,
+  type ListingFormResult,
 } from '@/features/listings/components/listing-form';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -47,10 +47,10 @@ export default function CreateListingPage() {
     );
   }
 
-  const handleSubmit = async (values: ListingFormValues) => {
+  const handleSubmit = async (values: ListingFormResult) => {
     const listing = await listingsApi.create({
       ...values,
-      budget: values.budget || undefined,
+      budget: values.budget ?? undefined,
       description: values.description || undefined,
     });
     toast.success('Oglas je uspješno objavljen!');

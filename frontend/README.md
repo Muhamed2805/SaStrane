@@ -52,9 +52,9 @@ of date.
 | --- | --- |
 | `app/` | Routes: `/`, `/listings`, `/listings/[id]`, `/listings/create`, `/listings/[id]/edit`, `/inbox`, `/profile`, `/login` |
 | `features/auth/` | The session: an in-memory access token, refresh on reload and on 401, and tab sync |
-| `features/listings/` | The job list, detail, form and API calls |
+| `features/listings/` | The job list, detail, form and API calls, and the names for the category and location codes |
 | `features/applications/` | Applying and the workspace |
 | `features/landing/` | Home page sections |
 | `components/` | Navbar, footer, auth provider and UI primitives |
-| `lib/` | API client, generated API types, API URL and date formatting |
+| `lib/` | API client, generated API types, API URL, and date and price formatting |
 | `e2e/` | Playwright tests |

@@ -1,5 +1,7 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
@@ -8,6 +10,11 @@ import {
   Min,
 } from 'class-validator';
 import { trimString } from '../../common/transforms/trim-string.transform';
+import {
+  ListingCategory,
+  ListingLocation,
+  ListingStatus,
+} from '../../generated/prisma/enums';
 
 export class ListingsQueryDto {
   @IsOptional()
@@ -35,15 +42,19 @@ export class ListingsQueryDto {
   @MaxLength(120)
   q?: string;
 
+  @ApiPropertyOptional({ enum: ListingCategory, enumName: 'ListingCategory' })
   @IsOptional()
-  @Transform(trimString)
-  @IsString()
-  @MaxLength(60)
-  category?: string;
+  @IsEnum(ListingCategory)
+  category?: ListingCategory;
 
+  @ApiPropertyOptional({ enum: ListingLocation, enumName: 'ListingLocation' })
   @IsOptional()
-  @Transform(trimString)
-  @IsString()
-  @MaxLength(120)
-  location?: string;
+  @IsEnum(ListingLocation)
+  location?: ListingLocation;
+
+  /** Leave it out for jobs in any status. */
+  @ApiPropertyOptional({ enum: ListingStatus, enumName: 'ListingStatus' })
+  @IsOptional()
+  @IsEnum(ListingStatus)
+  status?: ListingStatus;
 }

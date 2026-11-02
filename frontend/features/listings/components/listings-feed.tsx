@@ -11,35 +11,42 @@ import {
   X,
 } from 'lucide-react';
 import {
+  CATEGORY_LABELS,
   LISTING_CATEGORIES,
   LISTING_LOCATIONS,
+  LOCATION_LABELS,
 } from '@/features/listings/constants';
 import {
   listingsApi,
   type GetAllListingsParams,
+  type ListingCategory,
+  type ListingLocation,
   type ListingSummary,
 } from '../api';
 import { ListingCard } from './listing-card';
 import { ListingCardSkeleton } from './listing-card-skeleton';
 
-const ALL_FILTER = 'Sve';
-const CATEGORIES = [ALL_FILTER, ...LISTING_CATEGORIES];
-const LOCATIONS = [ALL_FILTER, ...LISTING_LOCATIONS];
+// The select value that turns a filter off.
+const ALL_FILTER = '';
+type Filter<T> = T | typeof ALL_FILTER;
+
 const PAGE_SIZE = 9;
 const SEARCH_DEBOUNCE_MS = 300;
 
+// The feed shows only jobs that still take applications.
 function createQuery(
   q: string,
-  category: string,
-  location: string,
+  category: Filter<ListingCategory>,
+  location: Filter<ListingLocation>,
   page: number,
 ): GetAllListingsParams {
   return {
     page,
     limit: PAGE_SIZE,
+    status: 'OPEN',
     q: q.trim() || undefined,
-    category: category === ALL_FILTER ? undefined : category,
-    location: location === ALL_FILTER ? undefined : location,
+    category: category || undefined,
+    location: location || undefined,
   };
 }
 
@@ -56,12 +63,12 @@ function resultsLabel(total: number) {
 
 export function ListingsFeed({
   initialQuery = '',
-  initialCategory = ALL_FILTER,
-  initialLocation = ALL_FILTER,
+  initialCategory,
+  initialLocation,
 }: {
   initialQuery?: string;
-  initialCategory?: string;
-  initialLocation?: string;
+  initialCategory?: ListingCategory;
+  initialLocation?: ListingLocation;
 }) {
   const [listings, setListings] = useState<ListingSummary[]>([]);
   const [page, setPage] = useState(1);
@@ -72,8 +79,12 @@ export function ListingsFeed({
   const [error, setError] = useState<string | null>(null);
 
   const [q, setQ] = useState(initialQuery);
-  const [category, setCategory] = useState(initialCategory);
-  const [location, setLocation] = useState(initialLocation);
+  const [category, setCategory] = useState<Filter<ListingCategory>>(
+    initialCategory ?? ALL_FILTER,
+  );
+  const [location, setLocation] = useState<Filter<ListingLocation>>(
+    initialLocation ?? ALL_FILTER,
+  );
   const hasActiveFilters =
     Boolean(q.trim()) || category !== ALL_FILTER || location !== ALL_FILTER;
   const visiblePages = useMemo(
@@ -131,13 +142,13 @@ export function ListingsFeed({
   };
 
   const handleCategoryChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    setCategory(event.target.value);
+    setCategory(event.target.value as Filter<ListingCategory>);
     setPage(1);
     setIsRefreshing(true);
   };
 
   const handleLocationChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    setLocation(event.target.value);
+    setLocation(event.target.value as Filter<ListingLocation>);
     setPage(1);
     setIsRefreshing(true);
   };
@@ -210,9 +221,10 @@ export function ListingsFeed({
               value={category}
               onChange={handleCategoryChange}
             >
-              {CATEGORIES.map((item) => (
+              <option value={ALL_FILTER}>Sve kategorije</option>
+              {LISTING_CATEGORIES.map((item) => (
                 <option key={item} value={item}>
-                  {item === ALL_FILTER ? 'Sve kategorije' : item}
+                  {CATEGORY_LABELS[item]}
                 </option>
               ))}
             </select>
@@ -234,9 +246,10 @@ export function ListingsFeed({
               value={location}
               onChange={handleLocationChange}
             >
-              {LOCATIONS.map((item) => (
+              <option value={ALL_FILTER}>Sve lokacije</option>
+              {LISTING_LOCATIONS.map((item) => (
                 <option key={item} value={item}>
-                  {item === ALL_FILTER ? 'Sve lokacije' : item}
+                  {LOCATION_LABELS[item]}
                 </option>
               ))}
             </select>

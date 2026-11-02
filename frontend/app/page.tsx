@@ -18,19 +18,22 @@ import {
   ShieldCheck,
   Sparkles,
   Truck,
+  type LucideIcon,
 } from 'lucide-react';
 import { HeroSearch } from '@/features/landing/components/hero-search';
 import { LatestListings } from '@/features/landing/components/latest-listings';
+import type { ListingCategory } from '@/features/listings/api';
+import { CATEGORY_LABELS } from '@/features/listings/constants';
 
-const categories = [
-  { label: 'Košenje trave', icon: Leaf },
-  { label: 'Pranje auta', icon: Car },
-  { label: 'Selidbe', icon: Truck },
-  { label: 'IT pomoć', icon: Code2 },
-  { label: 'Čišćenje', icon: Sparkles },
-  { label: 'Montaža', icon: Hammer },
-  { label: 'Dostava', icon: PackageCheck },
-  { label: 'Ostalo', icon: Paintbrush },
+const categories: { code: ListingCategory; icon: LucideIcon }[] = [
+  { code: 'LAWN_MOWING', icon: Leaf },
+  { code: 'CAR_WASH', icon: Car },
+  { code: 'MOVING', icon: Truck },
+  { code: 'IT_HELP', icon: Code2 },
+  { code: 'CLEANING', icon: Sparkles },
+  { code: 'ASSEMBLY', icon: Hammer },
+  { code: 'DELIVERY', icon: PackageCheck },
+  { code: 'OTHER', icon: Paintbrush },
 ];
 
 const trustPoints = [
@@ -137,16 +140,18 @@ export default function HomePage() {
         </div>
 
         <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-          {categories.map(({ label, icon: Icon }) => (
+          {categories.map(({ code, icon: Icon }) => (
             <Link
-              key={label}
-              href={`/listings?category=${encodeURIComponent(label)}`}
+              key={code}
+              href={`/listings?category=${code}`}
               className="group flex min-h-32 flex-col items-center justify-center rounded-xl border bg-white p-4 text-center shadow-sm transition-all hover:-translate-y-1 hover:border-primary/30 hover:shadow-md"
             >
               <span className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
                 <Icon className="size-5" aria-hidden="true" />
               </span>
-              <span className="mt-3 text-xs font-semibold">{label}</span>
+              <span className="mt-3 text-xs font-semibold">
+                {CATEGORY_LABELS[code]}
+              </span>
             </Link>
           ))}
         </div>

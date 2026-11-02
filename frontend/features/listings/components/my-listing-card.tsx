@@ -7,16 +7,22 @@ import {
   Pencil,
 } from 'lucide-react';
 import { formatDate } from '@/lib/format-date';
+import { formatPrice } from '@/lib/format-price';
 import type { ListingSummary } from '../api';
+import { CATEGORY_LABELS, LOCATION_LABELS } from '../constants';
+import { ClosedBadge } from './closed-badge';
 
 export function MyListingCard({ listing }: { listing: ListingSummary }) {
   return (
     <article className="rounded-xl border bg-white p-5 shadow-sm transition-colors hover:border-primary/30">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div className="min-w-0">
-          <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
-            {listing.category}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+              {CATEGORY_LABELS[listing.category]}
+            </span>
+            <ClosedBadge status={listing.status} />
+          </div>
           <Link
             href={`/listings/${listing.id}`}
             className="mt-3 block text-lg font-semibold transition-colors hover:text-primary"
@@ -26,14 +32,14 @@ export function MyListingCard({ listing }: { listing: ListingSummary }) {
         </div>
         <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-bold text-brand-orange-dark">
           <Banknote className="size-4" aria-hidden="true" />
-          {listing.budget || 'Po dogovoru'}
+          {formatPrice(listing.budget)}
         </span>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <MapPin className="size-3.5 text-primary" aria-hidden="true" />
-          {listing.location}
+          {LOCATION_LABELS[listing.location]}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <CalendarDays className="size-3.5 text-primary" aria-hidden="true" />

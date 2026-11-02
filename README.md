@@ -37,12 +37,15 @@ be both.
 **Jobs**
 - Browse open jobs with text search and category and location filters.
 - Post, edit and delete your own jobs with a title, category, location,
-  budget and description.
+  budget and description. Prices are whole KM, or agreed later.
+- Close a job to stop new applications, and reopen it at any time.
 
 **Applications**
 - Apply to a job with a message and an optional price offer. You can apply
   to each job once.
-- The client sees every application to their jobs and accepts or rejects it.
+- The client sees every application to their jobs and accepts or rejects
+  it. The decision is final, and the client sees the executor's email only
+  after accepting.
 - A workspace shows your jobs, the applications you sent and the ones you
   received, each with its status.
 
@@ -192,16 +195,17 @@ erDiagram
     string id PK
     string clientId FK
     string title
-    string category
-    string location
-    string budget
+    ListingCategory category "fixed list, such as CLEANING"
+    ListingLocation location "fixed list, such as SARAJEVO"
+    ListingStatus status "OPEN or CLOSED"
+    int budget "whole KM, null when agreed later"
   }
   Application {
     string id PK
     string listingId FK "unique with executorId"
     string executorId FK
     string message
-    string proposedPrice
+    int proposedPrice "whole KM, null when agreed later"
     ApplicationStatus status "PENDING, ACCEPTED or REJECTED"
   }
   Session {
@@ -329,9 +333,6 @@ Dependabot opens update PRs, grouped so that related packages move together.
 
 ## Roadmap
 
-- **Jobs and applications:** an open and closed lifecycle for jobs, prices
-  stored as numbers, fixed category and location lists, and the executor's
-  email shown only after acceptance.
 - **Frontend data:** cached queries and filters kept in the URL.
 
 The app is in development and not deployed yet.

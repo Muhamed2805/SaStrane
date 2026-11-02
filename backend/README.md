@@ -126,10 +126,11 @@ token's user must own the job.
 | `GET` | `/api/auth/me` | Bearer | Returns the signed-in user. |
 | `POST` | `/api/auth/forgot-password` | | Emails a password reset code. |
 | `POST` | `/api/auth/reset-password` | | Sets a new password and revokes all sessions. |
-| `GET` | `/api/listings` | | Lists jobs. Filters: `q`, `category`, `location`, `clientId`. Paging: `page`, `limit` (max 100). |
+| `GET` | `/api/listings` | | Lists jobs. Filters: `q` (title and description), `category`, `location`, `status`, `clientId`. Paging: `page`, `limit` (max 100). |
 | `GET` | `/api/listings/:id` | | Returns one job. |
 | `POST` | `/api/listings` | Bearer | Creates a job and returns it like `GET /api/listings/:id`. |
 | `PATCH` | `/api/listings/:id` | Owner | Updates a job. |
+| `PATCH` | `/api/listings/:id/status` | Owner | Opens or closes a job. |
 | `DELETE` | `/api/listings/:id` | Owner | Deletes a job and its applications. Returns 204. |
 | `POST` | `/api/applications` | Bearer | Applies to a job, once per job. |
 | `GET` | `/api/applications/my` | Bearer | Lists the applications you sent. |
@@ -140,6 +141,18 @@ token's user must own the job.
 
 **Lists.** Paged lists return
 `{ items, total, page, limit, totalPages }`.
+
+**Jobs and applications.**
+- Categories and locations are fixed codes, such as `CLEANING` and
+  `SARAJEVO`. The frontend maps them to names.
+- Prices (`budget`, `proposedPrice`) are whole KM from 1 to 100,000. `null`
+  means the price is agreed later.
+- Only `OPEN` jobs take applications. Applying to a closed job returns 409
+  with the code `LISTING_CLOSED`. The client can still decide on the
+  applications already sent.
+- A decision is final. Deciding on an application that is not `PENDING`
+  returns 409 with the code `APPLICATION_ALREADY_DECIDED`.
+- The executor's email is `null` until the client accepts the application.
 
 **Errors.** Errors use the standard NestJS shape,
 `{ statusCode, message, error }`. Errors that the frontend must tell apart

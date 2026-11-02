@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { ListingsQueryDto } from './dto/listings-query.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
+import { UpdateListingStatusDto } from './dto/update-listing-status.dto';
 
 // The fields of ListingSummaryDto and ListingDto.
 const LISTING_SUMMARY_SELECT = {
@@ -16,6 +17,7 @@ const LISTING_SUMMARY_SELECT = {
   title: true,
   category: true,
   location: true,
+  status: true,
   budget: true,
   createdAt: true,
   client: { select: { id: true, fullName: true } },
@@ -37,11 +39,11 @@ export class ListingsService {
       ...(query.clientId && { clientId: query.clientId }),
       ...(query.category && { category: query.category }),
       ...(query.location && { location: query.location }),
+      ...(query.status && { status: query.status }),
       ...(query.q && {
         OR: [
           { title: { contains: query.q, mode: 'insensitive' } },
           { description: { contains: query.q, mode: 'insensitive' } },
-          { category: { contains: query.q, mode: 'insensitive' } },
         ],
       }),
     };
@@ -86,6 +88,34 @@ export class ListingsService {
       throw new BadRequestException('At least one field must be provided');
     }
 
+    await this.assertOwner(id, userId);
+
+    return this.prisma.listing.update({
+      where: { id },
+      data: dto,
+      select: LISTING_SELECT,
+    });
+  }
+
+  // Closing a job stops new applications. The client can still decide on
+  // the ones already sent.
+  async updateStatus(id: string, dto: UpdateListingStatusDto, userId: string) {
+    await this.assertOwner(id, userId);
+
+    return this.prisma.listing.update({
+      where: { id },
+      data: { status: dto.status },
+      select: LISTING_SELECT,
+    });
+  }
+
+  async delete(id: string, userId: string) {
+    await this.assertOwner(id, userId);
+
+    await this.prisma.listing.delete({ where: { id } });
+  }
+
+  private async assertOwner(id: string, userId: string) {
     const listing = await this.prisma.listing.findUnique({
       where: { id },
       select: { clientId: true },
@@ -95,24 +125,5 @@ export class ListingsService {
     if (listing.clientId !== userId) {
       throw new ForbiddenException('Not your listing');
     }
-
-    return this.prisma.listing.update({
-      where: { id },
-      data: dto,
-      select: LISTING_SELECT,
-    });
-  }
-
-  async delete(id: string, userId: string) {
-    const listing = await this.prisma.listing.findUnique({
-      where: { id },
-      select: { clientId: true },
-    });
-
-    if (!listing) throw new NotFoundException('Listing not found');
-    if (listing.clientId !== userId)
-      throw new ForbiddenException('Not your listing');
-
-    await this.prisma.listing.delete({ where: { id } });
   }
 }

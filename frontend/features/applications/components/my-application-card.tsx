@@ -1,6 +1,12 @@
 import Link from 'next/link';
 import { Banknote, CalendarDays, ChevronRight, MapPin } from 'lucide-react';
+import { ClosedBadge } from '@/features/listings/components/closed-badge';
+import {
+  CATEGORY_LABELS,
+  LOCATION_LABELS,
+} from '@/features/listings/constants';
 import { formatDate } from '@/lib/format-date';
+import { formatPrice } from '@/lib/format-price';
 import type { MyApplication } from '../api';
 import { ApplicationStatusBadge } from './application-status-badge';
 
@@ -21,12 +27,13 @@ export function MyApplicationCard({
           </Link>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
             <span className="rounded-full bg-primary/10 px-2.5 py-1 font-medium text-primary">
-              {application.listing.category}
+              {CATEGORY_LABELS[application.listing.category]}
             </span>
             <span className="inline-flex items-center gap-1.5 py-1">
               <MapPin className="size-3.5 text-primary" aria-hidden="true" />
-              {application.listing.location}
+              {LOCATION_LABELS[application.listing.location]}
             </span>
+            <ClosedBadge status={application.listing.status} />
           </div>
         </div>
         <ApplicationStatusBadge status={application.status} />
@@ -38,12 +45,10 @@ export function MyApplicationCard({
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
         <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
-          {application.proposedPrice ? (
-            <span className="inline-flex items-center gap-1.5 font-semibold text-brand-orange-dark">
-              <Banknote className="size-3.5" aria-hidden="true" />
-              {application.proposedPrice}
-            </span>
-          ) : null}
+          <span className="inline-flex items-center gap-1.5 font-semibold text-brand-orange-dark">
+            <Banknote className="size-3.5" aria-hidden="true" />
+            {formatPrice(application.proposedPrice)}
+          </span>
           <span className="inline-flex items-center gap-1.5">
             <CalendarDays
               className="size-3.5 text-primary"

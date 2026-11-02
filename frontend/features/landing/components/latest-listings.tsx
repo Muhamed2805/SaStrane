@@ -14,7 +14,7 @@ export function LatestListings() {
     const controller = new AbortController();
 
     listingsApi
-      .getAll({ page: 1, limit: 4 }, controller.signal)
+      .getAll({ page: 1, limit: 4, status: 'OPEN' }, controller.signal)
       .then((response) => setListings(response.items))
       .catch((requestError: unknown) => {
         if (

@@ -1,34 +1,46 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
+import { MAX_PRICE_KM } from '../../common/price';
 import { trimString } from '../../common/transforms/trim-string.transform';
+import { IsOmittable } from '../../common/validation/is-omittable';
+import { ListingCategory, ListingLocation } from '../../generated/prisma/enums';
 
+// Every field is optional. Only budget and description can be cleared with
+// null.
 export class UpdateListingDto {
   @Transform(trimString)
-  @IsOptional()
+  @IsOmittable()
   @IsString()
   @IsNotEmpty()
   @MaxLength(120)
   title?: string;
 
-  @Transform(trimString)
-  @IsOptional()
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(60)
-  category?: string;
+  @ApiPropertyOptional({ enum: ListingCategory, enumName: 'ListingCategory' })
+  @IsOmittable()
+  @IsEnum(ListingCategory)
+  category?: ListingCategory;
 
-  @Transform(trimString)
-  @IsOptional()
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(120)
-  location?: string;
+  @ApiPropertyOptional({ enum: ListingLocation, enumName: 'ListingLocation' })
+  @IsOmittable()
+  @IsEnum(ListingLocation)
+  location?: ListingLocation;
 
-  @Transform(trimString)
+  /** In whole KM. Null means the price is agreed later. */
   @IsOptional()
-  @IsString()
-  @MaxLength(60)
-  budget?: string | null;
+  @IsInt()
+  @Min(1)
+  @Max(MAX_PRICE_KM)
+  budget?: number | null;
 
   @Transform(trimString)
   @IsOptional()

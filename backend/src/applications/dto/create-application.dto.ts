@@ -1,11 +1,15 @@
 import { Transform } from 'class-transformer';
 import {
+  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
+  Min,
   MinLength,
 } from 'class-validator';
+import { MAX_PRICE_KM } from '../../common/price';
 import { trimString } from '../../common/transforms/trim-string.transform';
 
 export class CreateApplicationDto {
@@ -21,9 +25,10 @@ export class CreateApplicationDto {
   @MaxLength(2000)
   message!: string;
 
-  @Transform(trimString)
-  @IsString()
+  /** In whole KM. Leave it out to agree on the price later. */
   @IsOptional()
-  @MaxLength(60)
-  proposedPrice?: string;
+  @IsInt()
+  @Min(1)
+  @Max(MAX_PRICE_KM)
+  proposedPrice?: number;
 }

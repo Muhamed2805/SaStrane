@@ -9,7 +9,7 @@ import { useAuthStore } from '@/features/auth/store';
 import { listingsApi, type Listing } from '@/features/listings/api';
 import {
   ListingForm,
-  type ListingFormValues,
+  type ListingFormResult,
 } from '@/features/listings/components/listing-form';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -107,10 +107,9 @@ export default function EditListingPage() {
     );
   }
 
-  const handleSubmit = async (values: ListingFormValues) => {
+  const handleSubmit = async (values: ListingFormResult) => {
     await listingsApi.update(id, {
       ...values,
-      budget: values.budget || null,
       description: values.description || null,
     });
     toast.success('Oglas je uspješno ažuriran!');
@@ -159,7 +158,7 @@ export default function EditListingPage() {
           title: listing.title,
           category: listing.category,
           location: listing.location,
-          budget: listing.budget ?? '',
+          budget: listing.budget === null ? '' : String(listing.budget),
           description: listing.description ?? '',
         }}
         submitLabel="Sačuvaj izmjene"

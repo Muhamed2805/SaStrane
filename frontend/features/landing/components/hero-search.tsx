@@ -3,7 +3,10 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MapPin, Search } from 'lucide-react';
-import { LISTING_LOCATIONS } from '@/features/listings/constants';
+import {
+  LISTING_LOCATIONS,
+  LOCATION_LABELS,
+} from '@/features/listings/constants';
 
 export function HeroSearch() {
   const router = useRouter();
@@ -46,7 +49,7 @@ export function HeroSearch() {
           <option value="">Sve lokacije</option>
           {LISTING_LOCATIONS.map((item) => (
             <option key={item} value={item}>
-              {item}
+              {LOCATION_LABELS[item]}
             </option>
           ))}
         </select>

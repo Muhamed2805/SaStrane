@@ -213,8 +213,9 @@ export interface paths {
         };
         /**
          * Lists jobs, newest first.
-         * @description `q` searches the title, description and category without regard
-         *     to case. `category` and `location` must match exactly.
+         * @description `q` searches the title and the description without regard to
+         *     case. The other filters must match exactly. The job list on the site
+         *     asks for OPEN jobs only.
          */
         get: operations["listings_getAll"];
         put?: never;
@@ -243,6 +244,27 @@ export interface paths {
         head?: never;
         /** Changes the given fields of the user's own job. */
         patch: operations["listings_update"];
+        trace?: never;
+    };
+    "/api/listings/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Opens or closes the user's own job.
+         * @description A closed job takes no new applications. The client can still
+         *     accept or reject the ones already sent.
+         */
+        patch: operations["listings_updateStatus"];
         trace?: never;
     };
     "/api/applications": {
@@ -303,7 +325,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Lists the applications to all of the user's jobs. */
+        /**
+         * Lists the applications to all of the user's jobs.
+         * @description An executor's email is null until their application is
+         *     accepted.
+         */
         get: operations["applications_getReceived"];
         put?: never;
         post?: never;
@@ -320,7 +346,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Lists the applications to one of the user's jobs, newest first. */
+        /**
+         * Lists the applications to one of the user's jobs, newest first.
+         * @description An executor's email is null until their application is
+         *     accepted.
+         */
         get: operations["applications_getForListing"];
         put?: never;
         post?: never;
@@ -343,7 +373,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Accepts or rejects an application to one of the user's jobs. */
+        /**
+         * Accepts or rejects an application to one of the user's jobs.
+         * @description The decision is final. Accepting shows the client the
+         *     executor's email.
+         */
         patch: operations["applications_updateStatus"];
         trace?: never;
     };
@@ -374,8 +408,9 @@ export interface components {
             error?: string;
             /**
              * @description Set when the client needs to tell this error apart from others with the
-             *     same status: EMAIL_NOT_VERIFIED, EMAIL_ALREADY_REGISTERED or
-             *     EMAIL_VERIFICATION_PENDING.
+             *     same status: EMAIL_NOT_VERIFIED, EMAIL_ALREADY_REGISTERED,
+             *     EMAIL_VERIFICATION_PENDING, LISTING_CLOSED or
+             *     APPLICATION_ALREADY_DECIDED.
              */
             code?: string;
         };
@@ -443,17 +478,25 @@ export interface components {
             email: string;
             password: string;
         };
+        /** @enum {string} */
+        ListingCategory: "LAWN_MOWING" | "CAR_WASH" | "MOVING" | "IT_HELP" | "CLEANING" | "ASSEMBLY" | "DELIVERY" | "OTHER";
+        /** @enum {string} */
+        ListingLocation: "SARAJEVO" | "ILIDZA" | "STUP" | "VOGOSCA" | "MOSTAR" | "BANJA_LUKA" | "TUZLA" | "ZENICA";
+        /** @enum {string} */
+        ListingStatus: "OPEN" | "CLOSED";
         ListingClientDto: {
             id: string;
             fullName: string;
         };
         ListingSummaryDto: {
+            category: components["schemas"]["ListingCategory"];
+            location: components["schemas"]["ListingLocation"];
+            /** @description Only OPEN jobs take applications. */
+            status: components["schemas"]["ListingStatus"];
             id: string;
             title: string;
-            category: string;
-            location: string;
-            /** @description Free text, such as "50 KM". */
-            budget: string | null;
+            /** @description In whole KM. Null means the price is agreed later. */
+            budget: number | null;
             /** Format: date-time */
             createdAt: string;
             client: components["schemas"]["ListingClientDto"];
@@ -470,60 +513,74 @@ export interface components {
             totalPages: number;
         };
         ListingDto: {
+            category: components["schemas"]["ListingCategory"];
+            location: components["schemas"]["ListingLocation"];
+            /** @description Only OPEN jobs take applications. */
+            status: components["schemas"]["ListingStatus"];
             id: string;
             title: string;
-            category: string;
-            location: string;
-            /** @description Free text, such as "50 KM". */
-            budget: string | null;
+            /** @description In whole KM. Null means the price is agreed later. */
+            budget: number | null;
             /** Format: date-time */
             createdAt: string;
             client: components["schemas"]["ListingClientDto"];
             description: string | null;
         };
         CreateListingDto: {
+            category: components["schemas"]["ListingCategory"];
+            location: components["schemas"]["ListingLocation"];
             title: string;
-            category: string;
-            location: string;
-            budget?: string;
+            /** @description In whole KM. Leave it out when the price is agreed later. */
+            budget?: number;
             description?: string;
         };
         UpdateListingDto: {
+            category?: components["schemas"]["ListingCategory"];
+            location?: components["schemas"]["ListingLocation"];
             title?: string;
-            category?: string;
-            location?: string;
-            budget?: string | null;
+            /** @description In whole KM. Null means the price is agreed later. */
+            budget?: number | null;
             description?: string | null;
+        };
+        UpdateListingStatusDto: {
+            status: components["schemas"]["ListingStatus"];
         };
         CreateApplicationDto: {
             listingId: string;
             message: string;
-            proposedPrice?: string;
+            /** @description In whole KM. Leave it out to agree on the price later. */
+            proposedPrice?: number;
         };
-        /** @enum {string} */
+        /**
+         * @description A decision is final: only a PENDING application can change.
+         * @enum {string}
+         */
         ApplicationStatus: "PENDING" | "ACCEPTED" | "REJECTED";
         ApplicationDto: {
+            /** @description A decision is final: only a PENDING application can change. */
             status: components["schemas"]["ApplicationStatus"];
             id: string;
             listingId: string;
             message: string;
-            /** @description Free text, such as "50 KM". */
-            proposedPrice: string | null;
+            /** @description In whole KM. Null means the price is agreed later. */
+            proposedPrice: number | null;
             /** Format: date-time */
             createdAt: string;
         };
         ApplicationListingDto: {
+            category: components["schemas"]["ListingCategory"];
+            location: components["schemas"]["ListingLocation"];
+            status: components["schemas"]["ListingStatus"];
             title: string;
-            category: string;
-            location: string;
         };
         MyApplicationDto: {
+            /** @description A decision is final: only a PENDING application can change. */
             status: components["schemas"]["ApplicationStatus"];
             id: string;
             listingId: string;
             message: string;
-            /** @description Free text, such as "50 KM". */
-            proposedPrice: string | null;
+            /** @description In whole KM. Null means the price is agreed later. */
+            proposedPrice: number | null;
             /** Format: date-time */
             createdAt: string;
             listing: components["schemas"]["ApplicationListingDto"];
@@ -542,15 +599,17 @@ export interface components {
         ApplicationExecutorDto: {
             id: string;
             fullName: string;
-            email: string;
+            /** @description Null until the client accepts the application. */
+            email: string | null;
         };
         ReceivedApplicationDto: {
+            /** @description A decision is final: only a PENDING application can change. */
             status: components["schemas"]["ApplicationStatus"];
             id: string;
             listingId: string;
             message: string;
-            /** @description Free text, such as "50 KM". */
-            proposedPrice: string | null;
+            /** @description In whole KM. Null means the price is agreed later. */
+            proposedPrice: number | null;
             /** Format: date-time */
             createdAt: string;
             listing: components["schemas"]["ApplicationListingDto"];
@@ -568,12 +627,13 @@ export interface components {
             totalPages: number;
         };
         ListingApplicationDto: {
+            /** @description A decision is final: only a PENDING application can change. */
             status: components["schemas"]["ApplicationStatus"];
             id: string;
             listingId: string;
             message: string;
-            /** @description Free text, such as "50 KM". */
-            proposedPrice: string | null;
+            /** @description In whole KM. Null means the price is agreed later. */
+            proposedPrice: number | null;
             /** Format: date-time */
             createdAt: string;
             executor: components["schemas"]["ApplicationExecutorDto"];
@@ -1077,12 +1137,14 @@ export interface operations {
     listings_getAll: {
         parameters: {
             query?: {
+                category?: components["schemas"]["ListingCategory"];
+                location?: components["schemas"]["ListingLocation"];
+                /** @description Leave it out for jobs in any status. */
+                status?: components["schemas"]["ListingStatus"];
                 page?: number;
                 limit?: number;
                 clientId?: string;
                 q?: string;
-                category?: string;
-                location?: string;
             };
             header?: never;
             path?: never;
@@ -1377,6 +1439,85 @@ export interface operations {
             };
         };
     };
+    listings_updateStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateListingStatusDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListingDto"];
+                };
+            };
+            /** @description The status is not OPEN or CLOSED. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The job belongs to another user. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The job does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The database or the email service is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
     applications_create: {
         parameters: {
             query?: never;
@@ -1434,7 +1575,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The user has already applied to this job. */
+            /** @description The user has already applied to this job, or the job is closed (LISTING_CLOSED). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1743,6 +1884,15 @@ export interface operations {
             };
             /** @description The application does not exist. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The application has been accepted or rejected already (APPLICATION_ALREADY_DECIDED). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
