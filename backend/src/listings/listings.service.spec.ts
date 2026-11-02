@@ -1,18 +1,19 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   BadRequestException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { ListingsService } from './listings.service';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { ListingsService } from './listings.service.js';
 
 describe('ListingsService', () => {
   const listingRepository = {
-    findMany: jest.fn(),
-    count: jest.fn(),
-    findUnique: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
+    findMany: vi.fn(),
+    count: vi.fn(),
+    findUnique: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
   };
 
   const service = new ListingsService({
@@ -20,7 +21,7 @@ describe('ListingsService', () => {
   } as unknown as PrismaService);
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('getAll', () => {

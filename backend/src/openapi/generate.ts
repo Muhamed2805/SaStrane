@@ -3,16 +3,16 @@
 //
 // The placeholder environment must load before AppModule, which validates
 // the environment when it is imported.
-import './placeholder-environment';
+import './placeholder-environment.js';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { AppModule } from '../app.module';
-import { configureApp } from '../app.setup';
-import { createOpenApiDocument } from './openapi';
+import { AppModule } from '../app.module.js';
+import { configureApp } from '../app.setup.js';
+import { createOpenApiDocument } from './openapi.js';
 
-const OUTPUT_PATH = join(__dirname, '..', '..', 'openapi.json');
+const OUTPUT_PATH = join(import.meta.dirname, '..', '..', 'openapi.json');
 
 async function main() {
   // The app is created but not started, so it never connects to the

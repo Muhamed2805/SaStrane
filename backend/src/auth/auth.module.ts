@@ -4,13 +4,13 @@ import { JwtModule } from '@nestjs/jwt';
 import type { StringValue } from 'ms';
 import { PassportModule } from '@nestjs/passport';
 
-import { PrismaModule } from '../prisma/prisma.module';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
-import { EmailService } from './email.service';
-import { JWT_ALGORITHM } from './jwt.constants';
-import { SessionsService } from './sessions.service';
-import { JwtStrategy } from './strategies/jwt.strategy';
+import { PrismaModule } from '../prisma/prisma.module.js';
+import { AuthController } from './auth.controller.js';
+import { AuthService } from './auth.service.js';
+import { EmailService } from './email.service.js';
+import { JWT_ALGORITHM } from './jwt.constants.js';
+import { SessionsService } from './sessions.service.js';
+import { JwtStrategy } from './strategies/jwt.strategy.js';
 
 @Module({
   imports: [

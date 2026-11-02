@@ -1,8 +1,9 @@
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ConfigModule } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
-import { PrismaService } from '../prisma/prisma.service';
-import { AuthModule } from './auth.module';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { AuthModule } from './auth.module.js';
 
 // Regression test: the JWT secret used to be read from process.env while the
 // module file was imported, before ConfigModule had loaded .env. Signing then

@@ -5,31 +5,32 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "type": "module",
   "scripts": {
     "build": "nest build",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"prisma/**/*.ts\" prisma.config.ts",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"prisma/**/*.ts\" prisma.config.ts vitest.config.ts",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
-    "openapi": "nest build && node dist/openapi/generate",
-    "lint": "eslint \"{src,apps,libs,test,prisma}/**/*.ts\" prisma.config.ts",
+    "start:prod": "node dist/main.js",
+    "openapi": "nest build && node dist/openapi/generate.js",
+    "lint": "eslint \"{src,apps,libs,test,prisma}/**/*.ts\" prisma.config.ts vitest.config.ts",
     "lint:fix": "npm run lint -- --fix",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js --config ./test/jest-e2e.json"
+    "test": "vitest run --project unit",
+    "test:watch": "vitest --project unit",
+    "test:cov": "vitest run --project unit --coverage",
+    "test:debug": "vitest --project unit --inspect-brk --no-file-parallelism",
+    "test:e2e": "vitest run --project e2e"
   },
   "dependencies": {
-    "@nestjs/common": "^11.2.8",
-    "@nestjs/config": "^4.0.4",
-    "@nestjs/core": "^11.2.8",
-    "@nestjs/jwt": "^11.0.2",
-    "@nestjs/passport": "^11.0.5",
-    "@nestjs/platform-express": "^11.2.8",
-    "@nestjs/swagger": "^11.4.7",
+    "@nestjs/common": "^12.3.2",
+    "@nestjs/config": "^12.0.1",
+    "@nestjs/core": "^12.3.2",
+    "@nestjs/jwt": "^12.0.3",
+    "@nestjs/passport": "^12.0.0",
+    "@nestjs/platform-express": "^12.3.2",
+    "@nestjs/swagger": "^12.0.5",
     "@nestjs/throttler": "^6.7.1",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
@@ -46,55 +47,36 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.7",
     "@eslint/js": "^9.18.0",
-    "@nestjs/cli": "^11.0.0",
-    "@nestjs/schematics": "^11.0.0",
-    "@nestjs/testing": "^11.2.8",
+    "@nestjs/cli": "^12.0.11",
+    "@nestjs/schematics": "^12.0.12",
+    "@nestjs/testing": "^12.3.2",
+    "@swc/core": "^1.16.20",
     "@types/bcrypt": "^6.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
-    "@types/jest": "^30.0.0",
     "@types/node": "^24.19.2",
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^7.2.1",
+    "@vitest/coverage-v8": "^5.0.5",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.5.7",
     "globals": "^16.0.0",
-    "jest": "^30.5.2",
     "prettier": "^3.9.10",
     "prisma": "^7.10.1",
-    "source-map-support": "^0.5.21",
     "supertest": "^7.3.1",
-    "ts-jest": "^29.4.15",
-    "ts-loader": "^9.6.2",
-    "ts-node": "^10.9.2",
-    "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.7.3",
-    "typescript-eslint": "^8.72.1"
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "unplugin-swc": "^2.0.0",
+    "vitest": "^5.0.5"
   },
   "scarfSettings": {
     "enabled": false
   },
   "overrides": {
     "multer": "2.5.0"
-  },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
-    ],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
   }
 }

@@ -14,18 +14,18 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import {
   ApiErrors,
   COMMON_ERRORS,
   SIGNED_IN_ERRORS,
-} from '../openapi/api-errors.decorator';
-import { CreateListingDto } from './dto/create-listing.dto';
-import { ListingDto, ListingsPageDto } from './dto/listing-response.dto';
-import { ListingsQueryDto } from './dto/listings-query.dto';
-import { UpdateListingDto } from './dto/update-listing.dto';
-import { UpdateListingStatusDto } from './dto/update-listing-status.dto';
-import { ListingsService } from './listings.service';
+} from '../openapi/api-errors.decorator.js';
+import { CreateListingDto } from './dto/create-listing.dto.js';
+import { ListingDto, ListingsPageDto } from './dto/listing-response.dto.js';
+import { ListingsQueryDto } from './dto/listings-query.dto.js';
+import { UpdateListingDto } from './dto/update-listing.dto.js';
+import { UpdateListingStatusDto } from './dto/update-listing-status.dto.js';
+import { ListingsService } from './listings.service.js';
 
 @ApiTags('listings')
 @ApiErrors(COMMON_ERRORS)

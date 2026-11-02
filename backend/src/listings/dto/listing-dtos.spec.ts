@@ -1,7 +1,8 @@
+import { describe, expect, it } from 'vitest';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { CreateListingDto } from './create-listing.dto';
-import { UpdateListingDto } from './update-listing.dto';
+import { CreateListingDto } from './create-listing.dto.js';
+import { UpdateListingDto } from './update-listing.dto.js';
 
 const validListing = {
   title: 'Košenje dvorišta',

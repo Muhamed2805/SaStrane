@@ -1,4 +1,13 @@
 import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type Mock,
+} from 'vitest';
+import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
@@ -6,73 +15,83 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { SessionRevocationReason, UserRole } from '../generated/prisma/enums';
-import * as bcrypt from 'bcrypt';
+import {
+  SessionRevocationReason,
+  UserRole,
+} from '../generated/prisma/enums.js';
+import bcrypt from 'bcrypt';
 import { createHmac } from 'crypto';
-import { PrismaService } from '../prisma/prisma.service';
-import { AuthService } from './auth.service';
-import { EmailService } from './email.service';
-import { SessionsService, type SessionGrant } from './sessions.service';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { AuthService } from './auth.service.js';
+import { EmailService } from './email.service.js';
+import { SessionsService, type SessionGrant } from './sessions.service.js';
 
-jest.mock('bcrypt', () => ({
-  compare: jest.fn(),
-  hash: jest.fn(),
-}));
+// The service imports bcrypt's default export.
+vi.mock('bcrypt', () => {
+  const mocked = { compare: vi.fn(), hash: vi.fn() };
+  return { ...mocked, default: mocked };
+});
 
 // bcrypt's functions are overloaded (callback and promise forms), so
-// jest.mocked() would pick the callback form. Type the promise form directly.
-const hashMock = bcrypt.hash as unknown as jest.Mock<
-  Promise<string>,
-  [data: string, rounds: number]
+// vi.mocked() would pick the callback form. Type the promise form directly.
+const hashMock = bcrypt.hash as unknown as Mock<
+  (data: string, rounds: number) => Promise<string>
 >;
-const compareMock = bcrypt.compare as unknown as jest.Mock<
-  Promise<boolean>,
-  [data: string, encrypted: string]
+const compareMock = bcrypt.compare as unknown as Mock<
+  (data: string, encrypted: string) => Promise<boolean>
 >;
 
 type EmailInput = { email: string; fullName: string; code: string };
 
 describe('AuthService', () => {
   const userRepository = {
-    create: jest.fn<Promise<unknown>, [input: unknown]>(),
-    delete: jest.fn<Promise<unknown>, [input: unknown]>(),
-    findUnique: jest.fn<Promise<unknown>, [input: unknown]>(),
-    update: jest.fn<Promise<unknown>, [input: unknown]>(),
-    updateMany: jest.fn<Promise<{ count: number }>, [input: unknown]>(),
+    create: vi.fn<(input: unknown) => Promise<unknown>>(),
+    delete: vi.fn<(input: unknown) => Promise<unknown>>(),
+    findUnique: vi.fn<(input: unknown) => Promise<unknown>>(),
+    update: vi.fn<(input: unknown) => Promise<unknown>>(),
+    updateMany: vi.fn<(input: unknown) => Promise<{ count: number }>>(),
   };
   const jwtService = {
-    signAsync: jest.fn<Promise<string>, [payload: unknown]>(),
+    signAsync: vi.fn<(payload: unknown) => Promise<string>>(),
   };
   const configService = {
-    get: jest.fn((key: string) => {
+    get: vi.fn((key: string) => {
       if (key === 'EMAIL_VERIFICATION_SECRET') return 'verification-secret';
       if (key === 'JWT_SECRET') return 'jwt-secret';
       return undefined;
     }),
   };
   const emailService = {
-    sendVerificationCode: jest.fn<Promise<void>, [input: EmailInput]>(),
-    sendPasswordResetCode: jest.fn<Promise<void>, [input: EmailInput]>(),
+    sendVerificationCode: vi.fn<(input: EmailInput) => Promise<void>>(),
+    sendPasswordResetCode: vi.fn<(input: EmailInput) => Promise<void>>(),
   };
   const sessionsService = {
-    create: jest.fn<
-      ReturnType<SessionsService['create']>,
-      Parameters<SessionsService['create']>
-    >(),
-    rotate: jest.fn<
-      ReturnType<SessionsService['rotate']>,
-      Parameters<SessionsService['rotate']>
-    >(),
-    revokeByRefreshToken: jest.fn<Promise<void>, [rawToken: string]>(),
-    revokeAllForUser: jest.fn<
-      Promise<void>,
-      [userId: string, reason: SessionRevocationReason, db: unknown]
-    >(),
+    create:
+      vi.fn<
+        (
+          ...args: Parameters<SessionsService['create']>
+        ) => ReturnType<SessionsService['create']>
+      >(),
+    rotate:
+      vi.fn<
+        (
+          ...args: Parameters<SessionsService['rotate']>
+        ) => ReturnType<SessionsService['rotate']>
+      >(),
+    revokeByRefreshToken: vi.fn<(rawToken: string) => Promise<void>>(),
+    revokeAllForUser:
+      vi.fn<
+        (
+          userId: string,
+          reason: SessionRevocationReason,
+          db: unknown,
+        ) => Promise<void>
+      >(),
   };
   type TransactionCallback = (tx: unknown) => Promise<unknown>;
   const prisma = {
     user: userRepository,
-    $transaction: jest.fn<Promise<unknown>, [callback: TransactionCallback]>(),
+    $transaction: vi.fn<(callback: TransactionCallback) => Promise<unknown>>(),
   };
   // Interactive transactions run their callback with a client that behaves
   // like the main one.
@@ -115,7 +134,7 @@ describe('AuthService', () => {
   };
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
     configService.get.mockImplementation((key: string) => {
       if (key === 'EMAIL_VERIFICATION_SECRET') return 'verification-secret';
       if (key === 'JWT_SECRET') return 'jwt-secret';
@@ -129,13 +148,13 @@ describe('AuthService', () => {
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   describe('register', () => {
     it('normalizes the email, hashes the password, and sends a verification code', async () => {
-      jest.useFakeTimers();
-      jest.setSystemTime(new Date('2026-09-15T12:00:00.000Z'));
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-09-15T12:00:00.000Z'));
       userRepository.findUnique.mockResolvedValue(null);
       hashMock.mockResolvedValue('new-password-hash');
       userRepository.create.mockResolvedValue(user);
@@ -432,8 +451,8 @@ describe('AuthService', () => {
     });
 
     it('stores a hashed code and sends it to a verified account', async () => {
-      jest.useFakeTimers();
-      jest.setSystemTime(new Date('2026-09-23T12:00:00.000Z'));
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-09-23T12:00:00.000Z'));
       userRepository.findUnique.mockResolvedValue(user);
       userRepository.update.mockResolvedValue(user);
       emailService.sendPasswordResetCode.mockResolvedValue(undefined);

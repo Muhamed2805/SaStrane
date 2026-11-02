@@ -1,11 +1,12 @@
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 // Points the app at a port where nothing listens. This import must come
 // before AppModule, which reads the environment when it is loaded.
-import './use-unreachable-database';
+import './use-unreachable-database.js';
 import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { AppModule } from '../src/app.module';
-import { configureApp } from '../src/app.setup';
-import { contractCheckedRequest } from './openapi-contract';
+import { AppModule } from '../src/app.module.js';
+import { configureApp } from '../src/app.setup.js';
+import { contractCheckedRequest } from './openapi-contract.js';
 
 describe('App with the database down (e2e)', () => {
   const contractViolations: string[] = [];

@@ -1,4 +1,4 @@
-import { TEST_DATABASE_URL } from './test-database';
+import { TEST_DATABASE_URL } from './test-database.js';
 
 // Runs before each e2e test file. Values set here win over backend/.env.
 // The app always uses the test database, even when the shell or .env sets

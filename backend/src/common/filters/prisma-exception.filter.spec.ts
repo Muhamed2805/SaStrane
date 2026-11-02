@@ -1,6 +1,7 @@
+import { describe, expect, it } from 'vitest';
 import { HttpStatus, NotFoundException } from '@nestjs/common';
-import { Prisma } from '../../generated/prisma/client';
-import { summarizeError, toHttpException } from './prisma-exception.filter';
+import { Prisma } from '../../generated/prisma/client.js';
+import { summarizeError, toHttpException } from './prisma-exception.filter.js';
 
 function prismaError(code: string) {
   return new Prisma.PrismaClientKnownRequestError('database error', {

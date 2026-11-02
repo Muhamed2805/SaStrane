@@ -1,4 +1,5 @@
-import { isCorsOriginAllowed, parseCorsOrigins } from './cors';
+import { describe, expect, it } from 'vitest';
+import { isCorsOriginAllowed, parseCorsOrigins } from './cors.js';
 
 describe('CORS configuration', () => {
   describe('parseCorsOrigins', () => {

@@ -4,12 +4,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '../generated/prisma/client';
-import { ApplicationStatus, ListingStatus } from '../generated/prisma/enums';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateApplicationDto } from './dto/create-application.dto';
-import { ApplicationsQueryDto } from './dto/applications-query.dto';
-import { UpdateApplicationStatusDto } from './dto/update-application-status.dto';
+import { Prisma } from '../generated/prisma/client.js';
+import { ApplicationStatus, ListingStatus } from '../generated/prisma/enums.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { CreateApplicationDto } from './dto/create-application.dto.js';
+import { ApplicationsQueryDto } from './dto/applications-query.dto.js';
+import { UpdateApplicationStatusDto } from './dto/update-application-status.dto.js';
 
 // The fields of the DTOs in application-response.dto.ts.
 const APPLICATION_SELECT = {

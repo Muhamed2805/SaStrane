@@ -6,14 +6,14 @@
 // changes nothing, and it never deletes data.
 import { existsSync } from 'node:fs';
 import { PrismaPg } from '@prisma/adapter-pg';
-import * as bcrypt from 'bcrypt';
-import { PrismaClient } from '../src/generated/prisma/client';
+import bcrypt from 'bcrypt';
+import { PrismaClient } from '../src/generated/prisma/client.js';
 import {
   ApplicationStatus,
   ListingCategory,
   ListingLocation,
   ListingStatus,
-} from '../src/generated/prisma/enums';
+} from '../src/generated/prisma/enums.js';
 
 const DEMO_PASSWORD = 'demo-password-123';
 const HOUR_MS = 60 * 60 * 1000;

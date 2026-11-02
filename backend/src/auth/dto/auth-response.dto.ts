@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { UserRole } from '../../generated/prisma/enums';
+import { UserRole } from '../../generated/prisma/enums.js';
 
 // The user fields that are safe to send to the client. See public-user.ts.
 export class PublicUserDto {

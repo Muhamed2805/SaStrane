@@ -1,6 +1,6 @@
 import type { CookieOptions, Request, Response } from 'express';
-import { API_PREFIX } from '../common/http.constants';
-import type { IssuedRefreshToken } from './sessions.service';
+import { API_PREFIX } from '../common/http.constants.js';
+import type { IssuedRefreshToken } from './sessions.service.js';
 
 export const REFRESH_COOKIE_NAME = 'sastrane_refresh';
 

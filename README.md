@@ -8,7 +8,7 @@ mowing, moving help or IT support, and people nearby apply to do them.
 [![CI](https://github.com/Muhamed2805/SaStrane/actions/workflows/ci.yml/badge.svg)](https://github.com/Muhamed2805/SaStrane/actions/workflows/ci.yml)
 ![Node.js 24](https://img.shields.io/badge/Node.js-24-5FA04E?logo=nodedotjs&logoColor=white)
 ![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
-![NestJS 11](https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs&logoColor=white)
+![NestJS 12](https://img.shields.io/badge/NestJS-12-E0234E?logo=nestjs&logoColor=white)
 ![Prisma 7](https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
 
@@ -111,7 +111,7 @@ flowchart LR
     proxy["Rewrite /api/*"]
   end
 
-  subgraph api["Backend: NestJS 11"]
+  subgraph api["Backend: NestJS 12"]
     edge["Helmet, CORS, rate limits,<br/>validation, JWT guard"]
     modules["Auth, Listings,<br/>Applications"]
     orm["Prisma 7<br/>pg driver adapter"]
@@ -236,10 +236,10 @@ erDiagram
 | Part | Tools |
 | --- | --- |
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, shadcn/ui on Radix, TanStack Query, Zustand |
-| Backend | NestJS 11, Passport JWT, class-validator, Helmet, `@nestjs/throttler` |
+| Backend | NestJS 12 on native ES modules, Passport JWT, class-validator, Helmet, `@nestjs/throttler` |
 | Database | PostgreSQL, Prisma 7 with the `pg` driver adapter |
 | Email | Resend |
-| Tests | Jest and Supertest (backend), Vitest and Playwright (frontend) |
+| Tests | Vitest and Supertest (backend), Vitest and Playwright (frontend) |
 | CI | GitHub Actions, Dependabot |
 
 ## Project structure
@@ -321,7 +321,7 @@ covers the frontend scripts and tests.
 | | Backend | Frontend |
 | --- | --- | --- |
 | Lint and types | `npm run lint`, `npm run typecheck` | `npm run lint`, `npm run typecheck` |
-| Unit tests | `npm test` (Jest) | `npm test` (Vitest) |
+| Unit tests | `npm test` (Vitest) | `npm test` (Vitest) |
 | End-to-end | `npm run test:e2e` (Supertest, real PostgreSQL) | `npm run test:e2e` (Playwright, mocked API) |
 | Build | `npm run build` | `npm run build` |
 | API contract | `npm run openapi` | `npm run api:types` |
@@ -341,7 +341,7 @@ Dependabot opens update PRs, grouped so that related packages move together.
 
 ## Roadmap
 
-- **Dependency upgrades:** NestJS 12 with ES modules, TypeScript 7 and
-  lucide-react 1.
+- **Dependency upgrades:** TypeScript 7, once `@nestjs/swagger` and
+  typescript-eslint support it, and lucide-react 1.
 
 The app is in development and not deployed yet.

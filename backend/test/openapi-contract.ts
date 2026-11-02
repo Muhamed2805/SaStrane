@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import request, { type Response } from 'supertest';
-import Ajv, { type ValidateFunction } from 'ajv';
-import addFormats from 'ajv-formats';
+import { Ajv, type ValidateFunction } from 'ajv';
+import ajvFormats from 'ajv-formats';
 
 // Checks every response of the e2e tests against openapi.json, the contract
 // the frontend generates its types from. A response fails when its status is
@@ -17,7 +17,7 @@ type OpenApiDocument = {
 };
 
 const document = JSON.parse(
-  readFileSync(join(__dirname, '..', 'openapi.json'), 'utf8'),
+  readFileSync(join(import.meta.dirname, '..', 'openapi.json'), 'utf8'),
 ) as OpenApiDocument;
 
 // The contract lists every field a response may carry. Rejecting the rest
@@ -40,7 +40,8 @@ function rejectUnlistedProperties(schema: unknown): unknown {
 
 const components = rejectUnlistedProperties(document.components);
 const ajv = new Ajv({ allErrors: true, strict: false });
-addFormats(ajv);
+// ajv-formats is CommonJS, so the plugin is on the module's default property.
+ajvFormats.default(ajv);
 
 // Literal paths first, so /api/applications/my never matches a template.
 const routes = Object.entries(document.paths)

@@ -1,7 +1,7 @@
 import { Transform } from 'class-transformer';
 import { IsEmail, IsString, Length, Matches, MaxLength } from 'class-validator';
-import { trimString } from '../../common/transforms/trim-string.transform';
-import { EMAIL_MAX_LENGTH } from './credential-limits';
+import { trimString } from '../../common/transforms/trim-string.transform.js';
+import { EMAIL_MAX_LENGTH } from './credential-limits.js';
 
 export class VerifyEmailDto {
   @Transform(trimString)

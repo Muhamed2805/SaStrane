@@ -1,8 +1,8 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiServiceUnavailableResponse, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
-import { AppService } from './app.service';
-import { HealthDto, HealthUnavailableDto } from './health.dto';
+import { AppService } from './app.service.js';
+import { HealthDto, HealthUnavailableDto } from './health.dto.js';
 
 @ApiTags('health')
 @Controller()

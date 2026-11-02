@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, SessionRevocationReason } from '../generated/prisma/client';
+import { Prisma, SessionRevocationReason } from '../generated/prisma/client.js';
 import { createHash, randomBytes } from 'crypto';
-import { PrismaService } from '../prisma/prisma.service';
-import { PUBLIC_USER_SELECT, type PublicUser } from './public-user';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { PUBLIC_USER_SELECT, type PublicUser } from './public-user.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

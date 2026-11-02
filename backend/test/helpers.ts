@@ -1,8 +1,8 @@
-import * as bcrypt from 'bcrypt';
+import bcrypt from 'bcrypt';
 import request from 'supertest';
-import { REFRESH_COOKIE_NAME } from '../src/auth/refresh-cookie';
-import { PrismaService } from '../src/prisma/prisma.service';
-import { assertTestDatabaseName } from './test-database';
+import { REFRESH_COOKIE_NAME } from '../src/auth/refresh-cookie.js';
+import { PrismaService } from '../src/prisma/prisma.service.js';
+import { assertTestDatabaseName } from './test-database.js';
 
 export const PASSWORD = 'correct-horse-battery';
 // bcrypt's lowest cost keeps the tests fast; login accepts any cost.

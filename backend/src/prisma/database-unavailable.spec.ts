@@ -1,6 +1,7 @@
+import { describe, expect, it } from 'vitest';
 import { HttpException } from '@nestjs/common';
-import { Prisma } from '../generated/prisma/client';
-import { isDatabaseUnavailable } from './database-unavailable';
+import { Prisma } from '../generated/prisma/client.js';
+import { isDatabaseUnavailable } from './database-unavailable.js';
 
 function knownError(code: string, meta?: Record<string, unknown>) {
   return new Prisma.PrismaClientKnownRequestError('database error', {

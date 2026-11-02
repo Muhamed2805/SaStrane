@@ -2,9 +2,9 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import type { AccessTokenPayload } from '../auth.service';
-import { JWT_ALGORITHM } from '../jwt.constants';
-import { SessionsService } from '../sessions.service';
+import type { AccessTokenPayload } from '../auth.service.js';
+import { JWT_ALGORITHM } from '../jwt.constants.js';
+import { SessionsService } from '../sessions.service.js';
 
 export type AuthenticatedUser = {
   id: string;

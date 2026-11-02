@@ -2,14 +2,14 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { PrismaModule } from './prisma/prisma.module';
-import { AuthModule } from './auth/auth.module';
-import { ApplicationsModule } from './applications/applications.module';
-import { ListingsModule } from './listings/listings.module';
-import { validateEnvironment } from './config/environment';
-import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
+import { AppController } from './app.controller.js';
+import { AppService } from './app.service.js';
+import { PrismaModule } from './prisma/prisma.module.js';
+import { AuthModule } from './auth/auth.module.js';
+import { ApplicationsModule } from './applications/applications.module.js';
+import { ListingsModule } from './listings/listings.module.js';
+import { validateEnvironment } from './config/environment.js';
+import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter.js';
 
 @Module({
   imports: [
