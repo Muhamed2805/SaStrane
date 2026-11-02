@@ -1,11 +1,20 @@
 import Link from 'next/link';
-import { Banknote, CalendarDays, Check, Mail, MapPin, X } from 'lucide-react';
+import {
+  Banknote,
+  CalendarDays,
+  Check,
+  Mail,
+  MapPin,
+  MessageCircle,
+  X,
+} from 'lucide-react';
 import { ClosedBadge } from '@/features/listings/components/closed-badge';
 import {
   CATEGORY_LABELS,
   LOCATION_LABELS,
 } from '@/features/listings/constants';
 import { formatDate } from '@/lib/format-date';
+import { useOpenConversation } from '@/features/messages/hooks';
 import { formatPrice } from '@/lib/format-price';
 import type {
   ApplicationListing,
@@ -30,9 +39,26 @@ export function ReceivedApplicationCard({
   isUpdating,
   onStatusUpdate,
 }: ReceivedApplicationCardProps) {
+  const { open: openConversation, isOpening } = useOpenConversation();
   const executorInitial = application.executor.fullName
     .charAt(0)
     .toUpperCase();
+  const messageButton = (
+    <button
+      className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border px-4 text-xs font-semibold hover:border-primary/30 hover:bg-primary/5 hover:text-primary disabled:opacity-50"
+      disabled={isOpening}
+      type="button"
+      onClick={() =>
+        openConversation({
+          listingId: application.listingId,
+          executorId: application.executor.id,
+        })
+      }
+    >
+      <MessageCircle className="size-3.5" aria-hidden="true" />
+      Poruka
+    </button>
+  );
 
   return (
     <article className="rounded-xl border bg-white p-5 shadow-sm">
@@ -106,6 +132,7 @@ export function ReceivedApplicationCard({
 
       {application.status === 'PENDING' ? (
         <div className="mt-5 flex flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-end">
+          {messageButton}
           <button
             className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-red-200 px-4 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
             disabled={isUpdating}
@@ -125,7 +152,11 @@ export function ReceivedApplicationCard({
             {isUpdating ? 'Ažuriram...' : 'Prihvati prijavu'}
           </button>
         </div>
-      ) : null}
+      ) : (
+        <div className="mt-5 flex justify-end border-t pt-4">
+          {messageButton}
+        </div>
+      )}
     </article>
   );
 }

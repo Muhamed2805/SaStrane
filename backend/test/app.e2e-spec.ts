@@ -745,4 +745,232 @@ describe('App (e2e)', () => {
       });
     });
   });
+
+  describe('conversations', () => {
+    const question = 'Da li je kosilica benzinska ili električna?';
+
+    async function openJob() {
+      const client = await signedInUser('Amra Hodžić');
+      const executor = await signedInUser('Kenan Mehić');
+      const { id: listingId } = await postListing(client.auth);
+      return { client, executor, listingId };
+    }
+
+    function start(auth: string, body: object) {
+      return http()
+        .post('/api/conversations')
+        .set('Authorization', auth)
+        .send(body);
+    }
+
+    async function startAs(auth: string, listingId: string) {
+      const response = await start(auth, { listingId }).expect(200);
+      return (response.body as { id: string }).id;
+    }
+
+    function send(auth: string, conversationId: string, body: string) {
+      return http()
+        .post(`/api/conversations/${conversationId}/messages`)
+        .set('Authorization', auth)
+        .send({ body });
+    }
+
+    async function unreadCount(auth: string) {
+      const response = await http()
+        .get('/api/conversations/unread-count')
+        .set('Authorization', auth)
+        .expect(200);
+      return (response.body as { count: number }).count;
+    }
+
+    it('lets a user ask about a job and the client answer', async () => {
+      const { client, executor, listingId } = await openJob();
+
+      const started = await start(executor.auth, { listingId }).expect(200);
+      const id = (started.body as { id: string }).id;
+      expect(started.body).toMatchObject({
+        role: 'EXECUTOR',
+        listing: { id: listingId, status: 'OPEN' },
+        otherUser: { id: client.user.id, fullName: 'Amra Hodžić' },
+        lastMessage: null,
+        unreadCount: 0,
+      });
+      // Starting again returns the same conversation.
+      expect(await startAs(executor.auth, listingId)).toBe(id);
+
+      // A conversation without messages is not listed.
+      const empty = await http()
+        .get('/api/conversations')
+        .set('Authorization', client.auth)
+        .expect(200);
+      expect(empty.body).toMatchObject({ total: 0, items: [] });
+
+      const sent = await send(executor.auth, id, ` ${question} `).expect(201);
+      expect(sent.body).toMatchObject({
+        senderId: executor.user.id,
+        body: question,
+      });
+      expect(await unreadCount(client.auth)).toBe(1);
+      expect(await unreadCount(executor.auth)).toBe(0);
+
+      const listed = await http()
+        .get('/api/conversations')
+        .set('Authorization', client.auth)
+        .expect(200);
+      expect(listed.body).toMatchObject({
+        total: 1,
+        items: [
+          {
+            id,
+            role: 'CLIENT',
+            otherUser: { id: executor.user.id, fullName: 'Kenan Mehić' },
+            lastMessage: { body: question },
+            unreadCount: 1,
+          },
+        ],
+      });
+
+      await http()
+        .post(`/api/conversations/${id}/read`)
+        .set('Authorization', client.auth)
+        .expect(204);
+      expect(await unreadCount(client.auth)).toBe(0);
+
+      await send(client.auth, id, 'Električna je.').expect(201);
+      expect(await unreadCount(executor.auth)).toBe(1);
+
+      const messages = await http()
+        .get(`/api/conversations/${id}/messages`)
+        .set('Authorization', executor.auth)
+        .expect(200);
+      expect(messages.body).toMatchObject({
+        items: [{ body: 'Električna je.' }, { body: question }],
+        nextCursor: null,
+      });
+    });
+
+    it('pages through the messages, newest first', async () => {
+      const { client, executor, listingId } = await openJob();
+      const id = await startAs(executor.auth, listingId);
+      for (const body of ['Prva', 'Druga', 'Treća']) {
+        await send(executor.auth, id, body).expect(201);
+      }
+
+      const first = await http()
+        .get(`/api/conversations/${id}/messages?limit=2`)
+        .set('Authorization', client.auth)
+        .expect(200);
+      const page = first.body as {
+        items: { body: string }[];
+        nextCursor: string;
+      };
+      expect(page.items.map((message) => message.body)).toEqual([
+        'Treća',
+        'Druga',
+      ]);
+
+      const older = await http()
+        .get(`/api/conversations/${id}/messages`)
+        .query({ limit: 2, before: page.nextCursor })
+        .set('Authorization', client.auth)
+        .expect(200);
+      expect(older.body).toMatchObject({
+        items: [{ body: 'Prva' }],
+        nextCursor: null,
+      });
+    });
+
+    it('lets the client write only to users who applied, also after closing the job', async () => {
+      const { client, executor, listingId } = await openJob();
+
+      await start(client.auth, { listingId }).expect(403);
+      await start(client.auth, {
+        listingId,
+        executorId: executor.user.id,
+      }).expect(403);
+
+      await http()
+        .post('/api/applications')
+        .set('Authorization', executor.auth)
+        .send({ listingId, message: 'Mogu doći u subotu ujutro.' })
+        .expect(201);
+      await http()
+        .patch(`/api/listings/${listingId}/status`)
+        .set('Authorization', client.auth)
+        .send({ status: 'CLOSED' })
+        .expect(200);
+
+      const started = await start(client.auth, {
+        listingId,
+        executorId: executor.user.id,
+      }).expect(200);
+      expect(started.body).toMatchObject({
+        role: 'CLIENT',
+        otherUser: { id: executor.user.id },
+      });
+    });
+
+    it('starts no new conversation about a closed job, but keeps the old ones', async () => {
+      const { client, executor, listingId } = await openJob();
+      const late = await signedInUser();
+      const id = await startAs(executor.auth, listingId);
+      await http()
+        .patch(`/api/listings/${listingId}/status`)
+        .set('Authorization', client.auth)
+        .send({ status: 'CLOSED' })
+        .expect(200);
+
+      const refused = await start(late.auth, { listingId }).expect(409);
+      expect(refused.body).toMatchObject({ code: 'LISTING_CLOSED' });
+
+      await send(executor.auth, id, question).expect(201);
+    });
+
+    it('keeps everyone else out of a conversation', async () => {
+      const { executor, listingId } = await openJob();
+      const stranger = await signedInUser();
+      const id = await startAs(executor.auth, listingId);
+
+      await start(stranger.auth, {
+        listingId,
+        executorId: executor.user.id,
+      }).expect(403);
+      await http()
+        .get(`/api/conversations/${id}`)
+        .set('Authorization', stranger.auth)
+        .expect(403);
+      await http()
+        .get(`/api/conversations/${id}/messages`)
+        .set('Authorization', stranger.auth)
+        .expect(403);
+      await send(stranger.auth, id, question).expect(403);
+      await http()
+        .get('/api/conversations/does-not-exist')
+        .set('Authorization', stranger.auth)
+        .expect(404);
+    });
+
+    it('rejects an empty message', async () => {
+      const { executor, listingId } = await openJob();
+      const id = await startAs(executor.auth, listingId);
+
+      await send(executor.auth, id, '   ').expect(400);
+      expect(await prisma.message.count()).toBe(0);
+    });
+
+    it('deletes the conversations together with the job', async () => {
+      const { client, executor, listingId } = await openJob();
+      const id = await startAs(executor.auth, listingId);
+      await send(executor.auth, id, question).expect(201);
+
+      await http()
+        .delete(`/api/listings/${listingId}`)
+        .set('Authorization', client.auth)
+        .expect(204);
+
+      expect(await prisma.conversation.count()).toBe(0);
+      expect(await prisma.message.count()).toBe(0);
+      expect(await unreadCount(executor.auth)).toBe(0);
+    });
+  });
 });

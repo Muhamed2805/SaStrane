@@ -84,8 +84,8 @@ after every install and every schema change.
 | Browse the data | `npx prisma studio` |
 | Start over with an empty database | `docker compose down -v`, then `docker compose up -d` and migrate again |
 
-The seed in `prisma/seed.ts` adds four users, nine jobs and six
-applications. Every demo user signs in with `demo-password-123`, for example
+The seed in `prisma/seed.ts` adds four users, nine jobs, six applications
+and three conversations. Every demo user signs in with `demo-password-123`, for example
 as `amra@example.com`. The seed only adds missing rows, so it is safe to run
 again, and it refuses to run with `NODE_ENV=production`.
 
@@ -124,7 +124,8 @@ DTOs are in the `dto/*-response.dto.ts` files.
 ## API
 
 **Auth** is a Bearer access token, from login or refresh. **Owner** means the
-token's user must own the job.
+token's user must own the job. **Member** means the user must be one of the
+two sides of the conversation.
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
@@ -150,6 +151,13 @@ token's user must own the job.
 | `GET` | `/api/applications/received` | Bearer | Lists the applications to your jobs. |
 | `GET` | `/api/applications/listing/:listingId` | Owner | Lists the applications to one job. |
 | `PATCH` | `/api/applications/:id/status` | Owner | Accepts or rejects an application. |
+| `POST` | `/api/conversations` | Bearer | Returns the conversation about a job, and creates it the first time. |
+| `GET` | `/api/conversations` | Bearer | Lists your conversations, the latest message first. |
+| `GET` | `/api/conversations/unread-count` | Bearer | Counts your unread messages. |
+| `GET` | `/api/conversations/:id` | Member | Returns one conversation. |
+| `GET` | `/api/conversations/:id/messages` | Member | Lists the messages, newest first. Paging: `before` (a cursor), `limit` (max 100). |
+| `POST` | `/api/conversations/:id/messages` | Member | Sends a message. |
+| `POST` | `/api/conversations/:id/read` | Member | Marks the conversation as read. Returns 204. |
 
 **Lists.** Paged lists return
 `{ items, total, page, limit, totalPages }`.
@@ -166,6 +174,18 @@ token's user must own the job.
   returns 409 with the code `APPLICATION_ALREADY_DECIDED`.
 - The executor's email is `null` until the client accepts the application.
 
+**Conversations.**
+- There is one conversation per job and user, between the job's client and
+  a user who asks about the job or applied to it. Emails stay private.
+- Any signed-in user can write to the client of an `OPEN` job. The client
+  writes to a user who applied by passing `executorId`, also after closing
+  the job. Starting a new conversation about a closed job returns 409 with
+  the code `LISTING_CLOSED`. Existing conversations go on after closing.
+- A conversation without messages is not listed. Deleting the job deletes
+  its conversations.
+- The site checks for new messages every few seconds, so the conversation
+  routes allow 120 requests per minute. Sending allows 20.
+
 **Errors.** Errors use the standard NestJS shape,
 `{ statusCode, message, error }`. Errors that the frontend must tell apart
 return `{ code, message }` instead, such as `EMAIL_NOT_VERIFIED` on login.
@@ -174,5 +194,6 @@ conflicts return
 409, and missing records return 404. When the database cannot be reached,
 routes that need it return 503.
 
-**Rate limits.** Each client IP gets 30 requests per minute. The sign-in,
-sign-up and email code routes have stricter limits.
+**Rate limits.** Each client IP gets 30 requests per minute on each route.
+The sign-in, sign-up and email code routes have stricter limits, and the
+conversation routes higher ones.

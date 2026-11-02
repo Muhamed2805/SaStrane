@@ -82,9 +82,12 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  listings     Listing[]     @relation("UserListings")
-  applications Application[] @relation("UserApplications")
-  sessions     Session[]
+  listings              Listing[]      @relation("UserListings")
+  applications          Application[]  @relation("UserApplications")
+  sessions              Session[]
+  clientConversations   Conversation[] @relation("ClientConversations")
+  executorConversations Conversation[] @relation("ExecutorConversations")
+  sentMessages          Message[]      @relation("SentMessages")
 }
 
 // One signed-in browser or device. It ends at expiresAt even when it stays
@@ -137,7 +140,8 @@ model Listing {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  applications Application[]
+  applications  Application[]
+  conversations Conversation[]
 
   @@index([status, createdAt])
   @@index([clientId, createdAt])
@@ -161,4 +165,51 @@ model Application {
   @@unique([listingId, executorId]) // jedan executor može jednom aplicirati na isti oglas
   @@index([listingId, status])
   @@index([executorId, createdAt])
+}
+
+// One conversation per job and user. A user writes to a job's client, or
+// the client writes to a user who applied. Deleting the job deletes it.
+model Conversation {
+  id         String @id @default(cuid())
+  listingId  String
+  // The job's client, kept here so each side's list is one indexed query.
+  clientId   String
+  // The other side: the user who asked about the job or applied to it.
+  executorId String
+
+  // Null until the first message. Conversations without messages are not
+  // listed.
+  lastMessageId String?   @unique
+  lastMessageAt DateTime?
+
+  // The messages each side has not read yet.
+  clientUnread   Int @default(0)
+  executorUnread Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listing     Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  client      User      @relation("ClientConversations", fields: [clientId], references: [id], onDelete: Cascade)
+  executor    User      @relation("ExecutorConversations", fields: [executorId], references: [id], onDelete: Cascade)
+  lastMessage Message?  @relation("LastMessage", fields: [lastMessageId], references: [id], onDelete: SetNull)
+  messages    Message[] @relation("ConversationMessages")
+
+  @@unique([listingId, executorId])
+  @@index([clientId, lastMessageAt])
+  @@index([executorId, lastMessageAt])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  createdAt      DateTime @default(now())
+
+  conversation  Conversation  @relation("ConversationMessages", fields: [conversationId], references: [id], onDelete: Cascade)
+  sender        User          @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  lastMessageOf Conversation? @relation("LastMessage")
+
+  @@index([conversationId, createdAt])
 }

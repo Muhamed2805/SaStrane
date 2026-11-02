@@ -20,6 +20,7 @@ import { applicationKeys } from '@/features/applications/queries';
 import { useApplicationsStore } from '@/features/applications/store';
 import { listingsApi, type ListingStatus } from '@/features/listings/api';
 import { listingKeys, listingSaved } from '@/features/listings/queries';
+import { useOpenConversation } from '@/features/messages/hooks';
 import { cn } from '@/lib/utils';
 
 type ListingActionsProps = {
@@ -38,6 +39,7 @@ export function ListingActions({
   const { user, openAuthModal } = useAuthStore();
   const openApply = useApplicationsStore((state) => state.openApply);
   const appliedListingIds = useAppliedListingIds();
+  const { open: openConversation, isOpening } = useOpenConversation();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isChangingStatus, setIsChangingStatus] = useState(false);
 
@@ -169,14 +171,13 @@ export function ListingActions({
       </button>
 
       <button
-        className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
-        onClick={() => {
-          if (!user) openAuthModal();
-          else toast.info('Razgovori dolaze uskoro.');
-        }}
+        type="button"
+        className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary disabled:opacity-50"
+        disabled={isOpening}
+        onClick={() => openConversation({ listingId })}
       >
         <MessageCircle className="size-4" aria-hidden="true" />
-        Pošalji poruku
+        {isOpening ? 'Otvaram razgovor...' : 'Pošalji poruku'}
       </button>
     </div>
   );

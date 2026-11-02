@@ -1,5 +1,5 @@
-// Demo data for local development: four users, nine jobs and six
-// applications, with Bosnian text as in real use. Every demo user signs in
+// Demo data for local development: four users, nine jobs, six applications
+// and three conversations, with Bosnian text as in real use. Every demo user signs in
 // with the password below.
 //
 // Run it with `npx prisma db seed`. It upserts fixed IDs, so a second run
@@ -212,6 +212,71 @@ const applications = [
   },
 ];
 
+// Each conversation is between a job's client and the executor. The
+// messages are oldest first; minutesAgo is when each one was sent.
+const conversations: {
+  id: string;
+  listingId: string;
+  clientId: string;
+  executorId: string;
+  messages: { fromClient: boolean; body: string; minutesAgo: number }[];
+}[] = [
+  {
+    id: 'seed-conversation-lawn-kenan',
+    listingId: 'seed-listing-lawn',
+    clientId: 'seed-user-amra',
+    executorId: 'seed-user-kenan',
+    messages: [
+      {
+        fromClient: false,
+        body: 'Dobar dan! Da li je kosilica benzinska ili električna? Da znam trebam li ponijeti produžni kabl.',
+        minutesAgo: 50,
+      },
+      {
+        fromClient: true,
+        body: 'Benzinska je, gorivo imam. Može li sutra oko 15h?',
+        minutesAgo: 45,
+      },
+      {
+        fromClient: false,
+        body: 'Može, vidimo se sutra u 15h. Ponijeću i trimer za živicu.',
+        minutesAgo: 40,
+      },
+    ],
+  },
+  {
+    id: 'seed-conversation-move-tarik',
+    listingId: 'seed-listing-move',
+    clientId: 'seed-user-amra',
+    executorId: 'seed-user-tarik',
+    messages: [
+      {
+        fromClient: false,
+        body: 'Koliko je otprilike kutija i ima li lift u zgradi?',
+        minutesAgo: 180,
+      },
+      {
+        fromClient: true,
+        body: 'Oko 20 kutija. Lift ima samo na Grbavici, na Stupu je drugi sprat.',
+        minutesAgo: 150,
+      },
+    ],
+  },
+  {
+    id: 'seed-conversation-car-amra',
+    listingId: 'seed-listing-car',
+    clientId: 'seed-user-lejla',
+    executorId: 'seed-user-amra',
+    messages: [
+      {
+        fromClient: false,
+        body: 'Je li u redu ako dođem u nedjelju u 10h?',
+        minutesAgo: 120,
+      },
+    ],
+  },
+];
+
 async function main() {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('The demo seed must not run in production.');
@@ -228,6 +293,7 @@ async function main() {
   });
   const now = Date.now();
   const hoursAgo = (hours: number) => new Date(now - hours * HOUR_MS);
+  const minutesAgo = (minutes: number) => new Date(now - minutes * 60_000);
 
   try {
     const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
@@ -261,8 +327,46 @@ async function main() {
       });
     }
 
+    for (const { messages, ...conversation } of conversations) {
+      await prisma.conversation.upsert({
+        where: { id: conversation.id },
+        update: {},
+        create: {
+          ...conversation,
+          createdAt: minutesAgo(messages[0].minutesAgo),
+        },
+      });
+      for (const [index, message] of messages.entries()) {
+        await prisma.message.upsert({
+          where: { id: `${conversation.id}-${index + 1}` },
+          update: {},
+          create: {
+            id: `${conversation.id}-${index + 1}`,
+            conversationId: conversation.id,
+            senderId: message.fromClient
+              ? conversation.clientId
+              : conversation.executorId,
+            body: message.body,
+            createdAt: minutesAgo(message.minutesAgo),
+          },
+        });
+      }
+      // The receiver of the last message has not read it yet. Only a new
+      // conversation is updated, so a second run keeps what was read.
+      const last = messages[messages.length - 1];
+      await prisma.conversation.updateMany({
+        where: { id: conversation.id, lastMessageId: null },
+        data: {
+          lastMessageId: `${conversation.id}-${messages.length}`,
+          lastMessageAt: minutesAgo(last.minutesAgo),
+          clientUnread: last.fromClient ? 0 : 1,
+          executorUnread: last.fromClient ? 1 : 0,
+        },
+      });
+    }
+
     console.log(
-      `Seeded ${users.length} users, ${listings.length} jobs and ${applications.length} applications.`,
+      `Seeded ${users.length} users, ${listings.length} jobs, ${applications.length} applications and ${conversations.length} conversations.`,
     );
     console.log(`Sign in as amra@example.com with ${DEMO_PASSWORD}.`);
   } finally {

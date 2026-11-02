@@ -35,6 +35,14 @@ function rejectUnlistedProperties(schema: unknown): unknown {
   if ('properties' in result && !('additionalProperties' in result)) {
     result.additionalProperties = false;
   }
+  // In OpenAPI 3.0, nullable allows null whatever else the schema says. Ajv
+  // still applies the allOf of a nullable reference, such as a nullable
+  // MessageDto, so null gets its own branch.
+  if (result.nullable === true && 'allOf' in result) {
+    const rest = { ...result };
+    delete rest.nullable;
+    return { anyOf: [rest, { type: 'null' }] };
+  }
   return result;
 }
 
