@@ -342,6 +342,6 @@ Dependabot opens update PRs, grouped so that related packages move together.
 ## Roadmap
 
 - **Dependency upgrades:** TypeScript 7, once `@nestjs/swagger` and
-  typescript-eslint support it, and lucide-react 1.
+  typescript-eslint support it.
 
 The app is in development and not deployed yet.
