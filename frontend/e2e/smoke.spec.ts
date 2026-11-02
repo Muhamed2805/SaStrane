@@ -92,6 +92,39 @@ test('loads the filtered listings catalog from the API', async ({ page }) => {
   );
 });
 
+test('keeps the search and filters in the URL', async ({ page }) => {
+  const requests = await mockListingsApi(page);
+  const search = page.getByLabel('Pretraži oglase');
+  const locationFilter = page.getByLabel('Filtriraj po lokaciji');
+
+  await page.goto('/listings');
+  await expect(page.getByText('Pronađen 1 oglas')).toBeVisible();
+
+  await locationFilter.selectOption('TUZLA');
+  await expect(page).toHaveURL(/\/listings\?location=TUZLA$/);
+  await search.fill('selidba');
+  await expect(page).toHaveURL(/\/listings\?q=selidba&location=TUZLA$/);
+  await expect
+    .poll(() =>
+      requests.some(
+        (url) =>
+          url.searchParams.get('q') === 'selidba' &&
+          url.searchParams.get('location') === 'TUZLA',
+      ),
+    )
+    .toBe(true);
+
+  // Typing replaced the history entry, so Back skips it.
+  await page.goBack();
+  await expect(page).toHaveURL(/\/listings$/);
+  await expect(locationFilter).toHaveValue('');
+  await expect(search).toHaveValue('');
+
+  await page.goForward();
+  await expect(locationFilter).toHaveValue('TUZLA');
+  await expect(search).toHaveValue('selidba');
+});
+
 test('exposes authentication actions in the mobile menu', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');

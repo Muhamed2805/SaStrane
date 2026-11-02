@@ -99,11 +99,15 @@ test('refreshes an expired access token once and repeats the requests', async ({
 }) => {
   const calls = await mockSignedInApi(page);
   await markSignedIn(page);
+  await page.clock.install();
   await page.goto('/inbox');
   await expect(emptyApplications(page)).toBeVisible();
 
   calls.expireAccessToken();
   calls.authorizations.length = 0;
+  // The profile reuses the workspace data while it is fresh, so the data
+  // has to go stale first.
+  await page.clock.fastForward('01:00');
   // A client-side navigation keeps the expired token in memory.
   await page.getByRole('button', { name: new RegExp(user.fullName) }).click();
   await page.getByRole('link', { name: 'Moj profil' }).click();

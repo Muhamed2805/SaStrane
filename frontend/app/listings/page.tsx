@@ -1,23 +1,29 @@
+import type { Metadata } from 'next';
+import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
 import { ListingsFeed } from '@/features/listings/components/listings-feed';
+import { listingsQuery } from '@/features/listings/queries';
 import {
-  isListingCategory,
-  isListingLocation,
-} from '@/features/listings/constants';
+  feedRequestParams,
+  parseListingFilters,
+} from '@/features/listings/search-params';
+import { getQueryClient } from '@/lib/query-client';
+
+export const metadata: Metadata = {
+  title: 'Oglasi',
+  description:
+    'Lokalni poslovi po Bosni i Hercegovini: košenje trave, selidbe, čišćenje, čuvanje djece i još mnogo toga. Pronađi posao i pošalji prijavu.',
+};
 
 export default async function ListingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; category?: string; location?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const params = await searchParams;
-  const query = typeof params.q === 'string' ? params.q : '';
-  // An unknown code in the URL turns its filter off.
-  const category = isListingCategory(params.category)
-    ? params.category
-    : undefined;
-  const location = isListingLocation(params.location)
-    ? params.location
-    : undefined;
+  const filters = parseListingFilters(await searchParams);
+  // The feed asks for the same query, so the first results come from here.
+  // A failed request is left out and the browser tries again.
+  const queryClient = getQueryClient();
+  await queryClient.prefetchQuery(listingsQuery(feedRequestParams(filters)));
 
   return (
     <div className="space-y-8">
@@ -32,11 +38,9 @@ export default async function ListingsPage({
         </p>
       </div>
 
-      <ListingsFeed
-        initialQuery={query}
-        initialCategory={category}
-        initialLocation={location}
-      />
+      <HydrationBoundary state={dehydrate(queryClient)}>
+        <ListingsFeed />
+      </HydrationBoundary>
     </div>
   );
 }

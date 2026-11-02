@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import {
   ArrowRight,
   BadgeCheck,
@@ -16,10 +16,14 @@ import {
   Send,
 } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/store';
-import { listingsApi } from '@/features/listings/api';
-import { applicationsApi } from '@/features/applications/api';
+import { ownedListingsQuery } from '@/features/listings/queries';
+import {
+  receivedApplicationsQuery,
+  sentApplicationsQuery,
+} from '@/features/applications/queries';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/lib/format-date';
+import { pageTotal } from '@/lib/paging';
 
 const ROLE_LABEL: Record<string, string> = {
   CLIENT: 'Klijent',
@@ -27,74 +31,28 @@ const ROLE_LABEL: Record<string, string> = {
   BOTH: 'Klijent i izvršilac',
 };
 
-type ProfileStats = {
-  listings: number;
-  applications: number;
-  received: number;
-};
-
-const EMPTY_STATS: ProfileStats = {
-  listings: 0,
-  applications: 0,
-  received: 0,
-};
-
 export default function ProfilePage() {
   const { user, status, openAuthModal } = useAuthStore();
-  const [reloadCount, setReloadCount] = useState(0);
-  const [loadResult, setLoadResult] = useState<{
-    key: string;
-    stats: ProfileStats;
-    error: string | null;
-  } | null>(null);
 
-  const userId = user?.id;
-  // Identifies the current load. Another user or a retry gets a new key, so
-  // the placeholders show instead of stale numbers until that load finishes.
-  const loadKey = userId ? `${userId}:${reloadCount}` : null;
-  const result =
-    loadKey !== null && loadResult?.key === loadKey ? loadResult : null;
-  const isLoading = loadKey !== null && result === null;
-  const stats = result?.stats ?? null;
-  const error = result?.error ?? null;
-
-  useEffect(() => {
-    if (!loadKey || !userId) return;
-
-    let ignore = false;
-    Promise.all([
-      listingsApi.getAll({ clientId: userId, limit: 1 }),
-      applicationsApi.getMyApplications({ limit: 1 }),
-      applicationsApi.getReceivedApplications({ limit: 1 }),
-    ])
-      .then(([listingsPage, applicationsPage, receivedPage]) => {
-        if (ignore) return;
-        setLoadResult({
-          key: loadKey,
-          stats: {
-            listings: listingsPage.total,
-            applications: applicationsPage.total,
-            received: receivedPage.total,
-          },
-          error: null,
-        });
-      })
-      .catch((requestError: unknown) => {
-        if (ignore) return;
-        setLoadResult({
-          key: loadKey,
-          stats: EMPTY_STATS,
-          error:
-            requestError instanceof Error
-              ? requestError.message
-              : 'Statistika nije dostupna.',
-        });
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [loadKey, userId]);
+  // The same first pages as the workspace, so moving between the two pages
+  // needs no new requests.
+  const userId = user?.id ?? '';
+  const enabled = Boolean(user);
+  const queries = [
+    useInfiniteQuery({ ...ownedListingsQuery(userId), enabled }),
+    useInfiniteQuery({ ...sentApplicationsQuery(userId), enabled }),
+    useInfiniteQuery({ ...receivedApplicationsQuery(userId), enabled }),
+  ];
+  const [listings, applications, received] = queries.map((query) =>
+    pageTotal(query.data?.pages),
+  );
+  const failed = queries.find((query) => query.error && !query.data);
+  const error = failed?.error?.message ?? null;
+  const reload = () => {
+    for (const query of queries) {
+      if (query.error) void query.refetch();
+    }
+  };
 
   if (status === 'loading') {
     return (
@@ -135,21 +93,21 @@ export default function ProfilePage() {
   const statisticCards = [
     {
       label: 'Moji oglasi',
-      value: stats?.listings,
+      value: listings,
       href: '/inbox?tab=listings',
       icon: ClipboardList,
       iconClassName: 'bg-primary/10 text-primary',
     },
     {
       label: 'Poslane prijave',
-      value: stats?.applications,
+      value: applications,
       href: '/inbox?tab=applications',
       icon: Send,
       iconClassName: 'bg-amber-50 text-brand-orange-dark',
     },
     {
       label: 'Primljene prijave',
-      value: stats?.received,
+      value: received,
       href: '/inbox?tab=received',
       icon: Inbox,
       iconClassName: 'bg-sky-50 text-sky-700',
@@ -205,7 +163,7 @@ export default function ProfilePage() {
           {error ? (
             <button
               type="button"
-              onClick={() => setReloadCount((count) => count + 1)}
+              onClick={reload}
               className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
             >
               <RefreshCw className="size-4" />
@@ -239,7 +197,7 @@ export default function ProfilePage() {
                   <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
                 </div>
                 <p className="mt-5 text-3xl font-bold tabular-nums">
-                  {isLoading || card.value === undefined ? '—' : card.value}
+                  {card.value ?? '—'}
                 </p>
                 <p className="mt-1 text-sm font-medium text-muted-foreground">
                   {card.label}

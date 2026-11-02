@@ -1,6 +1,8 @@
 'use client';
 
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   ChevronLeft,
   ChevronRight,
@@ -12,43 +14,26 @@ import {
 } from 'lucide-react';
 import {
   CATEGORY_LABELS,
+  isListingCategory,
+  isListingLocation,
   LISTING_CATEGORIES,
   LISTING_LOCATIONS,
   LOCATION_LABELS,
 } from '@/features/listings/constants';
+import { listingsQuery } from '../queries';
 import {
-  listingsApi,
-  type GetAllListingsParams,
-  type ListingCategory,
-  type ListingLocation,
-  type ListingSummary,
-} from '../api';
+  feedRequestParams,
+  listingFiltersQuery,
+  parseListingFilters,
+  type ListingFilters,
+} from '../search-params';
 import { ListingCard } from './listing-card';
 import { ListingCardSkeleton } from './listing-card-skeleton';
 
 // The select value that turns a filter off.
 const ALL_FILTER = '';
-type Filter<T> = T | typeof ALL_FILTER;
 
-const PAGE_SIZE = 9;
 const SEARCH_DEBOUNCE_MS = 300;
-
-// The feed shows only jobs that still take applications.
-function createQuery(
-  q: string,
-  category: Filter<ListingCategory>,
-  location: Filter<ListingLocation>,
-  page: number,
-): GetAllListingsParams {
-  return {
-    page,
-    limit: PAGE_SIZE,
-    status: 'OPEN',
-    q: q.trim() || undefined,
-    category: category || undefined,
-    location: location || undefined,
-  };
-}
 
 function getVisiblePages(page: number, totalPages: number) {
   const firstPage = Math.max(1, Math.min(page - 2, totalPages - 4));
@@ -61,104 +46,96 @@ function resultsLabel(total: number) {
   return `Pronađeno ${total} oglasa`;
 }
 
-export function ListingsFeed({
-  initialQuery = '',
-  initialCategory,
-  initialLocation,
-}: {
-  initialQuery?: string;
-  initialCategory?: ListingCategory;
-  initialLocation?: ListingLocation;
-}) {
-  const [listings, setListings] = useState<ListingSummary[]>([]);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+// Writes the filters to the URL without a new render on the server. Typing
+// replaces the history entry, so Back skips the single keystrokes.
+function showFilters(filters: ListingFilters, mode: 'push' | 'replace') {
+  const query = listingFiltersQuery(filters);
+  const url = query ? `?${query}` : window.location.pathname;
+  if (mode === 'push') window.history.pushState(null, '', url);
+  else window.history.replaceState(null, '', url);
+}
 
-  const [q, setQ] = useState(initialQuery);
-  const [category, setCategory] = useState<Filter<ListingCategory>>(
-    initialCategory ?? ALL_FILTER,
+// The URL holds the search, filters and page. The server page renders the
+// first results for the same URL, so they show without a loading state.
+export function ListingsFeed() {
+  const searchParams = useSearchParams();
+  const filters = useMemo(
+    () => parseListingFilters(searchParams),
+    [searchParams],
   );
-  const [location, setLocation] = useState<Filter<ListingLocation>>(
-    initialLocation ?? ALL_FILTER,
-  );
+  const { q, category, location, page } = filters;
+
+  // The search box updates the URL after a short pause in typing.
+  const [searchText, setSearchText] = useState(q);
+  const [urlQuery, setUrlQuery] = useState(q);
+  if (q !== urlQuery) {
+    // Back or Forward changed the search: show it in the box. A search the
+    // box itself sent keeps the text as typed, spaces included.
+    setUrlQuery(q);
+    if (q !== searchText.trim()) setSearchText(q);
+  }
+  const isTyping = searchText.trim() !== q;
+
+  useEffect(() => {
+    const nextQuery = searchText.trim();
+    if (nextQuery === q) return;
+
+    const timeout = window.setTimeout(
+      () => showFilters({ ...filters, q: nextQuery, page: 1 }, 'replace'),
+      nextQuery ? SEARCH_DEBOUNCE_MS : 0,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [filters, q, searchText]);
+
+  const { data, error, isPending, isPlaceholderData } = useQuery({
+    ...listingsQuery(feedRequestParams(filters)),
+    // The old results stay on screen, dimmed, while the new ones load.
+    placeholderData: keepPreviousData,
+  });
+
+  const listings = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, data?.totalPages ?? 1);
+  const isLoading = isPending && !error;
+  const isRefreshing = isPlaceholderData || isTyping;
   const hasActiveFilters =
-    Boolean(q.trim()) || category !== ALL_FILTER || location !== ALL_FILTER;
+    Boolean(searchText.trim()) || Boolean(category) || Boolean(location);
   const visiblePages = useMemo(
     () => getVisiblePages(page, totalPages),
     [page, totalPages],
   );
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const delay = q.trim() ? SEARCH_DEBOUNCE_MS : 0;
-
-    const timeout = window.setTimeout(() => {
-      setIsRefreshing(true);
-      setError(null);
-
-      listingsApi
-        .getAll(createQuery(q, category, location, page), controller.signal)
-        .then((response) => {
-          setListings(response.items);
-          setPage(response.page);
-          setTotal(response.total);
-          setTotalPages(Math.max(1, response.totalPages));
-        })
-        .catch((requestError: unknown) => {
-          if (
-            requestError instanceof DOMException &&
-            requestError.name === 'AbortError'
-          ) {
-            return;
-          }
-          setError(
-            requestError instanceof Error
-              ? requestError.message
-              : 'Oglasi trenutno nisu dostupni.',
-          );
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) {
-            setIsLoading(false);
-            setIsRefreshing(false);
-          }
-        });
-    }, delay);
-
-    return () => {
-      window.clearTimeout(timeout);
-      controller.abort();
-    };
-  }, [q, category, location, page]);
-
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setQ(event.target.value);
-    setPage(1);
-    setIsRefreshing(true);
+    setSearchText(event.target.value);
   };
 
   const handleCategoryChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    setCategory(event.target.value as Filter<ListingCategory>);
-    setPage(1);
-    setIsRefreshing(true);
+    const value = event.target.value;
+    showFilters(
+      {
+        ...filters,
+        category: isListingCategory(value) ? value : undefined,
+        page: 1,
+      },
+      'push',
+    );
   };
 
   const handleLocationChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    setLocation(event.target.value as Filter<ListingLocation>);
-    setPage(1);
-    setIsRefreshing(true);
+    const value = event.target.value;
+    showFilters(
+      {
+        ...filters,
+        location: isListingLocation(value) ? value : undefined,
+        page: 1,
+      },
+      'push',
+    );
   };
 
   const clearFilters = () => {
-    setQ('');
-    setCategory(ALL_FILTER);
-    setLocation(ALL_FILTER);
-    setPage(1);
-    setIsRefreshing(true);
+    setSearchText('');
+    showFilters({ q: '', page: 1 }, 'push');
   };
 
   const changePage = (nextPage: number) => {
@@ -170,8 +147,7 @@ export function ListingsFeed({
     ) {
       return;
     }
-    setPage(nextPage);
-    setIsRefreshing(true);
+    showFilters({ ...filters, page: nextPage }, 'push');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -190,16 +166,13 @@ export function ListingsFeed({
             aria-label="Pretraži oglase"
             className="h-12 w-full rounded-xl border bg-background pr-10 pl-12 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-3 focus:ring-primary/10"
             placeholder="Pretraži po nazivu ili opisu posla..."
-            value={q}
+            value={searchText}
             onChange={handleSearchChange}
           />
-          {q ? (
+          {searchText ? (
             <button
               type="button"
-              onClick={() => {
-                setQ('');
-                setPage(1);
-              }}
+              onClick={() => setSearchText('')}
               className="absolute top-1/2 right-3 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
               aria-label="Obriši pretragu"
             >
@@ -218,7 +191,7 @@ export function ListingsFeed({
             <select
               aria-label="Filtriraj po kategoriji"
               className="h-11 w-full appearance-none rounded-lg border bg-background pr-9 pl-11 text-sm outline-none transition-colors focus:border-primary focus:ring-3 focus:ring-primary/10"
-              value={category}
+              value={category ?? ALL_FILTER}
               onChange={handleCategoryChange}
             >
               <option value={ALL_FILTER}>Sve kategorije</option>
@@ -243,7 +216,7 @@ export function ListingsFeed({
             <select
               aria-label="Filtriraj po lokaciji"
               className="h-11 w-full appearance-none rounded-lg border bg-background pr-9 pl-11 text-sm outline-none transition-colors focus:border-primary focus:ring-3 focus:ring-primary/10"
-              value={location}
+              value={location ?? ALL_FILTER}
               onChange={handleLocationChange}
             >
               <option value={ALL_FILTER}>Sve lokacije</option>
@@ -296,7 +269,7 @@ export function ListingsFeed({
           role="alert"
         >
           <p className="font-semibold">Oglasi nisu učitani</p>
-          <p className="mt-1 text-red-600">{error}</p>
+          <p className="mt-1 text-red-600">{error.message}</p>
         </div>
       ) : null}
 

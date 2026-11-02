@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import {
+  useInfiniteQuery,
+  type InfiniteQueryObserverResult,
+} from '@tanstack/react-query';
 import {
   BriefcaseBusiness,
   ClipboardList,
@@ -15,24 +18,23 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store';
-import { listingsApi, type ListingSummary } from '@/features/listings/api';
 import { MyListingCard } from '@/features/listings/components/my-listing-card';
-import {
-  applicationsApi,
-  type MyApplication,
-  type ReceivedApplication,
-} from '../api';
+import { ownedListingsQuery } from '@/features/listings/queries';
+import { pageItems, pageTotal } from '@/lib/paging';
+import { useDecideApplication } from '../hooks';
+import { receivedApplicationsQuery, sentApplicationsQuery } from '../queries';
 import { ApplicationCardSkeleton } from './application-card-skeleton';
 import { MyApplicationCard } from './my-application-card';
 import { ReceivedApplicationCard } from './received-application-card';
 
-const PAGE_SIZE = 10;
-
 export type InboxTab = 'listings' | 'applications' | 'received';
 
-function appendUnique<T extends { id: string }>(current: T[], incoming: T[]) {
-  const existingIds = new Set(current.map((item) => item.id));
-  return [...current, ...incoming.filter((item) => !existingIds.has(item.id))];
+// A failed next page keeps the loaded pages, so it shows as a toast.
+async function loadMore(
+  fetchNextPage: () => Promise<InfiniteQueryObserverResult<unknown, Error>>,
+) {
+  const result = await fetchNextPage();
+  if (result.isFetchNextPageError) toast.error(result.error.message);
 }
 
 function LoadMoreButton({
@@ -94,169 +96,44 @@ export function InboxView({
 }: {
   initialTab?: InboxTab;
 }) {
-  const router = useRouter();
   const { user, status: authStatus, openAuthModal } = useAuthStore();
   const [activeTab, setActiveTab] = useState<InboxTab>(initialTab);
-  const [myListings, setMyListings] = useState<ListingSummary[]>([]);
-  const [myApplications, setMyApplications] = useState<MyApplication[]>([]);
-  const [receivedApplications, setReceivedApplications] = useState<
-    ReceivedApplication[]
-  >([]);
-  const [reloadCount, setReloadCount] = useState(0);
-  const [loadResult, setLoadResult] = useState<{
-    key: string;
-    error: string | null;
-  } | null>(null);
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [myListingsPage, setMyListingsPage] = useState(1);
-  const [myListingsTotal, setMyListingsTotal] = useState(0);
-  const [myListingsTotalPages, setMyListingsTotalPages] = useState(1);
-  const [myPage, setMyPage] = useState(1);
-  const [myTotal, setMyTotal] = useState(0);
-  const [myTotalPages, setMyTotalPages] = useState(1);
-  const [receivedPage, setReceivedPage] = useState(1);
-  const [receivedTotal, setReceivedTotal] = useState(0);
-  const [receivedTotalPages, setReceivedTotalPages] = useState(1);
-  const [loadingMore, setLoadingMore] = useState<InboxTab | null>(null);
 
-  const userId = user?.id;
-  // Identifies the current load. Another user or a retry gets a new key, so
-  // the skeleton shows instead of stale data until that load finishes.
-  const loadKey = userId ? `${userId}:${reloadCount}` : null;
-  const isLoading = loadKey !== null && loadResult?.key !== loadKey;
-  const error =
-    loadKey !== null && loadResult?.key === loadKey ? loadResult.error : null;
-  const reloadWorkspace = () => setReloadCount((count) => count + 1);
+  const userId = user?.id ?? '';
+  const enabled = Boolean(user);
+  const ownedListings = useInfiniteQuery({
+    ...ownedListingsQuery(userId),
+    enabled,
+  });
+  const sentApplications = useInfiniteQuery({
+    ...sentApplicationsQuery(userId),
+    enabled,
+  });
+  const receivedApplications = useInfiniteQuery({
+    ...receivedApplicationsQuery(userId),
+    enabled,
+  });
+  const { decide, updatingId } = useDecideApplication(userId);
 
-  useEffect(() => {
-    if (!loadKey || !userId) return;
+  const queries = {
+    listings: ownedListings,
+    applications: sentApplications,
+    received: receivedApplications,
+  };
+  const activeQuery = queries[activeTab];
+  // A failed first page shows an error. A failed later page shows a toast.
+  const error = activeQuery.data ? null : activeQuery.error?.message;
+  const isLoading = activeQuery.isPending && !error;
 
-    let ignore = false;
-    Promise.all([
-      listingsApi.getAll({ clientId: userId, page: 1, limit: PAGE_SIZE }),
-      applicationsApi.getMyApplications({ page: 1, limit: PAGE_SIZE }),
-      applicationsApi.getReceivedApplications({ page: 1, limit: PAGE_SIZE }),
-    ])
-      .then(([listingsPageData, myPageData, receivedPageData]) => {
-        if (ignore) return;
-        setMyListings(listingsPageData.items);
-        setMyListingsPage(listingsPageData.page);
-        setMyListingsTotal(listingsPageData.total);
-        setMyListingsTotalPages(Math.max(1, listingsPageData.totalPages));
-        setMyApplications(myPageData.items);
-        setMyPage(myPageData.page);
-        setMyTotal(myPageData.total);
-        setMyTotalPages(Math.max(1, myPageData.totalPages));
-        setReceivedApplications(receivedPageData.items);
-        setReceivedPage(receivedPageData.page);
-        setReceivedTotal(receivedPageData.total);
-        setReceivedTotalPages(Math.max(1, receivedPageData.totalPages));
-        setLoadResult({ key: loadKey, error: null });
-      })
-      .catch((requestError: unknown) => {
-        if (ignore) return;
-        setLoadResult({
-          key: loadKey,
-          error:
-            requestError instanceof Error
-              ? requestError.message
-              : 'Radni prostor trenutno nije dostupan.',
-        });
-      });
+  const myListings = pageItems(ownedListings.data?.pages);
+  const myApplications = pageItems(sentApplications.data?.pages);
+  const received = pageItems(receivedApplications.data?.pages);
 
-    return () => {
-      ignore = true;
-    };
-  }, [loadKey, userId]);
-
+  // The tab is page state only, so the URL changes without a new render on
+  // the server.
   const selectTab = (tab: InboxTab) => {
     setActiveTab(tab);
-    router.replace(`/inbox?tab=${tab}`, { scroll: false });
-  };
-
-  const loadMoreListings = async () => {
-    if (!user || myListingsPage >= myListingsTotalPages) return;
-    setLoadingMore('listings');
-    try {
-      const nextPage = await listingsApi.getAll({
-        clientId: user.id,
-        page: myListingsPage + 1,
-        limit: PAGE_SIZE,
-      });
-      setMyListings((current) => appendUnique(current, nextPage.items));
-      setMyListingsPage(nextPage.page);
-      setMyListingsTotalPages(Math.max(1, nextPage.totalPages));
-    } catch (requestError) {
-      toast.error((requestError as Error).message);
-    } finally {
-      setLoadingMore(null);
-    }
-  };
-
-  const loadMoreMyApplications = async () => {
-    if (!user || myPage >= myTotalPages) return;
-    setLoadingMore('applications');
-    try {
-      const nextPage = await applicationsApi.getMyApplications({
-        page: myPage + 1,
-        limit: PAGE_SIZE,
-      });
-      setMyApplications((current) => appendUnique(current, nextPage.items));
-      setMyPage(nextPage.page);
-      setMyTotalPages(Math.max(1, nextPage.totalPages));
-    } catch (requestError) {
-      toast.error((requestError as Error).message);
-    } finally {
-      setLoadingMore(null);
-    }
-  };
-
-  const loadMoreReceivedApplications = async () => {
-    if (!user || receivedPage >= receivedTotalPages) return;
-    setLoadingMore('received');
-    try {
-      const nextPage = await applicationsApi.getReceivedApplications({
-        page: receivedPage + 1,
-        limit: PAGE_SIZE,
-      });
-      setReceivedApplications((current) =>
-        appendUnique(current, nextPage.items),
-      );
-      setReceivedPage(nextPage.page);
-      setReceivedTotalPages(Math.max(1, nextPage.totalPages));
-    } catch (requestError) {
-      toast.error((requestError as Error).message);
-    } finally {
-      setLoadingMore(null);
-    }
-  };
-
-  const handleStatusUpdate = async (
-    id: string,
-    status: 'ACCEPTED' | 'REJECTED',
-  ) => {
-    if (!user) return;
-
-    setUpdatingId(id);
-    try {
-      const updated = await applicationsApi.updateStatus(id, { status });
-      setReceivedApplications((current) =>
-        current.map((application) =>
-          application.id === updated.id
-            ? { ...application, ...updated }
-            : application,
-        ),
-      );
-      toast.success(
-        status === 'ACCEPTED'
-          ? 'Prijava je prihvaćena.'
-          : 'Prijava je odbijena.',
-      );
-    } catch (requestError) {
-      toast.error((requestError as Error).message);
-    } finally {
-      setUpdatingId(null);
-    }
+    window.history.replaceState(null, '', `?tab=${tab}`);
   };
 
   if (authStatus === 'loading') {
@@ -293,25 +170,25 @@ export function InboxView({
   const tabs: Array<{
     id: InboxTab;
     label: string;
-    count: number;
+    count: number | undefined;
     icon: typeof Inbox;
   }> = [
     {
       id: 'listings',
       label: 'Moji oglasi',
-      count: myListingsTotal,
+      count: pageTotal(ownedListings.data?.pages),
       icon: ClipboardList,
     },
     {
       id: 'applications',
       label: 'Moje prijave',
-      count: myTotal,
+      count: pageTotal(sentApplications.data?.pages),
       icon: Send,
     },
     {
       id: 'received',
       label: 'Primljene prijave',
-      count: receivedTotal,
+      count: pageTotal(receivedApplications.data?.pages),
       icon: Inbox,
     },
   ];
@@ -362,9 +239,7 @@ export function InboxView({
               >
                 <Icon className="size-5" aria-hidden="true" />
               </span>
-              <span className="text-2xl font-bold">
-                {isLoading ? '—' : count}
-              </span>
+              <span className="text-2xl font-bold">{count ?? '—'}</span>
             </span>
             <span className="mt-4 block text-sm font-semibold">{label}</span>
           </button>
@@ -389,7 +264,7 @@ export function InboxView({
               <Icon className="size-4" aria-hidden="true" />
               {label}
               <span className="rounded-full bg-muted px-2 py-0.5 text-[11px]">
-                {isLoading ? '—' : count}
+                {count ?? '—'}
               </span>
             </button>
           ))}
@@ -402,7 +277,7 @@ export function InboxView({
           <p className="mt-1 text-red-600">{error}</p>
           <button
             type="button"
-            onClick={reloadWorkspace}
+            onClick={() => void activeQuery.refetch()}
             className="mt-4 inline-flex items-center gap-2 font-semibold underline"
           >
             <RefreshCw className="size-4" aria-hidden="true" />
@@ -436,10 +311,10 @@ export function InboxView({
                   <MyListingCard key={listing.id} listing={listing} />
                 ))}
               </div>
-              {myListingsPage < myListingsTotalPages ? (
+              {ownedListings.hasNextPage ? (
                 <LoadMoreButton
-                  isLoading={loadingMore === 'listings'}
-                  onClick={loadMoreListings}
+                  isLoading={ownedListings.isFetchingNextPage}
+                  onClick={() => void loadMore(ownedListings.fetchNextPage)}
                 />
               ) : null}
             </>
@@ -467,10 +342,10 @@ export function InboxView({
                   />
                 ))}
               </div>
-              {myPage < myTotalPages ? (
+              {sentApplications.hasNextPage ? (
                 <LoadMoreButton
-                  isLoading={loadingMore === 'applications'}
-                  onClick={loadMoreMyApplications}
+                  isLoading={sentApplications.isFetchingNextPage}
+                  onClick={() => void loadMore(sentApplications.fetchNextPage)}
                 />
               ) : null}
             </>
@@ -480,7 +355,7 @@ export function InboxView({
 
       {!isLoading && !error && activeTab === 'received' ? (
         <section className="space-y-4" aria-label="Primljene prijave">
-          {receivedApplications.length === 0 ? (
+          {received.length === 0 ? (
             <EmptyState
               icon={Inbox}
               title="Još nema primljenih prijava"
@@ -491,20 +366,22 @@ export function InboxView({
           ) : (
             <>
               <div className="space-y-4">
-                {receivedApplications.map((application) => (
+                {received.map((application) => (
                   <ReceivedApplicationCard
                     key={application.id}
                     application={application}
                     listing={application.listing}
                     isUpdating={updatingId === application.id}
-                    onStatusUpdate={handleStatusUpdate}
+                    onStatusUpdate={decide}
                   />
                 ))}
               </div>
-              {receivedPage < receivedTotalPages ? (
+              {receivedApplications.hasNextPage ? (
                 <LoadMoreButton
-                  isLoading={loadingMore === 'received'}
-                  onClick={loadMoreReceivedApplications}
+                  isLoading={receivedApplications.isFetchingNextPage}
+                  onClick={() =>
+                    void loadMore(receivedApplications.fetchNextPage)
+                  }
                 />
               ) : null}
             </>

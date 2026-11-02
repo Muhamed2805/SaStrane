@@ -1,5 +1,10 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight, House, SearchX } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'Stranica nije pronađena',
+};
 
 export default function NotFound() {
   return (

@@ -1,80 +1,20 @@
 import { create } from "zustand";
-import { applicationsApi } from "./api";
 
-type ApplicationsState = {
+// Which job the apply dialog is open for. The applications themselves are
+// server data and live in the query cache (see queries.ts).
+type ApplyDialogState = {
   isApplyOpen: boolean;
   activeListingId: string | null;
-  appliedListingIds: Record<string, true>;
-  isSubmitting: boolean;
-  error: string | null;
 
   openApply: (listingId: string) => void;
   closeApply: () => void;
-  submitApplication: (
-    listingId: string,
-    message: string,
-    proposedPrice: number | null,
-  ) => Promise<void>;
-  syncAppliedIds: () => Promise<void>;
-  hasApplied: (listingId: string) => boolean;
-  reset: () => void;
 };
 
-export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
+export const useApplicationsStore = create<ApplyDialogState>((set) => ({
   isApplyOpen: false,
   activeListingId: null,
-  appliedListingIds: {},
-  isSubmitting: false,
-  error: null,
 
   openApply: (listingId) =>
-    set({ isApplyOpen: true, activeListingId: listingId, error: null }),
-  closeApply: () =>
-    set({ isApplyOpen: false, activeListingId: null, error: null }),
-
-  submitApplication: async (listingId, message, proposedPrice) => {
-    set({ isSubmitting: true, error: null });
-    try {
-      await applicationsApi.apply({
-        listingId,
-        message,
-        proposedPrice: proposedPrice ?? undefined,
-      });
-      set((state) => ({
-        isApplyOpen: false,
-        activeListingId: null,
-        isSubmitting: false,
-        appliedListingIds: { ...state.appliedListingIds, [listingId]: true },
-      }));
-    } catch (err) {
-      set({ isSubmitting: false, error: (err as Error).message });
-    }
-  },
-
-  syncAppliedIds: async () => {
-    try {
-      const listingIds = await applicationsApi.getAppliedListingIds();
-      const appliedListingIds = listingIds.reduce<Record<string, true>>(
-        (acc, listingId) => {
-          acc[listingId] = true;
-          return acc;
-        },
-        {},
-      );
-      set({ appliedListingIds });
-    } catch {
-      // Keep known IDs on transient failures; logout clears them via reset().
-    }
-  },
-
-  hasApplied: (listingId) => Boolean(get().appliedListingIds[listingId]),
-
-  reset: () =>
-    set({
-      isApplyOpen: false,
-      activeListingId: null,
-      appliedListingIds: {},
-      isSubmitting: false,
-      error: null,
-    }),
+    set({ isApplyOpen: true, activeListingId: listingId }),
+  closeApply: () => set({ isApplyOpen: false, activeListingId: null }),
 }));

@@ -34,8 +34,8 @@ export const listingsApi = {
     });
   },
 
-  getById: (id: string) =>
-    apiRequest<Listing>(`/listings/${id}`, { cache: "no-store" }),
+  getById: (id: string, signal?: AbortSignal) =>
+    apiRequest<Listing>(`/listings/${id}`, { cache: "no-store", signal }),
 
   create: (payload: CreateListingPayload) =>
     authRequest<Listing>("/listings", {

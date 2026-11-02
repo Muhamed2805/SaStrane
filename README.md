@@ -36,6 +36,8 @@ be both.
 
 **Jobs**
 - Browse open jobs with text search and category and location filters.
+  The search, filters and page are part of the URL, so a shared link or a
+  reload shows the same results.
 - Post, edit and delete your own jobs with a title, category, location,
   budget and description. Prices are whole KM, or agreed later.
 - Close a job to stop new applications, and reopen it at any time.
@@ -121,7 +123,7 @@ flowchart LR
   browser -- "pages" --> pages
   browser -- "API calls" --> proxy
   proxy --> edge
-  pages -- "server-side fetch<br/>(job detail)" --> edge
+  pages -- "server-side fetch<br/>(job list, job detail)" --> edge
   edge --> modules --> orm --> db
   modules -- "email codes" --> resend
 ```
@@ -129,8 +131,14 @@ flowchart LR
 - **Same-origin API.** The browser calls `/api/*` on the frontend's own
   origin, and Next.js forwards it to the backend. The refresh cookie is then
   first-party, so it can use `SameSite=Strict`, and the browser needs no CORS.
-- **Server rendering.** The job detail page fetches its data on the server,
-  straight from `BACKEND_URL`.
+- **Server rendering.** The job list and job detail pages fetch their data
+  on the server, straight from `BACKEND_URL`. The job list passes its
+  results to the browser's query cache, so they show without a loading
+  state or a second request. Each page has its own title, description and
+  link preview.
+- **Client data.** TanStack Query caches API data in the browser. A change,
+  such as a new application, updates the cache at once and reloads the
+  lists it affects. Signing out clears the user's data from the cache.
 - **Health check.** `GET /health` checks the database too, and returns 503
   when it does not answer.
 - **Typed API contract.** The backend writes `backend/openapi.json` from its
@@ -227,7 +235,7 @@ erDiagram
 
 | Part | Tools |
 | --- | --- |
-| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, shadcn/ui on Radix, Zustand |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, shadcn/ui on Radix, TanStack Query, Zustand |
 | Backend | NestJS 11, Passport JWT, class-validator, Helmet, `@nestjs/throttler` |
 | Database | PostgreSQL, Prisma 7 with the `pg` driver adapter |
 | Email | Resend |
@@ -254,7 +262,7 @@ SaStrane/
 │   ├── app/                 Routes
 │   ├── features/            Auth, listings, applications, landing
 │   ├── components/          Shared UI
-│   ├── lib/                 API client, generated API types, formatting
+│   ├── lib/                 API and query clients, generated API types, formatting
 │   └── e2e/                 Playwright tests
 ├── docs/screenshots/
 └── docker-compose.yml       Local PostgreSQL
@@ -333,6 +341,7 @@ Dependabot opens update PRs, grouped so that related packages move together.
 
 ## Roadmap
 
-- **Frontend data:** cached queries and filters kept in the URL.
+- **Dependency upgrades:** NestJS 12 with ES modules, TypeScript 7 and
+  lucide-react 1.
 
 The app is in development and not deployed yet.

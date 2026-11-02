@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronRight, LockKeyhole, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store';
-import { listingsApi, type Listing } from '@/features/listings/api';
+import { listingsApi } from '@/features/listings/api';
+import { listingQuery, listingSaved } from '@/features/listings/queries';
 import {
   ListingForm,
   type ListingFormResult,
@@ -16,32 +17,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function EditListingPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user, status, openAuthModal } = useAuthStore();
-  const [listing, setListing] = useState<Listing | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    listingsApi
-      .getById(id)
-      .then((result) => {
-        if (!cancelled) setListing(result);
-      })
-      .catch((requestError: unknown) => {
-        if (!cancelled) {
-          setLoadError(
-            requestError instanceof Error
-              ? requestError.message
-              : 'Oglas nije pronađen.',
-          );
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
+  const { data: listing, error } = useQuery(listingQuery(id));
+  const loadError = error?.message ?? null;
 
   if (status === 'signed-out') {
     return (
@@ -108,10 +87,11 @@ export default function EditListingPage() {
   }
 
   const handleSubmit = async (values: ListingFormResult) => {
-    await listingsApi.update(id, {
+    const updated = await listingsApi.update(id, {
       ...values,
       description: values.description || null,
     });
+    listingSaved(queryClient, user.id, updated);
     toast.success('Oglas je uspješno ažuriran!');
     router.push(`/listings/${id}`);
     router.refresh();
