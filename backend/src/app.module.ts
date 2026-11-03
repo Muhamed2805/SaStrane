@@ -8,6 +8,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { ApplicationsModule } from './applications/applications.module.js';
 import { ConversationsModule } from './conversations/conversations.module.js';
+import { RatingsModule } from './ratings/ratings.module.js';
 import { ListingsModule } from './listings/listings.module.js';
 import { validateEnvironment } from './config/environment.js';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter.js';
@@ -21,6 +22,7 @@ import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter.
     ListingsModule,
     ApplicationsModule,
     ConversationsModule,
+    RatingsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -1,11 +1,22 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { PageDto } from '../../common/dto/page.dto.js';
+import { RatingSummaryDto } from '../../ratings/dto/rating-response.dto.js';
 import {
   ApplicationStatus,
   ListingCategory,
   ListingLocation,
   ListingStatus,
 } from '../../generated/prisma/enums.js';
+
+// The client's rating of the executor for this job.
+export class ApplicationRatingDto {
+  /** Stars from 1 to 5. */
+  score!: number;
+
+  comment!: string | null;
+
+  createdAt!: Date;
+}
 
 export class ApplicationDto {
   id!: string;
@@ -20,6 +31,10 @@ export class ApplicationDto {
   /** A decision is final: only a PENDING application can change. */
   @ApiProperty({ enum: ApplicationStatus, enumName: 'ApplicationStatus' })
   status!: ApplicationStatus;
+
+  /** Null until the client rates the executor. */
+  @ApiProperty({ type: () => ApplicationRatingDto, nullable: true })
+  rating!: ApplicationRatingDto | null;
 
   createdAt!: Date;
 }
@@ -46,6 +61,9 @@ export class ApplicationExecutorDto {
 
   /** Null until the client accepts the application. */
   email!: string | null;
+
+  /** Ratings the executor received for all jobs. */
+  rating!: RatingSummaryDto;
 }
 
 // An application as the executor who sent it sees it.
@@ -56,6 +74,10 @@ export class MyApplicationDto extends ApplicationDto {
 // An application as the job's client sees it.
 export class ListingApplicationDto extends ApplicationDto {
   executor!: ApplicationExecutorDto;
+
+  /** True when the application is accepted, the job is closed and the
+   * executor is not rated yet. */
+  canRate!: boolean;
 }
 
 // An application in the client's inbox, across all of their jobs.

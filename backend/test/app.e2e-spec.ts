@@ -986,4 +986,196 @@ describe('App (e2e)', () => {
       expect(await unreadCount(executor.auth)).toBe(0);
     });
   });
+
+  describe('ratings', () => {
+    // A closed job whose client accepted the executor.
+    async function finishedJob() {
+      const client = await signedInUser('Amra Hodžić');
+      const executor = await signedInUser('Kenan Mehić');
+      const { id: listingId } = await postListing(client.auth);
+      const application = await http()
+        .post('/api/applications')
+        .set('Authorization', executor.auth)
+        .send({ listingId, message: 'Mogu doći u subotu ujutro.' })
+        .expect(201);
+      const applicationId = (application.body as { id: string }).id;
+      await http()
+        .patch(`/api/applications/${applicationId}/status`)
+        .set('Authorization', client.auth)
+        .send({ status: 'ACCEPTED' })
+        .expect(200);
+      await http()
+        .patch(`/api/listings/${listingId}/status`)
+        .set('Authorization', client.auth)
+        .send({ status: 'CLOSED' })
+        .expect(200);
+      return { client, executor, listingId, applicationId };
+    }
+
+    function rate(auth: string, body: object) {
+      return http().post('/api/ratings').set('Authorization', auth).send(body);
+    }
+
+    it('lets the client rate the executor once the job is closed', async () => {
+      const { client, executor, listingId, applicationId } =
+        await finishedJob();
+
+      const before = await http()
+        .get(`/api/applications/listing/${listingId}`)
+        .set('Authorization', client.auth)
+        .expect(200);
+      expect(before.body).toMatchObject([
+        {
+          canRate: true,
+          rating: null,
+          executor: { rating: { average: null, count: 0 } },
+        },
+      ]);
+
+      const rated = await rate(client.auth, {
+        applicationId,
+        score: 4,
+        comment: '  Brzo i uredno.  ',
+      }).expect(201);
+      expect(rated.body).toMatchObject({
+        score: 4,
+        comment: 'Brzo i uredno.',
+        listingId,
+        listingTitle: listingInput.title,
+        client: { id: client.user.id, fullName: 'Amra Hodžić' },
+      });
+
+      const after = await http()
+        .get(`/api/applications/listing/${listingId}`)
+        .set('Authorization', client.auth)
+        .expect(200);
+      expect(after.body).toMatchObject([
+        {
+          canRate: false,
+          rating: { score: 4, comment: 'Brzo i uredno.' },
+          executor: { rating: { average: 4, count: 1 } },
+        },
+      ]);
+
+      // The executor sees the rating on their own application.
+      const sent = await http()
+        .get('/api/applications/my')
+        .set('Authorization', executor.auth)
+        .expect(200);
+      expect(sent.body).toMatchObject({
+        items: [{ id: applicationId, rating: { score: 4 } }],
+      });
+
+      const profile = await http()
+        .get(`/api/users/${executor.user.id}`)
+        .expect(200);
+      expect(profile.body).toEqual({
+        id: executor.user.id,
+        fullName: 'Kenan Mehić',
+        createdAt: expect.any(String) as unknown,
+        rating: { average: 4, count: 1 },
+      });
+
+      const ratings = await http()
+        .get(`/api/users/${executor.user.id}/ratings`)
+        .expect(200);
+      expect(ratings.body).toMatchObject({
+        total: 1,
+        items: [{ score: 4, listingTitle: listingInput.title }],
+      });
+    });
+
+    it('rates each application once', async () => {
+      const { client, applicationId } = await finishedJob();
+
+      await rate(client.auth, { applicationId, score: 5 }).expect(201);
+      const second = await rate(client.auth, { applicationId, score: 1 });
+
+      expect(second.status).toBe(409);
+      expect(second.body).toMatchObject({ code: 'ALREADY_RATED' });
+      expect(await prisma.rating.findFirst()).toMatchObject({ score: 5 });
+    });
+
+    it('waits until the job is closed and the application accepted', async () => {
+      const client = await signedInUser();
+      const executor = await signedInUser();
+      const { id: listingId } = await postListing(client.auth);
+      const application = await http()
+        .post('/api/applications')
+        .set('Authorization', executor.auth)
+        .send({ listingId, message: 'Mogu doći u subotu ujutro.' })
+        .expect(201);
+      const applicationId = (application.body as { id: string }).id;
+
+      const pending = await rate(client.auth, { applicationId, score: 5 });
+      expect(pending.status).toBe(409);
+      expect(pending.body).toMatchObject({ code: 'APPLICATION_NOT_ACCEPTED' });
+
+      await http()
+        .patch(`/api/applications/${applicationId}/status`)
+        .set('Authorization', client.auth)
+        .send({ status: 'ACCEPTED' })
+        .expect(200);
+      const open = await rate(client.auth, { applicationId, score: 5 });
+      expect(open.status).toBe(409);
+      expect(open.body).toMatchObject({ code: 'LISTING_NOT_CLOSED' });
+      expect(await prisma.rating.count()).toBe(0);
+    });
+
+    it('lets only the client rate, with 1 to 5 stars', async () => {
+      const { executor, client, applicationId } = await finishedJob();
+      const stranger = await signedInUser();
+
+      await rate(executor.auth, { applicationId, score: 5 }).expect(403);
+      await rate(stranger.auth, { applicationId, score: 5 }).expect(403);
+      await rate(client.auth, { applicationId, score: 0 }).expect(400);
+      await rate(client.auth, { applicationId, score: 6 }).expect(400);
+      await rate(client.auth, { applicationId, score: 4.5 }).expect(400);
+      await rate(client.auth, {
+        applicationId,
+        score: 5,
+        comment: 'x'.repeat(1001),
+      }).expect(400);
+      await rate(client.auth, { applicationId: 'missing', score: 5 }).expect(
+        404,
+      );
+      await http()
+        .post('/api/ratings')
+        .send({ applicationId, score: 5 })
+        .expect(401);
+      expect(await prisma.rating.count()).toBe(0);
+    });
+
+    it('keeps the rating when the job is deleted', async () => {
+      const { client, executor, listingId, applicationId } =
+        await finishedJob();
+      await rate(client.auth, { applicationId, score: 5 }).expect(201);
+
+      await http()
+        .delete(`/api/listings/${listingId}`)
+        .set('Authorization', client.auth)
+        .expect(204);
+
+      const ratings = await http()
+        .get(`/api/users/${executor.user.id}/ratings`)
+        .expect(200);
+      expect(ratings.body).toMatchObject({
+        total: 1,
+        items: [{ listingId: null, listingTitle: listingInput.title }],
+      });
+    });
+
+    it('returns 404 for the profile of an unknown user', async () => {
+      await http().get('/api/users/does-not-exist').expect(404);
+      await http().get('/api/users/does-not-exist/ratings').expect(404);
+    });
+
+    it('keeps the email off the public profile', async () => {
+      const { user } = await signedInUser();
+
+      const profile = await http().get(`/api/users/${user.id}`).expect(200);
+
+      expect(JSON.stringify(profile.body)).not.toContain(user.email);
+    });
+  });
 });

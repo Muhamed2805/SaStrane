@@ -381,6 +381,61 @@ export interface paths {
         patch: operations["applications_updateStatus"];
         trace?: never;
     };
+    "/api/ratings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rates the executor of an accepted application to one of the user's jobs.
+         * @description The job must be closed. A rating is final, and there is one per
+         *     application.
+         */
+        post: operations["ratings_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Returns a user's public profile with their rating as an executor. */
+        get: operations["users_getProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/{id}/ratings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists the ratings a user received as an executor, newest first. */
+        get: operations["users_getRatings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/conversations": {
         parameters: {
             query?: never;
@@ -648,9 +703,18 @@ export interface components {
          * @enum {string}
          */
         ApplicationStatus: "PENDING" | "ACCEPTED" | "REJECTED";
+        ApplicationRatingDto: {
+            /** @description Stars from 1 to 5. */
+            score: number;
+            comment: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
         ApplicationDto: {
             /** @description A decision is final: only a PENDING application can change. */
             status: components["schemas"]["ApplicationStatus"];
+            /** @description Null until the client rates the executor. */
+            rating: components["schemas"]["ApplicationRatingDto"] | null;
             id: string;
             listingId: string;
             message: string;
@@ -668,6 +732,8 @@ export interface components {
         MyApplicationDto: {
             /** @description A decision is final: only a PENDING application can change. */
             status: components["schemas"]["ApplicationStatus"];
+            /** @description Null until the client rates the executor. */
+            rating: components["schemas"]["ApplicationRatingDto"] | null;
             id: string;
             listingId: string;
             message: string;
@@ -688,15 +754,24 @@ export interface components {
             /** @description The number of pages, 0 when there are no items. */
             totalPages: number;
         };
+        RatingSummaryDto: {
+            /** @description The mean score, rounded to one decimal. Null without ratings. */
+            average: number | null;
+            count: number;
+        };
         ApplicationExecutorDto: {
             id: string;
             fullName: string;
             /** @description Null until the client accepts the application. */
             email: string | null;
+            /** @description Ratings the executor received for all jobs. */
+            rating: components["schemas"]["RatingSummaryDto"];
         };
         ReceivedApplicationDto: {
             /** @description A decision is final: only a PENDING application can change. */
             status: components["schemas"]["ApplicationStatus"];
+            /** @description Null until the client rates the executor. */
+            rating: components["schemas"]["ApplicationRatingDto"] | null;
             id: string;
             listingId: string;
             message: string;
@@ -706,6 +781,11 @@ export interface components {
             createdAt: string;
             listing: components["schemas"]["ApplicationListingDto"];
             executor: components["schemas"]["ApplicationExecutorDto"];
+            /**
+             * @description True when the application is accepted, the job is closed and the
+             *     executor is not rated yet.
+             */
+            canRate: boolean;
         };
         ReceivedApplicationsPageDto: {
             items: components["schemas"]["ReceivedApplicationDto"][];
@@ -721,6 +801,8 @@ export interface components {
         ListingApplicationDto: {
             /** @description A decision is final: only a PENDING application can change. */
             status: components["schemas"]["ApplicationStatus"];
+            /** @description Null until the client rates the executor. */
+            rating: components["schemas"]["ApplicationRatingDto"] | null;
             id: string;
             listingId: string;
             message: string;
@@ -729,10 +811,62 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             executor: components["schemas"]["ApplicationExecutorDto"];
+            /**
+             * @description True when the application is accepted, the job is closed and the
+             *     executor is not rated yet.
+             */
+            canRate: boolean;
         };
         UpdateApplicationStatusDto: {
             /** @enum {string} */
             status: "ACCEPTED" | "REJECTED";
+        };
+        CreateRatingDto: {
+            /** @description The accepted application whose executor is rated. */
+            applicationId: string;
+            /** @description Stars from 1 to 5. */
+            score: number;
+            /** @description What went well or not. Leave it out to rate with stars only. */
+            comment?: string;
+        };
+        RatingClientDto: {
+            id: string;
+            fullName: string;
+        };
+        RatingDto: {
+            id: string;
+            /** @description Stars from 1 to 5. */
+            score: number;
+            comment: string | null;
+            /** @description Null when the job was deleted. */
+            listingId: string | null;
+            /** @description The job's title when it was rated. */
+            listingTitle: string;
+            client: components["schemas"]["RatingClientDto"];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        UserProfileDto: {
+            id: string;
+            fullName: string;
+            /**
+             * Format: date-time
+             * @description When the user signed up.
+             */
+            createdAt: string;
+            /** @description Ratings received as an executor. */
+            rating: components["schemas"]["RatingSummaryDto"];
+        };
+        RatingsPageDto: {
+            items: components["schemas"]["RatingDto"][];
+            /** @description The number of items on all pages together. */
+            total: number;
+            /** @description The current page, starting at 1. */
+            page: number;
+            /** @description The maximum number of items per page. */
+            limit: number;
+            /** @description The number of pages, 0 when there are no items. */
+            totalPages: number;
         };
         StartConversationDto: {
             listingId: string;
@@ -2051,6 +2185,200 @@ export interface operations {
             };
             /** @description The application has been accepted or rejected already (APPLICATION_ALREADY_DECIDED). */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The database or the email service is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    ratings_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRatingDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RatingDto"];
+                };
+            };
+            /** @description A field is missing or invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The application is for another user's job. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The application does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The application is not accepted (APPLICATION_NOT_ACCEPTED), the job is still open (LISTING_NOT_CLOSED), or the executor is rated already (ALREADY_RATED). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The database or the email service is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    users_getProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserProfileDto"];
+                };
+            };
+            /** @description The user does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The database or the email service is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    users_getRatings: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RatingsPageDto"];
+                };
+            };
+            /** @description A query parameter is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The user does not exist. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

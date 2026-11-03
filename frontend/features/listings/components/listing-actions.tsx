@@ -57,6 +57,10 @@ export function ListingActions({
         isClosed ? 'OPEN' : 'CLOSED',
       );
       listingSaved(queryClient, user.id, listing);
+      // Closing the job lets the client rate the accepted executor.
+      void queryClient.invalidateQueries({
+        queryKey: applicationKeys.all(user.id),
+      });
       toast.success(
         isClosed
           ? 'Oglas je ponovo otvoren za prijave.'

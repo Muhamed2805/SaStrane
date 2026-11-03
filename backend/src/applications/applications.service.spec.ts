@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { EmailService } from '../email/email.service.js';
 import { Prisma } from '../generated/prisma/client.js';
+import { RatingsService } from '../ratings/ratings.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ApplicationsService } from './applications.service.js';
 
@@ -24,6 +25,8 @@ describe('ApplicationsService', () => {
   };
 
   const email = { sendApplicationDecision: vi.fn() };
+  const ratings = { summaries: vi.fn() };
+  const noRatings = { average: null, count: 0 };
 
   const service = new ApplicationsService(
     {
@@ -31,10 +34,12 @@ describe('ApplicationsService', () => {
       application: applicationRepository,
     } as unknown as PrismaService,
     email as unknown as EmailService,
+    ratings as unknown as RatingsService,
   );
 
   beforeEach(() => {
     vi.resetAllMocks();
+    ratings.summaries.mockResolvedValue(new Map());
   });
 
   describe('create', () => {
@@ -163,10 +168,11 @@ describe('ApplicationsService', () => {
     });
 
     it('shows the executor email only on accepted applications', async () => {
+      const listing = { status: 'OPEN' };
       applicationRepository.findMany.mockResolvedValue([
-        { id: 'pending', status: 'PENDING', executor },
-        { id: 'accepted', status: 'ACCEPTED', executor },
-        { id: 'rejected', status: 'REJECTED', executor },
+        { id: 'pending', status: 'PENDING', rating: null, executor, listing },
+        { id: 'accepted', status: 'ACCEPTED', rating: null, executor, listing },
+        { id: 'rejected', status: 'REJECTED', rating: null, executor, listing },
       ]);
       applicationRepository.count.mockResolvedValue(3);
 
@@ -182,9 +188,12 @@ describe('ApplicationsService', () => {
 
   describe('getForListing', () => {
     it('hides the email of executors who are not accepted', async () => {
-      listingRepository.findUnique.mockResolvedValue({ clientId: 'client-1' });
+      listingRepository.findUnique.mockResolvedValue({
+        clientId: 'client-1',
+        status: 'OPEN',
+      });
       applicationRepository.findMany.mockResolvedValue([
-        { id: 'pending', status: 'PENDING', executor },
+        { id: 'pending', status: 'PENDING', rating: null, executor },
       ]);
 
       await expect(
@@ -193,8 +202,39 @@ describe('ApplicationsService', () => {
         {
           id: 'pending',
           status: 'PENDING',
-          executor: { ...executor, email: null },
+          rating: null,
+          executor: { ...executor, email: null, rating: noRatings },
+          canRate: false,
         },
+      ]);
+    });
+
+    it("adds each executor's rating and lets the client rate after closing", async () => {
+      listingRepository.findUnique.mockResolvedValue({
+        clientId: 'client-1',
+        status: 'CLOSED',
+      });
+      const rated = { score: 5, comment: null, createdAt: new Date() };
+      applicationRepository.findMany.mockResolvedValue([
+        { id: 'accepted', status: 'ACCEPTED', rating: null, executor },
+        { id: 'rated', status: 'ACCEPTED', rating: rated, executor },
+        { id: 'rejected', status: 'REJECTED', rating: null, executor },
+      ]);
+      const summary = { average: 4.5, count: 2 };
+      ratings.summaries.mockResolvedValue(new Map([[executor.id, summary]]));
+
+      const applications = await service.getForListing('listing-1', 'client-1');
+
+      expect(applications.map((item) => item.canRate)).toEqual([
+        true,
+        false,
+        false,
+      ]);
+      expect(applications[0].executor.rating).toEqual(summary);
+      expect(ratings.summaries).toHaveBeenCalledWith([
+        executor.id,
+        executor.id,
+        executor.id,
       ]);
     });
   });
@@ -204,6 +244,7 @@ describe('ApplicationsService', () => {
       listing: {
         clientId: 'client-1',
         title: 'Košenje trave',
+        status: 'OPEN',
         client: { fullName: 'Amra' },
       },
     };
@@ -215,6 +256,7 @@ describe('ApplicationsService', () => {
         id: 'application-1',
         listingId: 'listing-1',
         status,
+        rating: null,
         executor,
       });
     }
@@ -233,7 +275,9 @@ describe('ApplicationsService', () => {
         id: 'application-1',
         listingId: 'listing-1',
         status: 'ACCEPTED',
-        executor,
+        rating: null,
+        executor: { ...executor, rating: noRatings },
+        canRate: false,
       });
       expect(applicationRepository.updateMany).toHaveBeenCalledWith({
         where: { id: 'application-1', status: 'PENDING' },

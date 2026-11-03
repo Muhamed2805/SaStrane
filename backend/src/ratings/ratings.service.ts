@@ -1,0 +1,169 @@
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '../generated/prisma/client.js';
+import { ApplicationStatus, ListingStatus } from '../generated/prisma/enums.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { CreateRatingDto } from './dto/create-rating.dto.js';
+import { RatingsQueryDto } from './dto/ratings-query.dto.js';
+
+// The fields of RatingDto.
+const RATING_SELECT = {
+  id: true,
+  score: true,
+  comment: true,
+  listingId: true,
+  listingTitle: true,
+  createdAt: true,
+  client: { select: { id: true, fullName: true } },
+} satisfies Prisma.RatingSelect;
+
+export type RatingSummary = { average: number | null; count: number };
+
+const NO_RATINGS: RatingSummary = { average: null, count: 0 };
+
+function toSummary(average: number | null, count: number): RatingSummary {
+  if (count === 0 || average === null) return NO_RATINGS;
+  return { average: Math.round(average * 10) / 10, count };
+}
+
+function isUniqueViolation(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2002'
+  );
+}
+
+@Injectable()
+export class RatingsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  // The client rates the executor they accepted, once the job is closed.
+  async create(dto: CreateRatingDto, clientId: string) {
+    const application = await this.prisma.application.findUnique({
+      where: { id: dto.applicationId },
+      select: {
+        id: true,
+        status: true,
+        executorId: true,
+        rating: { select: { id: true } },
+        listing: {
+          select: { id: true, title: true, clientId: true, status: true },
+        },
+      },
+    });
+
+    if (!application) throw new NotFoundException('Application not found');
+    if (application.listing.clientId !== clientId) {
+      throw new ForbiddenException('Not your listing');
+    }
+    if (application.status !== ApplicationStatus.ACCEPTED) {
+      throw new ConflictException({
+        code: 'APPLICATION_NOT_ACCEPTED',
+        message: 'Možeš ocijeniti samo izvođača čija je prijava prihvaćena.',
+      });
+    }
+    if (application.listing.status !== ListingStatus.CLOSED) {
+      throw new ConflictException({
+        code: 'LISTING_NOT_CLOSED',
+        message: 'Zatvori oglas kad je posao završen, pa ocijeni izvođača.',
+      });
+    }
+
+    const alreadyRated = new ConflictException({
+      code: 'ALREADY_RATED',
+      message: 'Izvođač je za ovaj posao već ocijenjen.',
+    });
+    if (application.rating) throw alreadyRated;
+
+    try {
+      return await this.prisma.rating.create({
+        data: {
+          applicationId: application.id,
+          listingId: application.listing.id,
+          listingTitle: application.listing.title,
+          clientId,
+          executorId: application.executorId,
+          score: dto.score,
+          comment: dto.comment || null,
+        },
+        select: RATING_SELECT,
+      });
+    } catch (error) {
+      // A second rating sent at the same time.
+      if (isUniqueViolation(error)) throw alreadyRated;
+      throw error;
+    }
+  }
+
+  // Rating summaries for several executors at once, for lists.
+  async summaries(executorIds: string[]) {
+    const ids = [...new Set(executorIds)];
+    const result = new Map<string, RatingSummary>();
+    if (ids.length === 0) return result;
+
+    const groups = await this.prisma.rating.groupBy({
+      by: ['executorId'],
+      where: { executorId: { in: ids } },
+      _avg: { score: true },
+      _count: { _all: true },
+    });
+    for (const group of groups) {
+      result.set(
+        group.executorId,
+        toSummary(group._avg.score, group._count._all),
+      );
+    }
+    for (const id of ids) {
+      if (!result.has(id)) result.set(id, NO_RATINGS);
+    }
+    return result;
+  }
+
+  async getProfile(userId: string) {
+    const [user, aggregate] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, fullName: true, createdAt: true },
+      }),
+      this.prisma.rating.aggregate({
+        where: { executorId: userId },
+        _avg: { score: true },
+        _count: { _all: true },
+      }),
+    ]);
+
+    if (!user) throw new NotFoundException('User not found');
+    return {
+      ...user,
+      rating: toSummary(aggregate._avg.score, aggregate._count._all),
+    };
+  }
+
+  async getRatings(userId: string, query: RatingsQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const where = { executorId: userId };
+
+    const [user, items, total] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true },
+      }),
+      this.prisma.rating.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+        select: RATING_SELECT,
+      }),
+      this.prisma.rating.count({ where }),
+    ]);
+
+    if (!user) throw new NotFoundException('User not found');
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+}

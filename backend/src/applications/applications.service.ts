@@ -8,6 +8,10 @@ import {
 import { Prisma } from '../generated/prisma/client.js';
 import { ApplicationStatus, ListingStatus } from '../generated/prisma/enums.js';
 import { EmailService } from '../email/email.service.js';
+import {
+  RatingsService,
+  type RatingSummary,
+} from '../ratings/ratings.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateApplicationDto } from './dto/create-application.dto.js';
 import { ApplicationsQueryDto } from './dto/applications-query.dto.js';
@@ -20,6 +24,7 @@ const APPLICATION_SELECT = {
   message: true,
   proposedPrice: true,
   status: true,
+  rating: { select: { score: true, comment: true, createdAt: true } },
   createdAt: true,
 } satisfies Prisma.ApplicationSelect;
 
@@ -46,12 +51,36 @@ const RECEIVED_APPLICATION_SELECT = {
   listing: LISTING_SELECT,
 } satisfies Prisma.ApplicationSelect;
 
-// The client sees how to reach an executor only after accepting them.
-function hideContactUntilAccepted<
-  T extends { status: ApplicationStatus; executor: { email: string } },
->(application: T) {
-  if (application.status === ApplicationStatus.ACCEPTED) return application;
-  return { ...application, executor: { ...application.executor, email: null } };
+// An application as the job's client sees it. The client sees how to
+// reach an executor only after accepting them, and rates them once the
+// job is closed.
+function forClient<
+  T extends {
+    status: ApplicationStatus;
+    rating: object | null;
+    executor: { id: string; email: string };
+  },
+>(
+  application: T,
+  listingStatus: ListingStatus,
+  summaries: Map<string, RatingSummary>,
+) {
+  const accepted = application.status === ApplicationStatus.ACCEPTED;
+  return {
+    ...application,
+    executor: {
+      ...application.executor,
+      email: accepted ? application.executor.email : null,
+      rating: summaries.get(application.executor.id) ?? {
+        average: null,
+        count: 0,
+      },
+    },
+    canRate:
+      accepted &&
+      listingStatus === ListingStatus.CLOSED &&
+      application.rating === null,
+  };
 }
 
 @Injectable()
@@ -61,7 +90,14 @@ export class ApplicationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
+    private readonly ratings: RatingsService,
   ) {}
+
+  private summariesFor(applications: { executor: { id: string } }[]) {
+    return this.ratings.summaries(
+      applications.map((application) => application.executor.id),
+    );
+  }
 
   async create(dto: CreateApplicationDto, executorId: string) {
     const listing = await this.prisma.listing.findUnique({
@@ -145,8 +181,11 @@ export class ApplicationsService {
       this.prisma.application.count({ where }),
     ]);
 
+    const summaries = await this.summariesFor(items);
     return {
-      items: items.map(hideContactUntilAccepted),
+      items: items.map((item) =>
+        forClient(item, item.listing.status, summaries),
+      ),
       total,
       page,
       limit,
@@ -157,7 +196,7 @@ export class ApplicationsService {
   async getForListing(listingId: string, userId: string) {
     const listing = await this.prisma.listing.findUnique({
       where: { id: listingId },
-      select: { clientId: true },
+      select: { clientId: true, status: true },
     });
 
     if (!listing) throw new NotFoundException('Listing not found');
@@ -171,7 +210,10 @@ export class ApplicationsService {
       select: LISTING_APPLICATION_SELECT,
     });
 
-    return applications.map(hideContactUntilAccepted);
+    const summaries = await this.summariesFor(applications);
+    return applications.map((application) =>
+      forClient(application, listing.status, summaries),
+    );
   }
 
   async updateStatus(
@@ -186,6 +228,7 @@ export class ApplicationsService {
           select: {
             clientId: true,
             title: true,
+            status: true,
             client: { select: { fullName: true } },
           },
         },
@@ -232,6 +275,10 @@ export class ApplicationsService {
         );
       });
 
-    return hideContactUntilAccepted(decided);
+    return forClient(
+      decided,
+      application.listing.status,
+      await this.summariesFor([decided]),
+    );
   }
 }
