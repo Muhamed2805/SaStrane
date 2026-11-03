@@ -15,6 +15,7 @@ import {
 } from '@/features/listings/constants';
 import { formatDate } from '@/lib/format-date';
 import { useOpenConversation } from '@/features/messages/hooks';
+import { RatingStars } from '@/features/ratings/components/rating-stars';
 import { formatPrice } from '@/lib/format-price';
 import type { MyApplication } from '../api';
 import { ApplicationStatusBadge } from './application-status-badge';
@@ -53,6 +54,20 @@ export function MyApplicationCard({
       <p className="mt-4 line-clamp-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
         {application.message}
       </p>
+
+      {application.rating ? (
+        <div className="mt-4 rounded-xl bg-amber-50 p-4">
+          <p className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+            Ocjena klijenta:
+            <RatingStars score={application.rating.score} />
+          </p>
+          {application.rating.comment ? (
+            <p className="mt-2 whitespace-pre-line text-sm leading-6 text-foreground/80">
+              {application.rating.comment}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
         <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">

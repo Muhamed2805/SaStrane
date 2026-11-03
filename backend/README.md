@@ -85,9 +85,9 @@ after every install and every schema change.
 | Browse the data | `npx prisma studio` |
 | Start over with an empty database | `docker compose down -v`, then `docker compose up -d` and migrate again |
 
-The seed in `prisma/seed.ts` adds four users, nine jobs, six applications
-and three conversations. Every demo user signs in with `demo-password-123`, for example
-as `amra@example.com`. The seed only adds missing rows, so it is safe to run
+The seed in `prisma/seed.ts` adds four users, ten jobs, seven applications,
+two ratings and three conversations. Every demo user signs in with
+`demo-password-123`, for example as `amra@example.com`. The seed only adds missing rows, so it is safe to run
 again, and it refuses to run with `NODE_ENV=production`.
 
 ## End-to-end tests
@@ -159,6 +159,9 @@ two sides of the conversation.
 | `GET` | `/api/conversations/:id/messages` | Member | Lists the messages, newest first. Paging: `before` (a cursor), `limit` (max 100). |
 | `POST` | `/api/conversations/:id/messages` | Member | Sends a message. |
 | `POST` | `/api/conversations/:id/read` | Member | Marks the conversation as read. Returns 204. |
+| `POST` | `/api/ratings` | Owner | Rates the executor of an accepted application to a closed job. |
+| `GET` | `/api/users/:id` | | Returns a user's public profile with their rating. |
+| `GET` | `/api/users/:id/ratings` | | Lists the ratings a user received, newest first. Paging: `page`, `limit` (max 50). |
 
 **Lists.** Paged lists return
 `{ items, total, page, limit, totalPages }`.
@@ -189,6 +192,21 @@ two sides of the conversation.
   its conversations.
 - The site checks for new messages every few seconds, so the conversation
   routes allow 120 requests per minute. Sending allows 20.
+
+**Ratings.**
+- The client rates the executor of an accepted application with 1 to 5
+  stars and an optional comment of up to 1000 characters. The job must be
+  closed first: otherwise the route returns 409 with the code
+  `LISTING_NOT_CLOSED`, or `APPLICATION_NOT_ACCEPTED` when the application
+  is not accepted.
+- There is one rating per application, and it is final. A second one
+  returns 409 with the code `ALREADY_RATED`.
+- A rating outlives its job. Deleting the job clears `listingId`, and
+  `listingTitle` keeps the job's title.
+- Application lists show the executor's average and count. The client's
+  lists also have `canRate`, which is true when the executor can be rated.
+- Profiles under `/api/users` are public. They show the name, the sign-up
+  date and the ratings, never the email.
 
 **Errors.** Errors use the standard NestJS shape,
 `{ statusCode, message, error }`. Errors that the frontend must tell apart

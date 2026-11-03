@@ -61,6 +61,14 @@ be both.
 - The navbar shows the number of unread messages. Open conversations check
   for new messages every few seconds.
 
+**Ratings**
+- After closing a job, the client rates the accepted executor with 1 to 5
+  stars and an optional comment. Each job's executor is rated once, and
+  the rating is final.
+- Every user has a public profile with their average rating and the
+  reviews. Application cards show the executor's rating and link to it.
+- A rating stays on the profile when the job is deleted.
+
 **Accounts**
 - Sign up as a client, an executor or both, then confirm the email address
   with a 6-digit code.
@@ -204,6 +212,8 @@ erDiagram
   Listing ||--o{ Conversation : "is discussed in"
   User ||--o{ Conversation : "takes part in"
   Conversation ||--o{ Message : holds
+  Application ||--o| Rating : "is rated by"
+  User ||--o{ Rating : receives
 
   User {
     string id PK
@@ -257,6 +267,16 @@ erDiagram
     string senderId FK
     string body "up to 2000 characters"
   }
+  Rating {
+    string id PK
+    string applicationId FK "unique, null after the job is deleted"
+    string listingId FK "null after the job is deleted"
+    string listingTitle "kept from the job"
+    string clientId FK
+    string executorId FK
+    int score "1 to 5"
+    string comment "up to 1000 characters"
+  }
 ```
 
 ## Tech stack
@@ -282,6 +302,7 @@ SaStrane/
 │   │   ├── listings/        Jobs
 │   │   ├── applications/    Applications to jobs
 │   │   ├── conversations/   Messages between clients and executors
+│   │   ├── ratings/         Ratings and public user profiles
 │   │   ├── common/          Error filters and transforms
 │   │   ├── config/          Environment validation, CORS
 │   │   ├── openapi/         Generates the API contract
@@ -290,7 +311,7 @@ SaStrane/
 │   └── openapi.json         The API contract
 ├── frontend/                Next.js app
 │   ├── app/                 Routes
-│   ├── features/            Auth, listings, applications, messages, landing
+│   ├── features/            Auth, listings, applications, messages, ratings, landing
 │   ├── components/          Shared UI
 │   ├── lib/                 API and query clients, generated API types, formatting
 │   └── e2e/                 Playwright tests

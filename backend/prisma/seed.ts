@@ -1,6 +1,6 @@
-// Demo data for local development: four users, nine jobs, six applications
-// and three conversations, with Bosnian text as in real use. Every demo user signs in
-// with the password below.
+// Demo data for local development: four users, ten jobs, seven applications,
+// two ratings and three conversations, with Bosnian text as in real use.
+// Every demo user signs in with the password below.
 //
 // Run it with `npx prisma db seed`. It upserts fixed IDs, so a second run
 // changes nothing, and it never deletes data.
@@ -150,6 +150,19 @@ const listings: {
     description: 'TV 55", nosač imam. Kablove bih sakrio u kanalicu.',
     hoursAgo: 72,
   },
+  {
+    id: 'seed-listing-fence',
+    clientId: 'seed-user-lejla',
+    title: 'Farbanje drvene ograde u dvorištu',
+    category: ListingCategory.OTHER,
+    location: ListingLocation.ILIDZA,
+    // Done and rated, so the executor has a rating on his profile.
+    status: ListingStatus.CLOSED,
+    budget: 80,
+    description:
+      'Ograda je duga oko 25 metara. Boju i četke kupujem ja, treba samo rad.',
+    hoursAgo: 240,
+  },
 ];
 
 const applications = [
@@ -209,6 +222,42 @@ const applications = [
     proposedPrice: 50,
     status: ApplicationStatus.ACCEPTED,
     hoursAgo: 20,
+  },
+  {
+    id: 'seed-application-fence-kenan',
+    listingId: 'seed-listing-fence',
+    executorId: 'seed-user-kenan',
+    message: 'Farbao sam ograde i kapije, mogu završiti za jedan dan.',
+    proposedPrice: 80,
+    status: ApplicationStatus.ACCEPTED,
+    hoursAgo: 230,
+  },
+];
+
+// Ratings for accepted applications on closed jobs. The lawn job is still
+// open, so Amra can close it and rate Kenan herself.
+const ratings = [
+  {
+    id: 'seed-rating-wardrobe-amra',
+    applicationId: 'seed-application-wardrobe-amra',
+    listingId: 'seed-listing-wardrobe',
+    listingTitle: 'Montaža IKEA ormara i dvije police',
+    clientId: 'seed-user-tarik',
+    executorId: 'seed-user-amra',
+    score: 5,
+    comment: 'Ormar i police montirani za dva sata, sve uredno počišćeno.',
+    hoursAgo: 4,
+  },
+  {
+    id: 'seed-rating-fence-kenan',
+    applicationId: 'seed-application-fence-kenan',
+    listingId: 'seed-listing-fence',
+    listingTitle: 'Farbanje drvene ograde u dvorištu',
+    clientId: 'seed-user-lejla',
+    executorId: 'seed-user-kenan',
+    score: 4,
+    comment: 'Dobro urađeno. Kasnio je pola sata, ali se javio na vrijeme.',
+    hoursAgo: 200,
   },
 ];
 
@@ -327,6 +376,14 @@ async function main() {
       });
     }
 
+    for (const { hoursAgo: age, ...rating } of ratings) {
+      await prisma.rating.upsert({
+        where: { id: rating.id },
+        update: {},
+        create: { ...rating, createdAt: hoursAgo(age) },
+      });
+    }
+
     for (const { messages, ...conversation } of conversations) {
       await prisma.conversation.upsert({
         where: { id: conversation.id },
@@ -366,7 +423,7 @@ async function main() {
     }
 
     console.log(
-      `Seeded ${users.length} users, ${listings.length} jobs, ${applications.length} applications and ${conversations.length} conversations.`,
+      `Seeded ${users.length} users, ${listings.length} jobs, ${applications.length} applications, ${ratings.length} ratings and ${conversations.length} conversations.`,
     );
     console.log(`Sign in as amra@example.com with ${DEMO_PASSWORD}.`);
   } finally {

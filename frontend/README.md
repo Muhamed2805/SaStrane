@@ -57,8 +57,10 @@ of date.
 - **Server rendering.** `/listings` fetches the first page on the server and
   passes it to the browser cache with `HydrationBoundary`. The job detail
   page stores its job in the cache too, for the apply dialog and the edit
-  page. The server does not retry failed requests: the browser fetches
-  what is missing.
+  page. The public profile `/users/[id]` fetches the profile and the first
+  page of reviews on the server. Profiles are public, so their keys are
+  `['users', userId]` and are not removed on sign-out. The server does not
+  retry failed requests: the browser fetches what is missing.
 - **Changes.** A change stores the API's answer in the cache, then reloads
   the lists it affects. Client errors (4xx) are not retried.
 - **URL filters.** The job list reads its search, filters and page from the
@@ -74,10 +76,12 @@ of date.
 
 | Folder | Contents |
 | --- | --- |
-| `app/` | Routes: `/`, `/listings`, `/listings/[id]`, `/listings/create`, `/listings/[id]/edit`, `/inbox`, `/profile`, `/login` |
+| `app/` | Routes: `/`, `/listings`, `/listings/[id]`, `/listings/create`, `/listings/[id]/edit`, `/inbox`, `/messages`, `/messages/[id]`, `/users/[id]`, `/profile`, `/login` |
 | `features/auth/` | The session: an in-memory access token, refresh on reload and on 401, and tab sync |
 | `features/listings/` | The job list, detail, form and API calls, and the names for the category and location codes |
 | `features/applications/` | Applying and the workspace |
+| `features/messages/` | Conversations, the unread count and the message thread |
+| `features/ratings/` | The rating dialog, stars and the public profile's reviews |
 | `features/landing/` | Home page sections |
 | `components/` | Navbar, footer, auth provider and UI primitives |
 | `lib/` | API and query clients, paging helpers, site metadata, generated API types, API URL, and date and price formatting |

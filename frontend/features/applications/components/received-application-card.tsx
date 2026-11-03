@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   Banknote,
@@ -6,8 +7,10 @@ import {
   Mail,
   MapPin,
   MessageCircle,
+  Star,
   X,
 } from 'lucide-react';
+import { useAuthStore } from '@/features/auth/store';
 import { ClosedBadge } from '@/features/listings/components/closed-badge';
 import {
   CATEGORY_LABELS,
@@ -15,6 +18,11 @@ import {
 } from '@/features/listings/constants';
 import { formatDate } from '@/lib/format-date';
 import { useOpenConversation } from '@/features/messages/hooks';
+import { RateExecutorDialog } from '@/features/ratings/components/rate-executor-dialog';
+import {
+  RatingStars,
+  RatingSummary,
+} from '@/features/ratings/components/rating-stars';
 import { formatPrice } from '@/lib/format-price';
 import type {
   ApplicationListing,
@@ -40,9 +48,10 @@ export function ReceivedApplicationCard({
   onStatusUpdate,
 }: ReceivedApplicationCardProps) {
   const { open: openConversation, isOpening } = useOpenConversation();
-  const executorInitial = application.executor.fullName
-    .charAt(0)
-    .toUpperCase();
+  const userId = useAuthStore((state) => state.user?.id);
+  const [isRating, setIsRating] = useState(false);
+  const profileHref = `/users/${application.executor.id}`;
+  const executorInitial = application.executor.fullName.charAt(0).toUpperCase();
   const messageButton = (
     <button
       className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border px-4 text-xs font-semibold hover:border-primary/30 hover:bg-primary/5 hover:text-primary disabled:opacity-50"
@@ -95,9 +104,17 @@ export function ReceivedApplicationCard({
           {executorInitial}
         </span>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">
+          <Link
+            href={profileHref}
+            className="block truncate text-sm font-semibold hover:text-primary"
+          >
             {application.executor.fullName}
-          </p>
+          </Link>
+          <RatingSummary
+            rating={application.executor.rating}
+            href={profileHref}
+            className="mt-0.5"
+          />
           {application.executor.email ? (
             <a
               href={`mailto:${application.executor.email}`}
@@ -153,10 +170,36 @@ export function ReceivedApplicationCard({
           </button>
         </div>
       ) : (
-        <div className="mt-5 flex justify-end border-t pt-4">
+        <div className="mt-5 flex flex-col gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-end">
+          {application.rating ? (
+            <p className="mr-auto inline-flex items-center gap-2 text-xs text-muted-foreground">
+              Tvoja ocjena:
+              <RatingStars score={application.rating.score} />
+            </p>
+          ) : null}
           {messageButton}
+          {application.canRate && userId ? (
+            <button
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-white hover:bg-primary/90"
+              type="button"
+              onClick={() => setIsRating(true)}
+            >
+              <Star className="size-3.5" aria-hidden="true" />
+              Ocijeni izvođača
+            </button>
+          ) : null}
         </div>
       )}
+
+      {isRating && userId ? (
+        <RateExecutorDialog
+          userId={userId}
+          applicationId={application.id}
+          executor={application.executor}
+          listingTitle={listing?.title}
+          onClose={() => setIsRating(false)}
+        />
+      ) : null}
     </article>
   );
 }

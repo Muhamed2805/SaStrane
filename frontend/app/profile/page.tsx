@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import {
   ArrowRight,
   BadgeCheck,
@@ -21,6 +21,8 @@ import {
   receivedApplicationsQuery,
   sentApplicationsQuery,
 } from '@/features/applications/queries';
+import { RatingSummary } from '@/features/ratings/components/rating-stars';
+import { userProfileQuery } from '@/features/ratings/queries';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/lib/format-date';
 import { pageTotal } from '@/lib/paging';
@@ -46,6 +48,11 @@ export default function ProfilePage() {
   const [listings, applications, received] = queries.map((query) =>
     pageTotal(query.data?.pages),
   );
+  // The rating as others see it on the public profile.
+  const { data: publicProfile } = useQuery({
+    ...userProfileQuery(userId),
+    enabled,
+  });
   const failed = queries.find((query) => query.error && !query.data);
   const error = failed?.error?.message ?? null;
   const reload = () => {
@@ -137,6 +144,20 @@ export default function ProfilePage() {
                 <p className="mt-1 text-sm text-muted-foreground">
                   Upravljaj svojim aktivnostima na SaStrane platformi.
                 </p>
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  {publicProfile ? (
+                    <RatingSummary
+                      rating={publicProfile.rating}
+                      className="text-sm"
+                    />
+                  ) : null}
+                  <Link
+                    href={`/users/${user.id}`}
+                    className="text-xs font-semibold text-primary hover:underline"
+                  >
+                    Javni profil i ocjene
+                  </Link>
+                </div>
               </div>
             </div>
             <Link
