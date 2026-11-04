@@ -2,6 +2,18 @@ const MINIMUM_SECRET_LENGTH = 32;
 const DEFAULT_JWT_EXPIRES_IN = '15m';
 const DEFAULT_APP_URL = 'http://localhost:3000';
 
+// The SeaweedFS container from docker-compose.yml. Used outside production
+// when a storage variable is not set.
+const LOCAL_STORAGE = {
+  S3_ENDPOINT: 'http://localhost:8333',
+  S3_REGION: 'us-east-1',
+  S3_BUCKET: 'sastrane-photos',
+  S3_ACCESS_KEY_ID: 'sastrane',
+  S3_SECRET_ACCESS_KEY: 'sastrane-local-secret',
+  S3_FORCE_PATH_STYLE: 'true',
+  S3_PUBLIC_URL: 'http://localhost:8333/sastrane-photos',
+};
+
 // An explicit unit is required: jsonwebtoken reads a unitless string such as
 // "900" as milliseconds, which would make every access token expire at once.
 const JWT_EXPIRES_IN_PATTERN = /^[1-9]\d*(s|m|h|d)$/;
@@ -41,6 +53,65 @@ function validateAppUrl(value: string) {
     throw new Error('APP_URL must use http or https');
   }
   return value.replace(/\/+$/, '');
+}
+
+function optionalString(config: Record<string, unknown>, key: string) {
+  const value = config[key];
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function validateHttpUrl(value: string, key: string) {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(`${key} must be a valid URL`);
+  }
+
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    throw new Error(`${key} must use http or https`);
+  }
+  return value.replace(/\/+$/, '');
+}
+
+// Photo storage: any S3-compatible service, such as Cloudflare R2 or AWS S3.
+// S3_PUBLIC_URL is where browsers read the files: the bucket's public
+// address, which must allow anonymous reads. Also used by
+// scripts/storage-init.ts.
+export function validateStorage(
+  config: Record<string, unknown>,
+  isProduction: boolean,
+) {
+  type Key = keyof typeof LOCAL_STORAGE;
+  // Required in production; the local default otherwise.
+  const required = (key: Key) =>
+    isProduction
+      ? requiredString(config, key)
+      : (optionalString(config, key) ?? LOCAL_STORAGE[key]);
+  const optional = (key: Key) =>
+    isProduction
+      ? optionalString(config, key)
+      : (optionalString(config, key) ?? LOCAL_STORAGE[key]);
+
+  // Empty for AWS S3, where the SDK derives it from the region.
+  const endpoint = optional('S3_ENDPOINT');
+  if (endpoint) validateHttpUrl(endpoint, 'S3_ENDPOINT');
+
+  const forcePathStyle = optional('S3_FORCE_PATH_STYLE') ?? 'false';
+  if (forcePathStyle !== 'true' && forcePathStyle !== 'false') {
+    throw new Error('S3_FORCE_PATH_STYLE must be true or false');
+  }
+
+  return {
+    S3_ENDPOINT: endpoint,
+    // Cloudflare R2 takes "auto"; AWS needs the bucket's region.
+    S3_REGION: optional('S3_REGION') ?? 'auto',
+    S3_BUCKET: required('S3_BUCKET'),
+    S3_ACCESS_KEY_ID: required('S3_ACCESS_KEY_ID'),
+    S3_SECRET_ACCESS_KEY: required('S3_SECRET_ACCESS_KEY'),
+    S3_FORCE_PATH_STYLE: forcePathStyle === 'true',
+    S3_PUBLIC_URL: validateHttpUrl(required('S3_PUBLIC_URL'), 'S3_PUBLIC_URL'),
+  };
 }
 
 function validateSecret(value: string, key: string) {
@@ -112,6 +183,7 @@ export function validateEnvironment(config: Record<string, unknown>) {
       ? config.APP_URL.trim()
       : DEFAULT_APP_URL,
   );
+  const storage = validateStorage(config, nodeEnv === 'production');
 
   return {
     ...config,
@@ -122,5 +194,6 @@ export function validateEnvironment(config: Record<string, unknown>) {
     PORT: port,
     TRUST_PROXY_HOPS: trustProxyHops,
     APP_URL: appUrl,
+    ...storage,
   };
 }

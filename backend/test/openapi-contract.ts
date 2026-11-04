@@ -106,7 +106,7 @@ export function contractViolation(
   return `${name} returned a ${response.status} body that does not match openapi.json: ${ajv.errorsText(validate.errors)}\n${JSON.stringify(response.body)}`;
 }
 
-type Method = 'get' | 'post' | 'patch' | 'delete';
+type Method = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
 // A supertest client that records every contract violation. Assert that
 // the list is empty after each test.
@@ -127,6 +127,7 @@ export function contractCheckedRequest(
   return {
     get: send('get'),
     post: send('post'),
+    put: send('put'),
     patch: send('patch'),
     delete: send('delete'),
   };

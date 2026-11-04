@@ -1,23 +1,26 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { BriefcaseBusiness, ChevronRight, LockKeyhole } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store';
-import { listingsApi } from '@/features/listings/api';
+import { listingsApi, type ListingPhoto } from '@/features/listings/api';
 import { listingSaved } from '@/features/listings/queries';
 import {
   ListingForm,
   type ListingFormResult,
 } from '@/features/listings/components/listing-form';
+import { NewListingPhotos } from '@/features/listings/components/new-listing-photos';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function CreateListingPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, status, openAuthModal } = useAuthStore();
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
 
   if (status === 'loading') {
     return (
@@ -56,8 +59,33 @@ export default function CreateListingPage() {
       budget: values.budget ?? undefined,
       description: values.description || undefined,
     });
-    listingSaved(queryClient, user.id, listing);
+
+    // The job is posted even when a photo fails. The owner can add it again
+    // on the edit page.
+    const photos: ListingPhoto[] = [];
+    let failed = 0;
+    for (const file of photoFiles) {
+      try {
+        photos.push(await listingsApi.addPhoto(listing.id, file));
+      } catch {
+        failed += 1;
+      }
+    }
+
+    listingSaved(queryClient, user.id, {
+      ...listing,
+      photos,
+      coverPhoto: photos.at(0) ?? null,
+    });
     toast.success('Oglas je uspješno objavljen!');
+    if (failed > 0) {
+      toast.error(
+        failed === 1
+          ? 'Jedna slika nije dodana. Dodaj je ponovo u uređivanju oglasa.'
+          : `Slike koje nisu dodane: ${failed}. Dodaj ih ponovo u uređivanju oglasa.`,
+      );
+    }
+    setPhotoFiles([]);
     router.push(`/listings/${listing.id}`);
   };
 
@@ -94,6 +122,10 @@ export default function CreateListingPage() {
         submitLabel="Objavi oglas"
         submittingLabel="Objavljujem..."
         cancelHref="/listings"
+        photos={
+          <NewListingPhotos files={photoFiles} onChange={setPhotoFiles} />
+        }
+        hasOtherChanges={photoFiles.length > 0}
         onSubmit={handleSubmit}
       />
     </div>

@@ -145,6 +145,7 @@ model Listing {
   applications  Application[]
   conversations Conversation[]
   ratings       Rating[]
+  photos        ListingPhoto[]
 
   @@index([status, createdAt])
   @@index([clientId, createdAt])
@@ -240,4 +241,21 @@ model Rating {
 
   @@index([executorId, createdAt])
   @@index([listingId])
+}
+
+// A photo of a job, at most five per job. The image files live in S3
+// storage under keys made from the job and photo IDs (see
+// src/listings/photos/photo-keys.ts). The lowest position is the cover.
+model ListingPhoto {
+  id        String  @id
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  position  Int
+  // The size of the large image, after resizing.
+  width     Int
+  height    Int
+
+  createdAt DateTime @default(now())
+
+  @@index([listingId, position])
 }

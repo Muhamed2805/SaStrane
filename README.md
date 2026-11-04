@@ -40,6 +40,9 @@ be both.
   reload shows the same results.
 - Post, edit and delete your own jobs with a title, category, location,
   budget and description. Prices are whole KM, or agreed later.
+- Add up to five photos to a job. The first is the cover on job cards, and
+  the job page shows them all. Each photo is resized and saved as WebP,
+  without the camera's location data.
 - Close a job to stop new applications, and reopen it at any time.
 
 **Applications**
@@ -131,11 +134,12 @@ flowchart LR
 
   subgraph api["Backend: NestJS 12"]
     edge["Helmet, CORS, rate limits,<br/>validation, JWT guard"]
-    modules["Auth, Listings,<br/>Applications"]
+    modules["Auth, Listings, Applications,<br/>Messages, Ratings"]
     orm["Prisma 7<br/>pg driver adapter"]
   end
 
   db[("PostgreSQL")]
+  storage[("S3 storage")]
   resend["Resend"]
 
   browser -- "pages" --> pages
@@ -144,6 +148,8 @@ flowchart LR
   pages -- "server-side fetch<br/>(job list, job detail)" --> edge
   edge --> modules --> orm --> db
   modules -- "email codes and notices" --> resend
+  modules -- "job photos" --> storage
+  browser -- "photos" --> storage
 ```
 
 - **Same-origin API.** The browser calls `/api/*` on the frontend's own
@@ -157,6 +163,9 @@ flowchart LR
 - **Client data.** TanStack Query caches API data in the browser. A change,
   such as a new application, updates the cache at once and reloads the
   lists it affects. Signing out clears the user's data from the cache.
+- **Photos.** The backend checks and resizes each upload, then saves a
+  large and a small WebP version in S3-compatible storage. Browsers load
+  them straight from the bucket's public address, not through the API.
 - **Health check.** `GET /health` checks the database too, and returns 503
   when it does not answer.
 - **Typed API contract.** The backend writes `backend/openapi.json` from its
@@ -214,6 +223,7 @@ erDiagram
   Conversation ||--o{ Message : holds
   Application ||--o| Rating : "is rated by"
   User ||--o{ Rating : receives
+  Listing ||--o{ ListingPhoto : shows
 
   User {
     string id PK
@@ -277,6 +287,13 @@ erDiagram
     int score "1 to 5"
     string comment "up to 1000 characters"
   }
+  ListingPhoto {
+    string id PK "also names the files in storage"
+    string listingId FK
+    int position "the lowest is the cover"
+    int width
+    int height
+  }
 ```
 
 ## Tech stack
@@ -287,6 +304,7 @@ erDiagram
 | Backend | NestJS 12 on native ES modules, Passport JWT, class-validator, Helmet, `@nestjs/throttler` |
 | Database | PostgreSQL, Prisma 7 with the `pg` driver adapter |
 | Email | Resend |
+| Photos | Any S3-compatible storage, such as Cloudflare R2, with the AWS SDK; SeaweedFS locally; sharp for resizing |
 | Tests | Vitest and Supertest (backend), Vitest and Playwright (frontend) |
 | CI | GitHub Actions, Dependabot |
 
@@ -296,10 +314,12 @@ erDiagram
 SaStrane/
 ├── backend/                 NestJS API
 │   ├── prisma/              Schema, migrations and demo seed
+│   ├── scripts/             Creates the photo bucket
 │   ├── src/
 │   │   ├── auth/            Sign-up, email codes, sessions, JWT
 │   │   ├── email/           Transactional emails through Resend
-│   │   ├── listings/        Jobs
+│   │   ├── listings/        Jobs and their photos
+│   │   ├── storage/         S3 photo storage
 │   │   ├── applications/    Applications to jobs
 │   │   ├── conversations/   Messages between clients and executors
 │   │   ├── ratings/         Ratings and public user profiles
@@ -315,23 +335,26 @@ SaStrane/
 │   ├── components/          Shared UI
 │   ├── lib/                 API and query clients, generated API types, formatting
 │   └── e2e/                 Playwright tests
+├── docker/                  Local storage settings
 ├── docs/screenshots/
-└── docker-compose.yml       Local PostgreSQL
+└── docker-compose.yml       Local PostgreSQL and photo storage
 ```
 
 ## Getting started
 
 You need [Node.js 24](.nvmrc) with npm 11, and Docker for the local
-database.
+database and photo storage.
 
-**1. Database.** From the repository root, start PostgreSQL 17 on
-`localhost:5432`:
+**1. Database and storage.** From the repository root, start PostgreSQL 17
+on `localhost:5432` and SeaweedFS, an S3-compatible storage, on
+`localhost:8333`:
 
 ```bash
 docker compose up -d
 ```
 
-Set `POSTGRES_PORT` when port 5432 is taken. A hosted database such as
+Set `POSTGRES_PORT` or `STORAGE_PORT` when a port is taken, and change the
+URLs in `backend/.env` to match. A hosted database such as
 [Neon](https://neon.tech) works too: put its URL in `backend/.env`.
 
 **2. Backend.** It runs on <http://localhost:4000>.
@@ -342,11 +365,13 @@ cp .env.example .env
 npm install
 npx prisma generate
 npx prisma migrate deploy
+npm run storage:init
 npx prisma db seed
 npm run start:dev
 ```
 
-The example `.env` works with the Docker database as it is. The seed adds
+The example `.env` works with the Docker containers as it is.
+`npm run storage:init` creates the photo bucket. The seed adds
 demo users, jobs and applications. Sign in as `amra@example.com` with the
 password `demo-password-123`. Email codes for new accounts are printed in
 the backend terminal while `RESEND_API_KEY` is empty.

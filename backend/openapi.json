@@ -90,7 +90,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -153,7 +153,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -216,7 +216,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -279,7 +279,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -342,7 +342,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -425,7 +425,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -478,7 +478,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -519,7 +519,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -576,7 +576,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -699,7 +699,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -769,7 +769,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -835,7 +835,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -934,7 +934,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1011,7 +1011,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1118,7 +1118,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1134,6 +1134,338 @@
           }
         ],
         "summary": "Opens or closes the user's own job.",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/api/listings/{id}/photos": {
+      "post": {
+        "description": "Send the file as `photo` in a multipart form, up to 5 MB, as\nJPG, PNG, WebP or AVIF. The API stores two WebP versions without the\nEXIF data. A job takes up to five photos; the first one is the cover.",
+        "operationId": "listingPhotos_add",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "photo"
+                ],
+                "properties": {
+                  "photo": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingPhotoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The file is missing, or it is not a JPG, PNG, WebP or AVIF image (INVALID_IMAGE).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The job belongs to another user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The job does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The job has five photos already (PHOTO_LIMIT_REACHED).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The file is larger than 5 MB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the photo storage is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Adds a photo to the user's own job.",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/api/listings/{id}/photos/order": {
+      "put": {
+        "operationId": "listingPhotos_reorder",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderPhotosDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ListingPhotoDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "photoIds does not list every photo of the job exactly once.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The job belongs to another user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The job does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sets the order of the photos of the user's own job.",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
+    "/api/listings/{id}/photos/{photoId}": {
+      "delete": {
+        "operationId": "listingPhotos_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "photoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The job belongs to another user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The job or the photo does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Deletes a photo of the user's own job.",
         "tags": [
           "listings"
         ]
@@ -1225,7 +1557,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1285,7 +1617,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1374,7 +1706,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1464,7 +1796,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1554,7 +1886,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1671,7 +2003,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1779,7 +2111,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1845,7 +2177,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1937,7 +2269,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2040,7 +2372,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2127,7 +2459,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2184,7 +2516,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2270,7 +2602,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2387,7 +2719,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2491,7 +2823,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2570,7 +2902,7 @@
             }
           },
           "503": {
-            "description": "The database or the email service is unavailable.",
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2688,7 +3020,7 @@
           },
           "code": {
             "type": "string",
-            "description": "Set when the client needs to tell this error apart from others with the\nsame status: EMAIL_NOT_VERIFIED, EMAIL_ALREADY_REGISTERED,\nEMAIL_VERIFICATION_PENDING, LISTING_CLOSED or\nAPPLICATION_ALREADY_DECIDED."
+            "description": "Set when the client needs to tell this error apart from others with the\nsame status: EMAIL_NOT_VERIFIED, EMAIL_ALREADY_REGISTERED,\nEMAIL_VERIFICATION_PENDING, LISTING_CLOSED,\nAPPLICATION_ALREADY_DECIDED, INVALID_IMAGE or PHOTO_LIMIT_REACHED. The\nother codes of a route are listed with its errors."
           }
         },
         "required": [
@@ -2944,6 +3276,36 @@
           "CLOSED"
         ]
       },
+      "ListingPhotoDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "description": "At most 1600 pixels on the longest side."
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "description": "At most 640 pixels on the longest side, for lists."
+          },
+          "width": {
+            "type": "number",
+            "description": "The size of the image at `url`, in pixels."
+          },
+          "height": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "thumbnailUrl",
+          "width",
+          "height"
+        ]
+      },
       "ListingClientDto": {
         "type": "object",
         "properties": {
@@ -2984,6 +3346,16 @@
               }
             ]
           },
+          "coverPhoto": {
+            "nullable": true,
+            "description": "The first photo, or null when the job has none.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingPhotoDto"
+              }
+            ]
+          },
           "id": {
             "type": "string"
           },
@@ -3007,6 +3379,7 @@
           "category",
           "location",
           "status",
+          "coverPhoto",
           "id",
           "title",
           "budget",
@@ -3073,6 +3446,16 @@
               }
             ]
           },
+          "coverPhoto": {
+            "nullable": true,
+            "description": "The first photo, or null when the job has none.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingPhotoDto"
+              }
+            ]
+          },
           "id": {
             "type": "string"
           },
@@ -3094,18 +3477,27 @@
           "description": {
             "type": "string",
             "nullable": true
+          },
+          "photos": {
+            "description": "Up to five, the cover first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListingPhotoDto"
+            }
           }
         },
         "required": [
           "category",
           "location",
           "status",
+          "coverPhoto",
           "id",
           "title",
           "budget",
           "createdAt",
           "client",
-          "description"
+          "description",
+          "photos"
         ]
       },
       "CreateListingDto": {
@@ -3194,6 +3586,24 @@
         },
         "required": [
           "status"
+        ]
+      },
+      "ReorderPhotosDto": {
+        "type": "object",
+        "properties": {
+          "photoIds": {
+            "description": "Every photo of the job, in the new order. The first is the cover.",
+            "uniqueItems": true,
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        },
+        "required": [
+          "photoIds"
         ]
       },
       "CreateApplicationDto": {

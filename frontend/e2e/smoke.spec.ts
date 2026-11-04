@@ -14,6 +14,7 @@ const listingsResponse = {
         id: 'client-e2e-1',
         fullName: 'Test Klijent',
       },
+      coverPhoto: null,
     },
   ],
   total: 1,

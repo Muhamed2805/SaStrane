@@ -8,6 +8,7 @@ import {
   it,
 } from 'vitest';
 import { JwtService } from '@nestjs/jwt';
+import sharp from 'sharp';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerStorage, ThrottlerStorageService } from '@nestjs/throttler';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -16,9 +17,11 @@ import { configureApp } from '../src/app.setup.js';
 import { EmailService } from '../src/email/email.service.js';
 import { ROTATION_GRACE_MS } from '../src/auth/sessions.service.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
+import { StorageService } from '../src/storage/storage.service.js';
 import { contractCheckedRequest } from './openapi-contract.js';
 import {
   CapturingEmailService,
+  MemoryStorageService,
   PASSWORD,
   cookiePair,
   createUser,
@@ -27,8 +30,8 @@ import {
 } from './helpers.js';
 
 // The app runs with its real configuration against the e2e database. Only
-// email delivery and the rate limiter's storage are swapped out. Every
-// response must match openapi.json.
+// email delivery, the photo storage and the rate limiter's storage are
+// swapped out. Every response must match openapi.json.
 
 // The app's real in-memory rate limiter, swapped for a fresh one before each
 // test. Otherwise limits such as the login one run out across tests.
@@ -56,6 +59,7 @@ const listingInput = {
 describe('App (e2e)', () => {
   const throttlerStorage = new ResettableThrottlerStorage();
   const emails = new CapturingEmailService();
+  const storage = new MemoryStorageService();
   const contractViolations: string[] = [];
   let app: NestExpressApplication;
   let prisma: PrismaService;
@@ -66,6 +70,8 @@ describe('App (e2e)', () => {
     })
       .overrideProvider(EmailService)
       .useValue(emails)
+      .overrideProvider(StorageService)
+      .useValue(storage)
       .overrideProvider(ThrottlerStorage)
       .useValue(throttlerStorage)
       .compile();
@@ -84,6 +90,7 @@ describe('App (e2e)', () => {
   beforeEach(async () => {
     await resetDatabase(prisma);
     emails.clear();
+    storage.clear();
     throttlerStorage.reset();
   });
 
@@ -1176,6 +1183,188 @@ describe('App (e2e)', () => {
       const profile = await http().get(`/api/users/${user.id}`).expect(200);
 
       expect(JSON.stringify(profile.body)).not.toContain(user.email);
+    });
+  });
+
+  describe('listing photos', () => {
+    let jpeg: Buffer;
+
+    beforeAll(async () => {
+      jpeg = await sharp({
+        create: {
+          width: 2000,
+          height: 1500,
+          channels: 3,
+          background: '#0f9d8a',
+        },
+      })
+        .jpeg()
+        .toBuffer();
+    });
+
+    function upload(
+      auth: string,
+      listingId: string,
+      file: Buffer = jpeg,
+      filename = 'dvoriste.jpg',
+    ) {
+      return http()
+        .post(`/api/listings/${listingId}/photos`)
+        .set('Authorization', auth)
+        .attach('photo', file, { filename, contentType: 'image/jpeg' });
+    }
+
+    type Photo = { id: string; url: string; thumbnailUrl: string };
+
+    it('adds photos and shows them on the job and in lists', async () => {
+      const { auth } = await signedInUser();
+      const { id } = await postListing(auth);
+
+      const first = await upload(auth, id).expect(201);
+      const second = await upload(auth, id).expect(201);
+      const photo = first.body as Photo;
+
+      expect(first.body).toMatchObject({
+        url: `https://photos.test/listings/${id}/${photo.id}.webp`,
+        thumbnailUrl: `https://photos.test/listings/${id}/${photo.id}-thumb.webp`,
+        width: 1600,
+        height: 1200,
+      });
+      expect(
+        storage.files.get(`listings/${id}/${photo.id}.webp`),
+      ).toMatchObject({ contentType: 'image/webp' });
+      expect(storage.files.size).toBe(4);
+
+      const job = await http().get(`/api/listings/${id}`).expect(200);
+      expect(job.body).toMatchObject({
+        coverPhoto: { id: photo.id },
+        photos: [{ id: photo.id }, { id: (second.body as Photo).id }],
+      });
+
+      const list = await http().get('/api/listings').expect(200);
+      expect(list.body).toMatchObject({
+        items: [{ id, coverPhoto: { id: photo.id } }],
+      });
+    });
+
+    it('takes at most five photos', async () => {
+      const { auth } = await signedInUser();
+      const { id } = await postListing(auth);
+      for (let i = 0; i < 5; i += 1) await upload(auth, id).expect(201);
+
+      const sixth = await upload(auth, id);
+
+      expect(sixth.status).toBe(409);
+      expect(sixth.body).toMatchObject({ code: 'PHOTO_LIMIT_REACHED' });
+      expect(await prisma.listingPhoto.count()).toBe(5);
+      expect(storage.files.size).toBe(10);
+    });
+
+    it('refuses files that are not images, and files over 5 MB', async () => {
+      const { auth } = await signedInUser();
+      const { id } = await postListing(auth);
+
+      const text = await upload(auth, id, Buffer.from('nije slika'), 'a.jpg');
+      expect(text.status).toBe(400);
+      expect(text.body).toMatchObject({ code: 'INVALID_IMAGE' });
+
+      await http()
+        .post(`/api/listings/${id}/photos`)
+        .set('Authorization', auth)
+        .expect(400);
+
+      await upload(auth, id, Buffer.alloc(5 * 1024 * 1024 + 1)).expect(413);
+      expect(await prisma.listingPhoto.count()).toBe(0);
+      expect(storage.files.size).toBe(0);
+    });
+
+    it('lets only the owner change the photos', async () => {
+      const owner = await signedInUser();
+      const stranger = await signedInUser();
+      const { id } = await postListing(owner.auth);
+      const photo = (await upload(owner.auth, id).expect(201)).body as Photo;
+
+      await upload(stranger.auth, id).expect(403);
+      await upload(owner.auth, 'missing').expect(404);
+      await http()
+        .post(`/api/listings/${id}/photos`)
+        .attach('photo', jpeg, 'a.jpg')
+        .expect(401);
+      await http()
+        .delete(`/api/listings/${id}/photos/${photo.id}`)
+        .set('Authorization', stranger.auth)
+        .expect(403);
+      await http()
+        .put(`/api/listings/${id}/photos/order`)
+        .set('Authorization', stranger.auth)
+        .send({ photoIds: [photo.id] })
+        .expect(403);
+      expect(await prisma.listingPhoto.count()).toBe(1);
+    });
+
+    it('reorders the photos, which changes the cover', async () => {
+      const { auth } = await signedInUser();
+      const { id } = await postListing(auth);
+      const a = (await upload(auth, id).expect(201)).body as Photo;
+      const b = (await upload(auth, id).expect(201)).body as Photo;
+
+      const reordered = await http()
+        .put(`/api/listings/${id}/photos/order`)
+        .set('Authorization', auth)
+        .send({ photoIds: [b.id, a.id] })
+        .expect(200);
+      expect((reordered.body as Photo[]).map((photo) => photo.id)).toEqual([
+        b.id,
+        a.id,
+      ]);
+
+      const job = await http().get(`/api/listings/${id}`).expect(200);
+      expect(job.body).toMatchObject({ coverPhoto: { id: b.id } });
+
+      await http()
+        .put(`/api/listings/${id}/photos/order`)
+        .set('Authorization', auth)
+        .send({ photoIds: [a.id] })
+        .expect(400);
+      await http()
+        .put(`/api/listings/${id}/photos/order`)
+        .set('Authorization', auth)
+        .send({ photoIds: [a.id, a.id] })
+        .expect(400);
+    });
+
+    it('deletes a photo and its files', async () => {
+      const { auth } = await signedInUser();
+      const { id } = await postListing(auth);
+      const photo = (await upload(auth, id).expect(201)).body as Photo;
+
+      await http()
+        .delete(`/api/listings/${id}/photos/${photo.id}`)
+        .set('Authorization', auth)
+        .expect(204);
+
+      expect(storage.files.size).toBe(0);
+      const job = await http().get(`/api/listings/${id}`).expect(200);
+      expect(job.body).toMatchObject({ coverPhoto: null, photos: [] });
+      await http()
+        .delete(`/api/listings/${id}/photos/${photo.id}`)
+        .set('Authorization', auth)
+        .expect(404);
+    });
+
+    it('deletes the files when the job is deleted', async () => {
+      const { auth } = await signedInUser();
+      const { id } = await postListing(auth);
+      await upload(auth, id).expect(201);
+      await upload(auth, id).expect(201);
+
+      await http()
+        .delete(`/api/listings/${id}`)
+        .set('Authorization', auth)
+        .expect(204);
+
+      expect(storage.files.size).toBe(0);
+      expect(await prisma.listingPhoto.count()).toBe(0);
     });
   });
 });

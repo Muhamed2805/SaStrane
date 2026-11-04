@@ -15,6 +15,7 @@ import { listingsApi } from '@/features/listings/api';
 import { ClosedBadge } from '@/features/listings/components/closed-badge';
 import { ListingActions } from '@/features/listings/components/listing-actions';
 import { ListingCard } from '@/features/listings/components/listing-card';
+import { ListingGallery } from '@/features/listings/components/listing-gallery';
 import {
   CATEGORY_LABELS,
   LOCATION_LABELS,
@@ -74,6 +75,17 @@ export async function generateMetadata({
       title: listing.title,
       description,
       url: `/listings/${listing.id}`,
+      ...(listing.coverPhoto
+        ? {
+            images: [
+              {
+                url: listing.coverPhoto.url,
+                width: listing.coverPhoto.width,
+                height: listing.coverPhoto.height,
+              },
+            ],
+          }
+        : {}),
     },
   };
 }
@@ -151,6 +163,8 @@ export default async function ListingDetailsPage({ params }: PageProps) {
                 </span>
               </div>
             </header>
+
+            <ListingGallery photos={listing.photos} title={listing.title} />
 
             <section className="rounded-2xl border bg-white p-6 shadow-sm sm:p-8">
               <h2 className="text-xl font-bold">Opis posla</h2>

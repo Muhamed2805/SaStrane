@@ -5,6 +5,7 @@ import {
   ListingLocation,
   ListingStatus,
 } from '../../generated/prisma/enums.js';
+import { ListingPhotoDto } from '../photos/dto/listing-photo-response.dto.js';
 
 // The user who posted the job.
 export class ListingClientDto {
@@ -35,10 +36,17 @@ export class ListingSummaryDto {
   createdAt!: Date;
 
   client!: ListingClientDto;
+
+  /** The first photo, or null when the job has none. */
+  @ApiProperty({ type: () => ListingPhotoDto, nullable: true })
+  coverPhoto!: ListingPhotoDto | null;
 }
 
 export class ListingDto extends ListingSummaryDto {
   description!: string | null;
+
+  /** Up to five, the cover first. */
+  photos!: ListingPhotoDto[];
 }
 
 // Newest first.

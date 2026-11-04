@@ -13,7 +13,7 @@ export async function resetDatabase(prisma: PrismaService) {
     { name: string }[]
   >`SELECT current_database() AS name`;
   assertTestDatabaseName(name);
-  await prisma.$executeRaw`TRUNCATE "Rating", "Message", "Conversation", "Application", "Listing", "RefreshToken", "Session", "User" CASCADE`;
+  await prisma.$executeRaw`TRUNCATE "ListingPhoto", "Rating", "Message", "Conversation", "Application", "Listing", "RefreshToken", "Session", "User" CASCADE`;
 }
 
 let userCount = 0;
@@ -32,6 +32,29 @@ export function createUser(
       emailVerifiedAt: new Date(),
     },
   });
+}
+
+// Stands in for StorageService and keeps the files in memory.
+export class MemoryStorageService {
+  readonly files = new Map<string, { body: Buffer; contentType: string }>();
+
+  url(key: string) {
+    return `https://photos.test/${key}`;
+  }
+
+  put(key: string, body: Buffer, contentType: string) {
+    this.files.set(key, { body, contentType });
+    return Promise.resolve();
+  }
+
+  delete(keys: string[]) {
+    for (const key of keys) this.files.delete(key);
+    return Promise.resolve();
+  }
+
+  clear() {
+    this.files.clear();
+  }
 }
 
 // Stands in for EmailService and keeps the emails it was asked to send.
