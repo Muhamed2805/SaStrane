@@ -6,10 +6,10 @@ import { existsSync } from 'node:fs';
 import {
   CreateBucketCommand,
   HeadBucketCommand,
-  S3Client,
   S3ServiceException,
 } from '@aws-sdk/client-s3';
 import { validateStorage } from '../src/config/environment.js';
+import { createS3Client } from '../src/storage/s3-client.js';
 
 // Values already in the environment win over .env.
 if (existsSync('.env')) process.loadEnvFile('.env');
@@ -18,15 +18,7 @@ const storage = validateStorage(
   process.env,
   process.env.NODE_ENV === 'production',
 );
-const client = new S3Client({
-  endpoint: storage.S3_ENDPOINT,
-  region: storage.S3_REGION,
-  forcePathStyle: storage.S3_FORCE_PATH_STYLE,
-  credentials: {
-    accessKeyId: storage.S3_ACCESS_KEY_ID,
-    secretAccessKey: storage.S3_SECRET_ACCESS_KEY,
-  },
-});
+const client = createS3Client(storage);
 const Bucket = storage.S3_BUCKET;
 
 try {

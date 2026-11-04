@@ -94,8 +94,11 @@ after every install and every schema change.
 | Browse the data | `npx prisma studio` |
 | Start over with an empty database | `docker compose down -v`, then `docker compose up -d`, migrate again and run `npm run storage:init` |
 
-The seed in `prisma/seed.ts` adds four users, ten jobs, seven applications,
-two ratings and three conversations. Every demo user signs in with
+The seed in `prisma/seed.ts` adds four users, ten jobs, seven photos, seven
+applications, two ratings and three conversations. The photos come from
+`prisma/seed-photos` and need the storage container and
+`npm run storage:init`. When the storage is not reachable, as in CI, the
+seed skips them with a warning. Every demo user signs in with
 `demo-password-123`, for example as `amra@example.com`. The seed only adds missing rows, so it is safe to run
 again, and it refuses to run with `NODE_ENV=production`.
 

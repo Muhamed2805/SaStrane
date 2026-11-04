@@ -1,12 +1,17 @@
-// Demo data for local development: four users, ten jobs, seven applications,
-// two ratings and three conversations, with Bosnian text as in real use.
-// Every demo user signs in with the password below.
+// Demo data for local development: four users, ten jobs, seven photos,
+// seven applications, two ratings and three conversations, with Bosnian
+// text as in real use. Every demo user signs in with the password below.
 //
 // Run it with `npx prisma db seed`. It upserts fixed IDs, so a second run
-// changes nothing, and it never deletes data.
+// changes nothing, and it never deletes data. The photos need the storage
+// from docker-compose.yml and `npm run storage:init`; without it, the seed
+// skips them.
 import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { HeadBucketCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { PrismaPg } from '@prisma/adapter-pg';
 import bcrypt from 'bcrypt';
+import { validateStorage } from '../src/config/environment.js';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 import {
   ApplicationStatus,
@@ -14,6 +19,9 @@ import {
   ListingLocation,
   ListingStatus,
 } from '../src/generated/prisma/enums.js';
+import { processPhoto } from '../src/listings/photos/photo-image.js';
+import { photoKeys } from '../src/listings/photos/photo-keys.js';
+import { createS3Client, IMMUTABLE_CACHE } from '../src/storage/s3-client.js';
 
 const DEMO_PASSWORD = 'demo-password-123';
 const HOUR_MS = 60 * 60 * 1000;
@@ -234,6 +242,38 @@ const applications = [
   },
 ];
 
+// Photos from prisma/seed-photos, listed in SOURCES.md there. A job's
+// first photo is its cover.
+const photos = [
+  {
+    id: 'seed-photo-lawn-1',
+    listingId: 'seed-listing-lawn',
+    file: 'lawn-1.jpg',
+  },
+  {
+    id: 'seed-photo-lawn-2',
+    listingId: 'seed-listing-lawn',
+    file: 'lawn-2.jpg',
+  },
+  {
+    id: 'seed-photo-lawn-3',
+    listingId: 'seed-listing-lawn',
+    file: 'lawn-3.jpg',
+  },
+  { id: 'seed-photo-car', listingId: 'seed-listing-car', file: 'car.jpg' },
+  {
+    id: 'seed-photo-cleaning',
+    listingId: 'seed-listing-cleaning',
+    file: 'cleaning.jpg',
+  },
+  {
+    id: 'seed-photo-fence',
+    listingId: 'seed-listing-fence',
+    file: 'fence.jpg',
+  },
+  { id: 'seed-photo-tv', listingId: 'seed-listing-tv', file: 'tv.jpg' },
+];
+
 // Ratings for accepted applications on closed jobs. The lawn job is still
 // open, so Amra can close it and rate Kenan herself.
 const ratings = [
@@ -326,6 +366,65 @@ const conversations: {
   },
 ];
 
+// Uploads the photos that are not in the database yet, as the API would.
+// Returns how many it added, or null when the storage is not reachable.
+async function seedPhotos(prisma: PrismaClient): Promise<number | null> {
+  const seeded = await prisma.listingPhoto.findMany({
+    where: { id: { in: photos.map((photo) => photo.id) } },
+    select: { id: true },
+  });
+  const done = new Set(seeded.map((photo) => photo.id));
+  const missing = photos.filter((photo) => !done.has(photo.id));
+  if (missing.length === 0) return 0;
+
+  const storage = validateStorage(process.env, false);
+  const client = createS3Client(storage);
+  const Bucket = storage.S3_BUCKET;
+  try {
+    try {
+      await client.send(new HeadBucketCommand({ Bucket }));
+    } catch {
+      return null;
+    }
+
+    for (const photo of missing) {
+      const input = await readFile(
+        new URL(`seed-photos/${photo.file}`, import.meta.url),
+      );
+      const { large, thumbnail } = await processPhoto(input);
+      const keys = photoKeys(photo.listingId, photo.id);
+      for (const [Key, Body] of [
+        [keys.large, large.data],
+        [keys.thumbnail, thumbnail],
+      ] as const) {
+        await client.send(
+          new PutObjectCommand({
+            Bucket,
+            Key,
+            Body,
+            ContentType: 'image/webp',
+            CacheControl: IMMUTABLE_CACHE,
+          }),
+        );
+      }
+      await prisma.listingPhoto.create({
+        data: {
+          id: photo.id,
+          listingId: photo.listingId,
+          position: photos
+            .filter((other) => other.listingId === photo.listingId)
+            .indexOf(photo),
+          width: large.width,
+          height: large.height,
+        },
+      });
+    }
+    return missing.length;
+  } finally {
+    client.destroy();
+  }
+}
+
 async function main() {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('The demo seed must not run in production.');
@@ -366,6 +465,13 @@ async function main() {
         update: {},
         create: { ...listing, createdAt: hoursAgo(age) },
       });
+    }
+
+    const addedPhotos = await seedPhotos(prisma);
+    if (addedPhotos === null) {
+      console.warn(
+        'Skipped the photos: the storage is not reachable. Run `docker compose up -d` and `npm run storage:init`, then seed again.',
+      );
     }
 
     for (const { hoursAgo: age, ...application } of applications) {
@@ -423,7 +529,7 @@ async function main() {
     }
 
     console.log(
-      `Seeded ${users.length} users, ${listings.length} jobs, ${applications.length} applications, ${ratings.length} ratings and ${conversations.length} conversations.`,
+      `Seeded ${users.length} users, ${listings.length} jobs, ${addedPhotos === null ? 0 : photos.length} photos, ${applications.length} applications, ${ratings.length} ratings and ${conversations.length} conversations.`,
     );
     console.log(`Sign in as amra@example.com with ${DEMO_PASSWORD}.`);
   } finally {

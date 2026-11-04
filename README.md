@@ -16,7 +16,9 @@ mowing, moving help or IT support, and people nearby apply to do them.
 
 ![SaStrane home page](docs/screenshots/home.png)
 
-The interface is in Bosnian. The screenshots use demo data.
+The interface is in Bosnian. The screenshots use the demo data from the
+seed. Its photos are public domain (CC0), listed in
+[`backend/prisma/seed-photos/SOURCES.md`](backend/prisma/seed-photos/SOURCES.md).
 
 ## Contents
 
@@ -85,22 +87,32 @@ be both.
 <table>
   <tr>
     <td width="50%">
-      <img src="docs/screenshots/listings.png" alt="Job list with search and filters">
-      <p align="center"><sub><b>Find a job</b>: search, category and location filters</sub></p>
+      <img src="docs/screenshots/listings.png" alt="Job list with search, filters and cover photos">
+      <p align="center"><sub><b>Find a job</b>: search, filters and cover photos</sub></p>
     </td>
     <td width="50%">
-      <img src="docs/screenshots/listing-detail.png" alt="Job detail page">
-      <p align="center"><sub><b>Job detail</b>: budget, description and client</sub></p>
+      <img src="docs/screenshots/listing-detail.png" alt="Job detail page with a photo gallery">
+      <p align="center"><sub><b>Job detail</b>: photo gallery, budget and client</sub></p>
     </td>
   </tr>
   <tr>
     <td width="50%">
+      <img src="docs/screenshots/create-listing.png" alt="Form for a new job with a photo">
+      <p align="center"><sub><b>Post a job</b>: up to five photos, the first is the cover</sub></p>
+    </td>
+    <td width="50%">
       <img src="docs/screenshots/inbox.png" alt="Workspace with received applications">
       <p align="center"><sub><b>Workspace</b>: received applications and their status</sub></p>
     </td>
+  </tr>
+  <tr>
     <td width="50%">
-      <img src="docs/screenshots/create-listing.png" alt="Form for a new job">
-      <p align="center"><sub><b>Post a job</b></sub></p>
+      <img src="docs/screenshots/messages.png" alt="Conversation between a client and an executor">
+      <p align="center"><sub><b>Messages</b>: one conversation per job and executor</sub></p>
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/user-profile.png" alt="Public profile with ratings">
+      <p align="center"><sub><b>Public profile</b>: ratings from clients</sub></p>
     </td>
   </tr>
   <tr>
@@ -372,7 +384,7 @@ npm run start:dev
 
 The example `.env` works with the Docker containers as it is.
 `npm run storage:init` creates the photo bucket. The seed adds
-demo users, jobs and applications. Sign in as `amra@example.com` with the
+demo users, jobs with photos, applications, ratings and messages. Sign in as `amra@example.com` with the
 password `demo-password-123`. Email codes for new accounts are printed in
 the backend terminal while `RESEND_API_KEY` is empty.
 

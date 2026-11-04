@@ -10,10 +10,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-
-// A key is never written twice: a changed photo gets a new key. Browsers and
-// CDNs may therefore keep a file for a year.
-const IMMUTABLE_CACHE = 'public, max-age=31536000, immutable';
+import { IMMUTABLE_CACHE } from './s3-client.js';
 
 // Files in an S3-compatible bucket whose objects anyone can read at
 // S3_PUBLIC_URL. Locally that is the SeaweedFS container.
