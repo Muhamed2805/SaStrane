@@ -150,6 +150,9 @@ two sides of the conversation.
 | `POST` | `/api/auth/refresh` | Cookie | Rotates the refresh token and returns a new access token. |
 | `POST` | `/api/auth/logout` | Cookie | Revokes the session. |
 | `GET` | `/api/auth/me` | Bearer | Returns the signed-in user. |
+| `PATCH` | `/api/auth/me` | Bearer | Changes the user's name or role. |
+| `POST` | `/api/auth/change-password` | Bearer | Checks the current password, sets a new one and revokes the other sessions. Returns 204. |
+| `DELETE` | `/api/auth/me` | Bearer | Checks the password and deletes the account with its jobs, photos, applications, conversations and ratings. Returns 204. |
 | `POST` | `/api/auth/forgot-password` | | Emails a password reset code. |
 | `POST` | `/api/auth/reset-password` | | Sets a new password and revokes all sessions. |
 | `GET` | `/api/listings` | | Lists jobs. Filters: `q` (title and description), `category`, `location`, `status`, `clientId`. Paging: `page`, `limit` (max 100). |
@@ -241,6 +244,22 @@ two sides of the conversation.
   lists also have `canRate`, which is true when the executor can be rated.
 - Profiles under `/api/users` are public. They show the name, the sign-up
   date and the ratings, never the email.
+
+**Account.**
+- The email address cannot be changed. `PATCH /api/auth/me` changes only
+  `fullName` and `role`. Access tokens issued earlier keep the old role
+  until they expire, but no route reads it from the token.
+- Changing the password and deleting the account need the current
+  password. A wrong one returns 400 with the code `WRONG_PASSWORD`, not
+  401, so the client stays signed in. Both routes allow 5 requests per
+  minute.
+- A password change keeps the session that asked and revokes the others.
+  The user gets an email notice after the response. A failed email is
+  logged, and the change stays.
+- Deleting the account clears the refresh cookie. It also deletes the
+  user's jobs with their photos, the applications on both sides, every
+  conversation the user is part of and the ratings given or received.
+  Other users lose those conversations and ratings too.
 
 **Errors.** Errors use the standard NestJS shape,
 `{ statusCode, message, error }`. Errors that the frontend must tell apart

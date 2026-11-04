@@ -118,6 +118,24 @@ describe('EmailService', () => {
     expect(body.html).not.toContain('Amra');
   });
 
+  it('sends a notice when the password was changed', async () => {
+    fetchMock.mockResolvedValue(new Response('{}', { status: 200 }));
+    const service = createService({ RESEND_API_KEY: 'key' });
+
+    await service.sendPasswordChanged({
+      email: 'amra@example.com',
+      fullName: 'Amra <b>',
+    });
+
+    const body = sentBody(fetchMock);
+    expect(body.to).toEqual(['amra@example.com']);
+    expect(body.subject).toBe('Lozinka je promijenjena');
+    expect(body.html).toContain('Amra &lt;b&gt;');
+    expect(body.tags).toEqual([
+      { name: 'category', value: 'password_changed' },
+    ]);
+  });
+
   it('maps a network failure or timeout to 503', async () => {
     fetchMock.mockRejectedValue(new DOMException('timed out', 'TimeoutError'));
     const service = createService({ RESEND_API_KEY: 'key' });

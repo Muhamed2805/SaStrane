@@ -19,8 +19,8 @@ export class ErrorResponseDto {
    * Set when the client needs to tell this error apart from others with the
    * same status: EMAIL_NOT_VERIFIED, EMAIL_ALREADY_REGISTERED,
    * EMAIL_VERIFICATION_PENDING, LISTING_CLOSED,
-   * APPLICATION_ALREADY_DECIDED, INVALID_IMAGE or PHOTO_LIMIT_REACHED. The
-   * other codes of a route are listed with its errors.
+   * APPLICATION_ALREADY_DECIDED, INVALID_IMAGE, PHOTO_LIMIT_REACHED or
+   * WRONG_PASSWORD. The other codes of a route are listed with its errors.
    */
   code?: string;
 }

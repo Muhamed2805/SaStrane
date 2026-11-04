@@ -12,6 +12,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { IMMUTABLE_CACHE } from './s3-client.js';
 
+const DELETE_BATCH_SIZE = 1000;
+
 // Files in an S3-compatible bucket whose objects anyone can read at
 // S3_PUBLIC_URL. Locally that is the SeaweedFS container.
 @Injectable()
@@ -66,21 +68,24 @@ export class StorageService implements OnModuleDestroy {
   // Best effort: a file that stays behind costs only storage, so a failure
   // is logged and never fails the request that deleted the photo.
   async delete(keys: string[]) {
-    if (keys.length === 0) return;
-    try {
-      const result = await this.client.send(
-        new DeleteObjectsCommand({
-          Bucket: this.bucket,
-          Delete: { Objects: keys.map((Key) => ({ Key })), Quiet: true },
-        }),
-      );
-      for (const error of result.Errors ?? []) {
-        this.logger.warn(`Could not delete ${error.Key}: ${error.Message}`);
+    // One request deletes at most 1000 files.
+    for (let start = 0; start < keys.length; start += DELETE_BATCH_SIZE) {
+      const batch = keys.slice(start, start + DELETE_BATCH_SIZE);
+      try {
+        const result = await this.client.send(
+          new DeleteObjectsCommand({
+            Bucket: this.bucket,
+            Delete: { Objects: batch.map((Key) => ({ Key })), Quiet: true },
+          }),
+        );
+        for (const error of result.Errors ?? []) {
+          this.logger.warn(`Could not delete ${error.Key}: ${error.Message}`);
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Could not delete ${batch.length} files: ${(error as Error).message}`,
+        );
       }
-    } catch (error) {
-      this.logger.warn(
-        `Could not delete ${keys.length} files: ${(error as Error).message}`,
-      );
     }
   }
 }

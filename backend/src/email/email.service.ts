@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   applicationDecisionEmailHtml,
   applicationDecisionSubject,
+  passwordChangedEmailHtml,
   passwordResetEmailHtml,
   verificationEmailHtml,
   type ApplicationDecisionEmail,
@@ -47,6 +48,18 @@ export class EmailService {
       html: passwordResetEmailHtml(input.fullName, input.code),
       tag: 'password_reset',
       developmentMessage: `Password reset code for ${input.email}: ${input.code}`,
+    });
+  }
+
+  // Tells the user that their password was changed while signed in, in
+  // case someone else did it.
+  async sendPasswordChanged(input: { email: string; fullName: string }) {
+    await this.sendTransactionalEmail({
+      to: input.email,
+      subject: 'Lozinka je promijenjena',
+      html: passwordChangedEmailHtml(input.fullName),
+      tag: 'password_changed',
+      developmentMessage: `Password changed email for ${input.email}`,
     });
   }
 

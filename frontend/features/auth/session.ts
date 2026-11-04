@@ -163,6 +163,20 @@ export function startSession(session: AuthResponse) {
   tellOtherTabs({ type: 'signed-in' });
 }
 
+// After the user changed their own name or role. Other tabs refresh, and
+// the refresh response carries the new user.
+export function updateSessionUser(user: AuthUser) {
+  notify(user);
+  tellOtherTabs({ type: 'signed-in' });
+}
+
+// After the account was deleted. The server has already ended the session
+// and cleared the cookie, so no logout request is sent.
+export function endDeletedSession() {
+  endSession();
+  tellOtherTabs({ type: 'signed-out' });
+}
+
 export function signOut() {
   endSession();
   tellOtherTabs({ type: 'signed-out' });

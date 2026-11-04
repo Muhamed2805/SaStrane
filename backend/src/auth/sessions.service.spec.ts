@@ -301,6 +301,22 @@ describe('SessionsService', () => {
     });
   });
 
+  it('revokes the other sessions of a user and keeps the current one', async () => {
+    await service.revokeOthers(
+      user.id,
+      'session-1',
+      SessionRevocationReason.PASSWORD_CHANGE,
+    );
+
+    expect(sessionRepository.updateMany).toHaveBeenCalledWith({
+      where: { userId: user.id, id: { not: 'session-1' }, revokedAt: null },
+      data: {
+        revokedAt: now,
+        revokedReason: SessionRevocationReason.PASSWORD_CHANGE,
+      },
+    });
+  });
+
   it('treats only an unrevoked, unexpired session of the user as active', async () => {
     sessionRepository.findFirst.mockResolvedValue({ id: 'session-1' });
 

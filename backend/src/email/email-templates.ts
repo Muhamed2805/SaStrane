@@ -67,6 +67,14 @@ export function passwordResetEmailHtml(fullName: string, code: string) {
   });
 }
 
+export function passwordChangedEmailHtml(fullName: string) {
+  return layout(
+    'Lozinka je promijenjena',
+    `<p style="${TEXT_STYLE}">Zdravo ${escapeHtml(fullName)}, lozinka tvog SaStrane računa je upravo promijenjena. Ostali uređaji su odjavljeni.</p>
+              <p style="${NOTE_STYLE};margin-top:20px">Ako ne prepoznaješ ovu promjenu, odmah postavi novu lozinku preko opcije „Zaboravljena lozinka“ u prozoru za prijavu.</p>`,
+  );
+}
+
 export type ApplicationDecisionEmail = {
   email: string;
   fullName: string;

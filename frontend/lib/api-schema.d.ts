@@ -198,6 +198,37 @@ export interface paths {
         get: operations["auth_me"];
         put?: never;
         post?: never;
+        /**
+         * Deletes the signed-in user's account after checking the password.
+         * @description Also deletes their jobs with photos, applications,
+         *     conversations and ratings, and clears the refresh cookie. This cannot
+         *     be undone.
+         */
+        delete: operations["account_deleteAccount"];
+        options?: never;
+        head?: never;
+        /**
+         * Changes the name or the role of the signed-in user.
+         * @description Fields that are left out stay as they are.
+         */
+        patch: operations["account_updateProfile"];
+        trace?: never;
+    };
+    "/api/auth/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sets a new password after checking the current one.
+         * @description Ends the user's other sessions and emails a notice. This
+         *     session stays signed in.
+         */
+        post: operations["account_changePassword"];
         delete?: never;
         options?: never;
         head?: never;
@@ -613,8 +644,8 @@ export interface components {
              * @description Set when the client needs to tell this error apart from others with the
              *     same status: EMAIL_NOT_VERIFIED, EMAIL_ALREADY_REGISTERED,
              *     EMAIL_VERIFICATION_PENDING, LISTING_CLOSED,
-             *     APPLICATION_ALREADY_DECIDED, INVALID_IMAGE or PHOTO_LIMIT_REACHED. The
-             *     other codes of a route are listed with its errors.
+             *     APPLICATION_ALREADY_DECIDED, INVALID_IMAGE, PHOTO_LIMIT_REACHED or
+             *     WRONG_PASSWORD. The other codes of a route are listed with its errors.
              */
             code?: string;
         };
@@ -680,6 +711,20 @@ export interface components {
         LoginDto: {
             /** Format: email */
             email: string;
+            password: string;
+        };
+        UpdateProfileDto: {
+            /** @description Whether the user posts jobs, applies to them, or both. */
+            role?: components["schemas"]["UserRole"];
+            fullName?: string;
+        };
+        ChangePasswordDto: {
+            currentPassword: string;
+            /** @description At least 8 characters and at most 72 bytes in UTF-8. */
+            newPassword: string;
+        };
+        DeleteAccountDto: {
+            /** @description The current password, to confirm that the owner deletes the account. */
             password: string;
         };
         /** @enum {string} */
@@ -1472,6 +1517,181 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PublicUserDto"];
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    account_deleteAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteAccountDto"];
+            };
+        };
+        responses: {
+            /** @description The account is deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A field is invalid, or the password is wrong (WRONG_PASSWORD). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    account_updateProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProfileDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicUserDto"];
+                };
+            };
+            /** @description A field is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    account_changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordDto"];
+            };
+        };
+        responses: {
+            /** @description The password is changed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A field is invalid, or the password is wrong (WRONG_PASSWORD). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
             /** @description The access token is missing or expired, or its session has ended. */

@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { StorageService } from '../storage/storage.service.js';
 import { AuthModule } from './auth.module.js';
 
 // Regression test: the JWT secret used to be read from process.env while the
@@ -42,6 +43,8 @@ describe('AuthModule', () => {
       ],
     })
       .overrideProvider(PrismaService)
+      .useValue({})
+      .overrideProvider(StorageService)
       .useValue({})
       .compile();
 

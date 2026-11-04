@@ -1367,4 +1367,157 @@ describe('App (e2e)', () => {
       expect(await prisma.listingPhoto.count()).toBe(0);
     });
   });
+
+  describe('account', () => {
+    function updateProfile(auth: string, body: object) {
+      return http().patch('/api/auth/me').set('Authorization', auth).send(body);
+    }
+
+    function changePassword(auth: string, body: object) {
+      return http()
+        .post('/api/auth/change-password')
+        .set('Authorization', auth)
+        .send(body);
+    }
+
+    function deleteAccount(auth: string, password: string) {
+      return http()
+        .delete('/api/auth/me')
+        .set('Authorization', auth)
+        .send({ password });
+    }
+
+    it('changes the name and the role', async () => {
+      const user = await createUser(prisma);
+      const { accessToken, cookie } = await login(user.email);
+      const auth = `Bearer ${accessToken}`;
+
+      const response = await updateProfile(auth, {
+        fullName: '  Amra Hodžić  ',
+        role: 'EXECUTOR',
+      }).expect(200);
+
+      expect(response.body).toMatchObject({
+        id: user.id,
+        email: user.email,
+        fullName: 'Amra Hodžić',
+        role: 'EXECUTOR',
+      });
+      // A field that is left out stays.
+      await updateProfile(auth, { role: 'BOTH' }).expect(200);
+      const refreshed = await refresh(cookie).expect(200);
+      expect(refreshed.body).toMatchObject({
+        user: { fullName: 'Amra Hodžić', role: 'BOTH' },
+      });
+
+      await updateProfile(auth, { fullName: 'A' }).expect(400);
+      await updateProfile(auth, { role: 'ADMIN' }).expect(400);
+      await updateProfile(auth, { email: 'new@example.com' }).expect(400);
+      await http().patch('/api/auth/me').send({ fullName: 'Amra' }).expect(401);
+    });
+
+    it('changes the password and signs out the other devices', async () => {
+      const user = await createUser(prisma);
+      const current = await login(user.email);
+      const other = await login(user.email);
+      const auth = `Bearer ${current.accessToken}`;
+
+      const wrong = await changePassword(auth, {
+        currentPassword: 'not-the-password',
+        newPassword: 'a-new-password',
+      }).expect(400);
+      expect(wrong.body).toMatchObject({ code: 'WRONG_PASSWORD' });
+      await changePassword(auth, {
+        currentPassword: PASSWORD,
+        newPassword: 'short',
+      }).expect(400);
+
+      await changePassword(auth, {
+        currentPassword: PASSWORD,
+        newPassword: 'a-new-password',
+      }).expect(204);
+
+      // This device stays signed in; the other one is out.
+      await me(current.accessToken).expect(200);
+      await refresh(current.cookie).expect(200);
+      await me(other.accessToken).expect(401);
+      await refresh(other.cookie).expect(401);
+      expect(
+        await prisma.session.findMany({
+          where: { revokedReason: 'PASSWORD_CHANGE' },
+        }),
+      ).toHaveLength(1);
+      expect(emails.passwordChanges).toEqual([user.email]);
+
+      await http()
+        .post('/api/auth/login')
+        .send({ email: user.email, password: PASSWORD })
+        .expect(401);
+      await login(user.email, 'a-new-password');
+    });
+
+    it('limits guesses at the current password', async () => {
+      const { auth } = await signedInUser();
+      const guess = { currentPassword: 'guess', newPassword: 'a-new-password' };
+
+      for (let i = 0; i < 5; i += 1) {
+        await changePassword(auth, guess).expect(400);
+      }
+      await changePassword(auth, guess).expect(429);
+    });
+
+    it('deletes the account with its jobs, photos and conversations', async () => {
+      const user = await createUser(prisma, { fullName: 'Amra Hodžić' });
+      const { accessToken, cookie } = await login(user.email);
+      const auth = `Bearer ${accessToken}`;
+      const executor = await signedInUser('Kenan Mehić');
+      const { id: listingId } = await postListing(auth);
+      await http()
+        .post(`/api/listings/${listingId}/photos`)
+        .set('Authorization', auth)
+        .attach(
+          'photo',
+          await sharp({
+            create: {
+              width: 800,
+              height: 600,
+              channels: 3,
+              background: '#fff',
+            },
+          })
+            .jpeg()
+            .toBuffer(),
+          { filename: 'a.jpg', contentType: 'image/jpeg' },
+        )
+        .expect(201);
+      await http()
+        .post('/api/conversations')
+        .set('Authorization', executor.auth)
+        .send({ listingId })
+        .expect(200);
+      const otherJob = await postListing(executor.auth);
+
+      const wrong = await deleteAccount(auth, 'not-the-password').expect(400);
+      expect(wrong.body).toMatchObject({ code: 'WRONG_PASSWORD' });
+      expect(await prisma.user.count()).toBe(2);
+
+      const deleted = await deleteAccount(auth, PASSWORD).expect(204);
+
+      expect(setCookieHeader(deleted)).toMatch(/Expires=Thu, 01 Jan 1970/);
+      expect(await prisma.user.findUnique({ where: { id: user.id } })).toBe(
+        null,
+      );
+      expect(await prisma.listing.count()).toBe(1);
+      expect(await prisma.conversation.count()).toBe(0);
+      expect(storage.files.size).toBe(0);
+      await me(accessToken).expect(401);
+      await refresh(cookie).expect(401);
+      await http()
+        .post('/api/auth/login')
+        .send({ email: user.email, password: PASSWORD })
+        .expect(401);
+      // Other users keep their own data.
+      await http().get(`/api/listings/${otherJob.id}`).expect(200);
+    });
+  });
 });

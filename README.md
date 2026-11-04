@@ -81,6 +81,11 @@ be both.
   existing session.
 - A sign-in survives page reloads, and signing out in one tab signs out the
   others.
+- Account settings: change the name and the role, or change the password
+  with the current one. A password change signs out the other devices and
+  sends a notice by email.
+- Delete the account with the password. This also deletes the user's jobs
+  and their photos, applications, conversations and ratings.
 
 ## Screenshots
 

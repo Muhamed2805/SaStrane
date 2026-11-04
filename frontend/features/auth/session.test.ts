@@ -282,6 +282,32 @@ describe('auth session', () => {
     );
   });
 
+  it('shows a changed name and keeps the access token', async () => {
+    session.startSession({ user, accessToken: 'token-1' });
+    const renamed = { ...user, fullName: 'New Name' };
+
+    session.updateSessionUser(renamed);
+
+    expect(changes.at(-1)).toEqual(renamed);
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, []));
+    await session.authRequest('/applications/my');
+    expect(requests()).toEqual(['GET /applications/my Bearer token-1']);
+  });
+
+  it('ends a deleted account without a logout request', async () => {
+    session.startSession({ user, accessToken: 'token-1' });
+    const otherTab = new FakeBroadcastChannel('sastrane:auth');
+    const messages: unknown[] = [];
+    otherTab.addEventListener('message', (event) => messages.push(event.data));
+
+    session.endDeletedSession();
+
+    expect(changes.at(-1)).toBeNull();
+    expect(storage.getItem('sastrane:signed-in')).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(messages).toEqual([{ type: 'signed-out' }]);
+  });
+
   it('works without Web Locks or storage', async () => {
     vi.stubGlobal('navigator', {});
     vi.stubGlobal('localStorage', undefined);

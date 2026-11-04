@@ -75,6 +75,19 @@ describe('StorageService', () => {
     await expect(service.delete(['a.webp'])).resolves.toBeUndefined();
   });
 
+  it('deletes more than 1000 files in batches', async () => {
+    send.mockResolvedValue({});
+    const keys = Array.from({ length: 2001 }, (_, i) => `${i}.webp`);
+
+    await service.delete(keys);
+
+    const sizes = send.mock.calls.map(
+      ([command]) =>
+        (command as DeleteObjectsCommand).input.Delete?.Objects?.length,
+    );
+    expect(sizes).toEqual([1000, 1000, 1]);
+  });
+
   it('sends nothing for an empty list', async () => {
     await service.delete([]);
     expect(send).not.toHaveBeenCalled();

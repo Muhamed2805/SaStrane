@@ -14,6 +14,7 @@ import {
   RefreshCw,
   Search,
   Send,
+  Settings,
 } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/store';
 import { ownedListingsQuery } from '@/features/listings/queries';
@@ -231,7 +232,16 @@ export default function ProfilePage() {
 
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <section className="rounded-2xl border bg-card p-6 shadow-sm">
-          <h2 className="text-lg font-bold">Podaci o profilu</h2>
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-lg font-bold">Podaci o profilu</h2>
+            <Link
+              href="/settings"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+            >
+              <Settings className="size-4" aria-hidden="true" />
+              Uredi
+            </Link>
+          </div>
           <dl className="mt-5 divide-y">
             <div className="flex items-center gap-4 py-4 first:pt-0">
               <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">

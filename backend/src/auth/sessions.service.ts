@@ -203,6 +203,19 @@ export class SessionsService {
     });
   }
 
+  // Ends every session of the user except the one that asked.
+  async revokeOthers(
+    userId: string,
+    keepSessionId: string,
+    reason: SessionRevocationReason,
+    db: Prisma.TransactionClient = this.prisma,
+  ) {
+    await db.session.updateMany({
+      where: { userId, id: { not: keepSessionId }, revokedAt: null },
+      data: { revokedAt: new Date(), revokedReason: reason },
+    });
+  }
+
   async isActive(sessionId: string, userId: string) {
     const session = await this.prisma.session.findFirst({
       where: {

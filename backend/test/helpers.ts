@@ -67,6 +67,7 @@ export class CapturingEmailService {
     clientName: string;
     accepted: boolean;
   }[] = [];
+  readonly passwordChanges: string[] = [];
 
   sendVerificationCode(input: { email: string; code: string }) {
     this.sent.push({ kind: 'verification', ...input });
@@ -96,6 +97,11 @@ export class CapturingEmailService {
     return Promise.resolve();
   }
 
+  sendPasswordChanged(input: { email: string }) {
+    this.passwordChanges.push(input.email);
+    return Promise.resolve();
+  }
+
   lastCode(kind: 'verification' | 'password-reset', email: string) {
     const message = this.sent
       .filter((item) => item.kind === kind && item.email === email)
@@ -107,6 +113,7 @@ export class CapturingEmailService {
   clear() {
     this.sent.length = 0;
     this.decisions.length = 0;
+    this.passwordChanges.length = 0;
   }
 }
 

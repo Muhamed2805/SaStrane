@@ -9,6 +9,7 @@ import {
   LogOut,
   Menu,
   Send,
+  Settings,
   UserRound,
   X,
 } from 'lucide-react';
@@ -68,6 +69,7 @@ const workspaceLinks = [
   { href: '/inbox?tab=listings', label: 'Moji oglasi', icon: ClipboardList },
   { href: '/inbox?tab=applications', label: 'Moje prijave', icon: Send },
   { href: '/inbox?tab=received', label: 'Primljene prijave', icon: Inbox },
+  { href: '/settings', label: 'Postavke naloga', icon: Settings },
 ];
 
 export function Navbar() {

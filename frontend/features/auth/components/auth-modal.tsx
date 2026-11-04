@@ -3,8 +3,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import {
   ArrowLeft,
-  BriefcaseBusiness,
-  Building2,
   CheckCircle2,
   Eye,
   EyeOff,
@@ -14,41 +12,12 @@ import {
   RefreshCw,
   ShieldCheck,
   UserRound,
-  UsersRound,
   X,
 } from 'lucide-react';
 import { BrandLogo } from '@/components/brand-logo';
 import { useAuthStore } from '../store';
-import type { RegisterPayload } from '../api';
+import { ROLE_OPTIONS, type UserRole } from '../roles';
 import { PasswordResetFlow } from './password-reset-flow';
-
-type UserRole = RegisterPayload['role'];
-
-const roles: Array<{
-  value: UserRole;
-  label: string;
-  description: string;
-  icon: typeof Building2;
-}> = [
-  {
-    value: 'CLIENT',
-    label: 'Tražim izvođače',
-    description: 'Želim objavljivati poslove.',
-    icon: Building2,
-  },
-  {
-    value: 'EXECUTOR',
-    label: 'Tražim poslove',
-    description: 'Želim se prijavljivati na oglase.',
-    icon: BriefcaseBusiness,
-  },
-  {
-    value: 'BOTH',
-    label: 'Oboje',
-    description: 'Želim objavljivati i raditi.',
-    icon: UsersRound,
-  },
-];
 
 const fieldClassName =
   'h-12 w-full rounded-lg border bg-background pr-4 pl-11 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:ring-3 focus:ring-primary/10';
@@ -517,7 +486,7 @@ export function AuthModal() {
                   Kako želiš koristiti SaStrane?
                 </legend>
                 <div className="mt-3 grid gap-2">
-                  {roles.map(({ value, label, description, icon: Icon }) => (
+                  {ROLE_OPTIONS.map(({ value, label, description, icon: Icon }) => (
                     <label
                       key={value}
                       className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors ${
