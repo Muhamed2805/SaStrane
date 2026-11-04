@@ -17,6 +17,7 @@ export type UpdateListingPayload = Schemas["UpdateListingDto"];
 export type ListingCategory = Schemas["ListingCategory"];
 export type ListingLocation = Schemas["ListingLocation"];
 export type ListingStatus = Schemas["ListingStatus"];
+export type ListingPhoto = Schemas["ListingPhotoDto"];
 
 export const listingsApi = {
   getAll: (params: GetAllListingsParams = {}, signal?: AbortSignal) => {
@@ -59,4 +60,27 @@ export const listingsApi = {
   // Answers 204 without a body.
   delete: (id: string) =>
     authRequest<null>(`/listings/${id}`, { method: "DELETE" }),
+
+  // The backend resizes the photo and converts it to WebP.
+  addPhoto: (listingId: string, file: File) => {
+    const body = new FormData();
+    body.append("photo", file);
+    return authRequest<ListingPhoto>(`/listings/${listingId}/photos`, {
+      method: "POST",
+      body,
+    });
+  },
+
+  // Answers 204 without a body.
+  deletePhoto: (listingId: string, photoId: string) =>
+    authRequest<null>(`/listings/${listingId}/photos/${photoId}`, {
+      method: "DELETE",
+    }),
+
+  // photoIds lists every photo of the job once. The first is the cover.
+  reorderPhotos: (listingId: string, photoIds: string[]) =>
+    authRequest<ListingPhoto[]>(`/listings/${listingId}/photos/order`, {
+      method: "PUT",
+      body: JSON.stringify({ photoIds }),
+    }),
 };

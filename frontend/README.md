@@ -68,6 +68,11 @@ of date.
   browser alike. Changes go to the URL with the History API, so they need no
   server round trip. Typing replaces the history entry, other changes add
   one, so Back steps through filters, not keystrokes.
+- **Photos.** The browser loads job photos straight from the storage's
+  public address. The backend already resizes them, so `next/image` shows
+  them with `unoptimized` and needs no allowed hosts. A new job's photos are
+  uploaded after the job is created. On the edit page, each photo change is
+  saved at once.
 - **Metadata.** The root layout sets the title template and link previews.
   The job detail page builds its title and description from the job. Pages
   with private data are `noindex`.
@@ -78,7 +83,7 @@ of date.
 | --- | --- |
 | `app/` | Routes: `/`, `/listings`, `/listings/[id]`, `/listings/create`, `/listings/[id]/edit`, `/inbox`, `/messages`, `/messages/[id]`, `/users/[id]`, `/profile`, `/login` |
 | `features/auth/` | The session: an in-memory access token, refresh on reload and on 401, and tab sync |
-| `features/listings/` | The job list, detail, form and API calls, and the names for the category and location codes |
+| `features/listings/` | The job list, detail, form, photos and API calls, and the names for the category and location codes |
 | `features/applications/` | Applying and the workspace |
 | `features/messages/` | Conversations, the unread count and the message thread |
 | `features/ratings/` | The rating dialog, stars and the public profile's reviews |

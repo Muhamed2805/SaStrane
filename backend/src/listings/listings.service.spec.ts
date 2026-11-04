@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { StorageService } from '../storage/storage.service.js';
 import { ListingsService } from './listings.service.js';
 
 describe('ListingsService', () => {
@@ -15,10 +16,31 @@ describe('ListingsService', () => {
     update: vi.fn(),
     delete: vi.fn(),
   };
-
-  const service = new ListingsService({
+  const photoRepository = { findMany: vi.fn() };
+  const prisma = {
     listing: listingRepository,
-  } as unknown as PrismaService);
+    listingPhoto: photoRepository,
+    $transaction: vi.fn((run: (tx: unknown) => unknown) => run(prisma)),
+  };
+  const storage = {
+    url: (key: string) => `https://photos.example/${key}`,
+    delete: vi.fn(),
+  };
+
+  const service = new ListingsService(
+    prisma as unknown as PrismaService,
+    storage as unknown as StorageService,
+  );
+
+  const photo = { id: 'photo-1', width: 1600, height: 1200 };
+  const photoDto = {
+    id: 'photo-1',
+    url: 'https://photos.example/listings/listing-1/photo-1.webp',
+    thumbnailUrl:
+      'https://photos.example/listings/listing-1/photo-1-thumb.webp',
+    width: 1600,
+    height: 1200,
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -61,6 +83,45 @@ describe('ListingsService', () => {
       );
       expect(listingRepository.count).toHaveBeenCalledWith({ where });
     });
+
+    it('turns the first photo into the cover with public URLs', async () => {
+      listingRepository.findMany.mockResolvedValue([
+        { id: 'listing-1', title: 'Košenje', photos: [photo] },
+        { id: 'listing-2', title: 'Selidba', photos: [] },
+      ]);
+      listingRepository.count.mockResolvedValue(2);
+
+      const page = await service.getAll({});
+
+      expect(page.items).toEqual([
+        { id: 'listing-1', title: 'Košenje', coverPhoto: photoDto },
+        { id: 'listing-2', title: 'Selidba', coverPhoto: null },
+      ]);
+      expect(listingRepository.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          select: expect.objectContaining({
+            photos: expect.objectContaining({ take: 1 }) as unknown,
+          }) as unknown,
+        }),
+      );
+    });
+  });
+
+  describe('getById', () => {
+    it('lists every photo, the cover first', async () => {
+      listingRepository.findUnique.mockResolvedValue({
+        id: 'listing-1',
+        description: null,
+        photos: [photo],
+      });
+
+      await expect(service.getById('listing-1')).resolves.toEqual({
+        id: 'listing-1',
+        description: null,
+        coverPhoto: photoDto,
+        photos: [photoDto],
+      });
+    });
   });
 
   describe('update', () => {
@@ -78,11 +139,14 @@ describe('ListingsService', () => {
       };
 
       listingRepository.findUnique.mockResolvedValue({ clientId: 'user-1' });
-      listingRepository.update.mockResolvedValue(updatedListing);
+      listingRepository.update.mockResolvedValue({
+        ...updatedListing,
+        photos: [],
+      });
 
       await expect(
         service.update('listing-1', { title: 'Updated title' }, 'user-1'),
-      ).resolves.toEqual(updatedListing);
+      ).resolves.toEqual({ ...updatedListing, coverPhoto: null, photos: [] });
 
       expect(listingRepository.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -121,11 +185,22 @@ describe('ListingsService', () => {
   describe('updateStatus', () => {
     it('closes a listing owned by the authenticated user', async () => {
       listingRepository.findUnique.mockResolvedValue({ clientId: 'user-1' });
-      listingRepository.update.mockResolvedValue({ status: 'CLOSED' });
+      listingRepository.update.mockResolvedValue({
+        id: 'listing-1',
+        status: 'CLOSED',
+        description: null,
+        photos: [],
+      });
 
       await expect(
         service.updateStatus('listing-1', { status: 'CLOSED' }, 'user-1'),
-      ).resolves.toEqual({ status: 'CLOSED' });
+      ).resolves.toEqual({
+        id: 'listing-1',
+        status: 'CLOSED',
+        description: null,
+        coverPhoto: null,
+        photos: [],
+      });
       expect(listingRepository.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'listing-1' },
@@ -152,6 +227,23 @@ describe('ListingsService', () => {
         NotFoundException,
       );
       expect(listingRepository.delete).not.toHaveBeenCalled();
+      expect(storage.delete).not.toHaveBeenCalled();
+    });
+
+    it('deletes the files of the photos after the job', async () => {
+      listingRepository.findUnique.mockResolvedValue({ clientId: 'user-1' });
+      photoRepository.findMany.mockResolvedValue([{ id: 'photo-1' }]);
+      listingRepository.delete.mockResolvedValue({});
+
+      await service.delete('listing-1', 'user-1');
+
+      expect(listingRepository.delete).toHaveBeenCalledWith({
+        where: { id: 'listing-1' },
+      });
+      expect(storage.delete).toHaveBeenCalledWith([
+        'listings/listing-1/photo-1.webp',
+        'listings/listing-1/photo-1-thumb.webp',
+      ]);
     });
   });
 });

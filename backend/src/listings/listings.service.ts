@@ -6,12 +6,18 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { StorageService } from '../storage/storage.service.js';
 import { CreateListingDto } from './dto/create-listing.dto.js';
 import { ListingsQueryDto } from './dto/listings-query.dto.js';
 import { UpdateListingDto } from './dto/update-listing.dto.js';
 import { UpdateListingStatusDto } from './dto/update-listing-status.dto.js';
+import { PHOTO_ORDER } from './photos/listing-photos.service.js';
+import { allPhotoKeys, toPhotoDto } from './photos/photo-keys.js';
 
-// The fields of ListingSummaryDto and ListingDto.
+const PHOTO_FIELDS = { id: true, width: true, height: true } as const;
+
+// The fields of ListingSummaryDto and ListingDto. The photos become URLs in
+// toSummary and toListing.
 const LISTING_SUMMARY_SELECT = {
   id: true,
   title: true,
@@ -21,16 +27,45 @@ const LISTING_SUMMARY_SELECT = {
   budget: true,
   createdAt: true,
   client: { select: { id: true, fullName: true } },
+  photos: { select: PHOTO_FIELDS, orderBy: PHOTO_ORDER, take: 1 },
 } satisfies Prisma.ListingSelect;
 
 const LISTING_SELECT = {
   ...LISTING_SUMMARY_SELECT,
   description: true,
+  photos: { select: PHOTO_FIELDS, orderBy: PHOTO_ORDER },
 } satisfies Prisma.ListingSelect;
+
+type SummaryRow = Prisma.ListingGetPayload<{
+  select: typeof LISTING_SUMMARY_SELECT;
+}>;
+type ListingRow = Prisma.ListingGetPayload<{ select: typeof LISTING_SELECT }>;
 
 @Injectable()
 export class ListingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
+
+  private toSummary({ photos, ...listing }: SummaryRow) {
+    const cover = photos.at(0);
+    return {
+      ...listing,
+      coverPhoto: cover ? toPhotoDto(this.storage, listing.id, cover) : null,
+    };
+  }
+
+  private toListing(listing: ListingRow) {
+    const photos = listing.photos.map((photo) =>
+      toPhotoDto(this.storage, listing.id, photo),
+    );
+    return {
+      ...this.toSummary(listing),
+      description: listing.description,
+      photos,
+    };
+  }
 
   async getAll(query: ListingsQueryDto) {
     const page = query.page ?? 1;
@@ -59,7 +94,13 @@ export class ListingsService {
       this.prisma.listing.count({ where }),
     ]);
 
-    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+    return {
+      items: items.map((item) => this.toSummary(item)),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async getById(id: string) {
@@ -70,17 +111,18 @@ export class ListingsService {
 
     if (!listing) throw new NotFoundException('Listing not found');
 
-    return listing;
+    return this.toListing(listing);
   }
 
   async create(dto: CreateListingDto, clientId: string) {
-    return this.prisma.listing.create({
+    const listing = await this.prisma.listing.create({
       data: {
         ...dto,
         clientId,
       },
       select: LISTING_SELECT,
     });
+    return this.toListing(listing);
   }
 
   async update(id: string, dto: UpdateListingDto, userId: string) {
@@ -90,11 +132,12 @@ export class ListingsService {
 
     await this.assertOwner(id, userId);
 
-    return this.prisma.listing.update({
+    const listing = await this.prisma.listing.update({
       where: { id },
       data: dto,
       select: LISTING_SELECT,
     });
+    return this.toListing(listing);
   }
 
   // Closing a job stops new applications. The client can still decide on
@@ -102,17 +145,32 @@ export class ListingsService {
   async updateStatus(id: string, dto: UpdateListingStatusDto, userId: string) {
     await this.assertOwner(id, userId);
 
-    return this.prisma.listing.update({
+    const listing = await this.prisma.listing.update({
       where: { id },
       data: { status: dto.status },
       select: LISTING_SELECT,
     });
+    return this.toListing(listing);
   }
 
+  // The photo rows go with the job. Their files are deleted after it.
   async delete(id: string, userId: string) {
     await this.assertOwner(id, userId);
 
-    await this.prisma.listing.delete({ where: { id } });
+    const photos = await this.prisma.$transaction(async (tx) => {
+      const rows = await tx.listingPhoto.findMany({
+        where: { listingId: id },
+        select: { id: true },
+      });
+      await tx.listing.delete({ where: { id } });
+      return rows;
+    });
+    await this.storage.delete(
+      allPhotoKeys(
+        id,
+        photos.map((photo) => photo.id),
+      ),
+    );
   }
 
   private async assertOwner(id: string, userId: string) {

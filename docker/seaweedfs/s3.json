@@ -1,0 +1,15 @@
+{
+  "identities": [
+    {
+      "name": "sastrane",
+      "credentials": [
+        { "accessKey": "sastrane", "secretKey": "sastrane-local-secret" }
+      ],
+      "actions": ["Admin", "Read", "List", "Write", "Tagging"]
+    },
+    {
+      "name": "anonymous",
+      "actions": ["Read:sastrane-photos"]
+    }
+  ]
+}

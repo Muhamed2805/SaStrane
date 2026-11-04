@@ -12,6 +12,7 @@ import {
   ListingForm,
   type ListingFormResult,
 } from '@/features/listings/components/listing-form';
+import { ListingPhotosEditor } from '@/features/listings/components/listing-photos-editor';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function EditListingPage() {
@@ -144,6 +145,8 @@ export default function EditListingPage() {
         submitLabel="Sačuvaj izmjene"
         submittingLabel="Čuvam..."
         cancelHref={`/listings/${id}`}
+        photos={<ListingPhotosEditor listing={listing} userId={user.id} />}
+        photosNote="Promjene slika se čuvaju odmah, bez dugmeta Sačuvaj izmjene."
         onSubmit={handleSubmit}
       />
     </div>

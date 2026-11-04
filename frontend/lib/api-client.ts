@@ -17,6 +17,7 @@ const STATUS_MESSAGES: Partial<Record<number, string>> = {
   403: 'Nemaš dozvolu za ovu radnju.',
   404: 'Traženi sadržaj nije pronađen.',
   409: 'Zahtjev nije moguće izvršiti zbog konflikta podataka.',
+  413: 'Datoteka je prevelika. Slika može imati najviše 5 MB.',
   429: 'Previše pokušaja. Sačekaj malo pa pokušaj ponovo.',
 };
 
@@ -99,7 +100,12 @@ export async function apiRequest<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const headers = new Headers(options.headers);
-  if (options.body && !headers.has('Content-Type')) {
+  // The browser sets the type of a FormData body itself, with the boundary.
+  if (
+    options.body &&
+    !(options.body instanceof FormData) &&
+    !headers.has('Content-Type')
+  ) {
     headers.set('Content-Type', 'application/json');
   }
 

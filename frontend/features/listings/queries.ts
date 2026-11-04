@@ -5,7 +5,12 @@ import {
 } from '@tanstack/react-query';
 import { nextPageParam, WORKSPACE_PAGE_SIZE } from '@/lib/paging';
 import { USER_SCOPE } from '@/lib/query-client';
-import { listingsApi, type GetAllListingsParams, type Listing } from './api';
+import {
+  listingsApi,
+  type GetAllListingsParams,
+  type Listing,
+  type ListingPhoto,
+} from './api';
 
 export const listingKeys = {
   all: ['listings'] as const,
@@ -52,6 +57,22 @@ export function listingSaved(
   listing: Listing,
 ) {
   queryClient.setQueryData(listingKeys.detail(listing.id), listing);
+  void queryClient.invalidateQueries({ queryKey: listingKeys.lists() });
+  void queryClient.invalidateQueries({ queryKey: listingKeys.owned(userId) });
+}
+
+// After the photos of a job changed. The first photo is the cover.
+export function listingPhotosSaved(
+  queryClient: QueryClient,
+  userId: string,
+  listingId: string,
+  photos: ListingPhoto[],
+) {
+  queryClient.setQueryData<Listing>(listingKeys.detail(listingId), (listing) =>
+    listing
+      ? { ...listing, photos, coverPhoto: photos.at(0) ?? null }
+      : listing,
+  );
   void queryClient.invalidateQueries({ queryKey: listingKeys.lists() });
   void queryClient.invalidateQueries({ queryKey: listingKeys.owned(userId) });
 }

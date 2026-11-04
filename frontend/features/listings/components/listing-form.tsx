@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   Banknote,
@@ -46,6 +46,11 @@ type ListingFormProps = {
   submitLabel: string;
   submittingLabel: string;
   cancelHref: string;
+  // The photo field, which keeps its own state.
+  photos?: ReactNode;
+  photosNote?: string;
+  // Changes outside the fields, such as picked photos, for the leave warning.
+  hasOtherChanges?: boolean;
   onSubmit: (values: ListingFormResult) => Promise<void>;
 };
 
@@ -65,6 +70,9 @@ export function ListingForm({
   submitLabel,
   submittingLabel,
   cancelHref,
+  photos,
+  photosNote,
+  hasOtherChanges = false,
   onSubmit,
 }: ListingFormProps) {
   const [initialSnapshot] = useState(initialValues);
@@ -73,10 +81,11 @@ export function ListingForm({
   const [error, setError] = useState<string | null>(null);
   const isDirty = useMemo(
     () =>
+      hasOtherChanges ||
       (Object.keys(values) as Array<keyof ListingFormValues>).some(
         (field) => values[field] !== initialSnapshot[field],
       ),
-    [initialSnapshot, values],
+    [hasOtherChanges, initialSnapshot, values],
   );
 
   useEffect(() => {
@@ -316,6 +325,23 @@ export function ListingForm({
             </p>
           </div>
 
+          {photos ? (
+            <div>
+              <p className="text-sm font-semibold">
+                Slike{' '}
+                <span className="font-normal text-muted-foreground">
+                  (opcionalno)
+                </span>
+              </p>
+              {photosNote ? (
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {photosNote}
+                </p>
+              ) : null}
+              <div className="mt-3">{photos}</div>
+            </div>
+          ) : null}
+
           {error ? (
             <div
               className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
@@ -364,6 +390,7 @@ export function ListingForm({
               'Jasno objasni šta treba uraditi.',
               'Navedi lokaciju i očekivani rok.',
               'Dodaj realan okvirni budžet.',
+              'Slika posla pomaže izvođačima da ga procijene.',
               'Odgovori izvođačima na vrijeme.',
             ].map((tip) => (
               <li

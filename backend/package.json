@@ -8,13 +8,14 @@
   "type": "module",
   "scripts": {
     "build": "nest build",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"prisma/**/*.ts\" prisma.config.ts vitest.config.ts",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"prisma/**/*.ts\" \"scripts/**/*.ts\" prisma.config.ts vitest.config.ts",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main.js",
     "openapi": "nest build && node dist/openapi/generate.js",
-    "lint": "eslint \"{src,apps,libs,test,prisma}/**/*.ts\" prisma.config.ts vitest.config.ts",
+    "storage:init": "tsx scripts/storage-init.ts",
+    "lint": "eslint \"{src,apps,libs,test,prisma,scripts}/**/*.ts\" prisma.config.ts vitest.config.ts",
     "lint:fix": "npm run lint -- --fix",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --project unit",
@@ -24,6 +25,7 @@
     "test:e2e": "vitest run --project e2e"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1153.0",
     "@nestjs/common": "^12.3.2",
     "@nestjs/config": "^12.0.1",
     "@nestjs/core": "^12.3.2",
@@ -42,7 +44,8 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "sharp": "0.35.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.7",
@@ -54,6 +57,7 @@
     "@types/bcrypt": "^6.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
+    "@types/multer": "^2.3.0",
     "@types/node": "^24.19.2",
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^7.2.1",

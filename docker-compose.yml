@@ -1,11 +1,13 @@
-# Local PostgreSQL for development and the backend end-to-end tests.
+# Local PostgreSQL for development and the backend end-to-end tests, and
+# SeaweedFS as the S3 storage for job photos.
 #
-#   docker compose up -d     start it in the background
-#   docker compose down      stop it and keep the data
-#   docker compose down -v   stop it and delete the data
+#   docker compose up -d     start both in the background
+#   docker compose down      stop them and keep the data
+#   docker compose down -v   stop them and delete the data
 #
-# The port is published on 127.0.0.1 only, so the fixed password is never
-# reachable from the network. Set POSTGRES_PORT when 5432 is taken.
+# The ports are published on 127.0.0.1 only, so the fixed passwords are never
+# reachable from the network. Set POSTGRES_PORT or STORAGE_PORT when 5432 or
+# 8333 is taken.
 name: sastrane
 
 services:
@@ -25,5 +27,26 @@ services:
       timeout: 5s
       retries: 15
 
+  # S3 API on port 8333. docker/seaweedfs/s3.json holds the backend's key
+  # and lets anyone read the photos bucket, as a public bucket does in
+  # production. Create the bucket once with `npm run storage:init` in
+  # backend/.
+  storage:
+    image: chrislusf/seaweedfs:4.48
+    command: >-
+      server -dir=/data -master.volumeSizeLimitMB=1024
+      -s3 -s3.config=/etc/seaweedfs/s3.json
+    ports:
+      - "127.0.0.1:${STORAGE_PORT:-8333}:8333"
+    volumes:
+      - storage-data:/data
+      - ./docker/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8333/healthz"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
 volumes:
   db-data:
+  storage-data:

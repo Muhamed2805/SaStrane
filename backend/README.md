@@ -6,14 +6,15 @@ architecture and setup of the whole project, see the
 
 ## Setup
 
-Start the database first with `docker compose up -d` in the repository
-root. Then run:
+Start the database and the photo storage first with `docker compose up -d`
+in the repository root. Then run:
 
 ```bash
 cp .env.example .env
 npm install
 npx prisma generate
 npx prisma migrate deploy
+npm run storage:init
 npx prisma db seed
 npm run start:dev
 ```
@@ -41,6 +42,13 @@ CLI. Variables already set in the environment win.
 | `RESEND_API_KEY` | In production | | When it is empty in development, the backend prints email codes and notices in the terminal instead of sending them. |
 | `EMAIL_FROM` | In production | | For example `SaStrane <noreply@your-domain.com>`. |
 | `EMAIL_VERIFICATION_SECRET` | In production | | Hashes the email codes. At least 32 characters, and different from `JWT_SECRET`. |
+| `S3_ENDPOINT` | No | `http://localhost:8333` | The S3 API of the photo storage. Leave it empty for AWS S3. For Cloudflare R2: `https://<account-id>.r2.cloudflarestorage.com`. |
+| `S3_REGION` | No | `us-east-1`, or `auto` in production | `auto` for R2. |
+| `S3_BUCKET` | In production | `sastrane-photos` | |
+| `S3_ACCESS_KEY_ID` | In production | The SeaweedFS key | |
+| `S3_SECRET_ACCESS_KEY` | In production | The SeaweedFS secret | |
+| `S3_FORCE_PATH_STYLE` | No | `true`, or `false` in production | `true` puts the bucket in the URL path (SeaweedFS, MinIO), `false` in the host name (AWS S3). |
+| `S3_PUBLIC_URL` | In production | `http://localhost:8333/sastrane-photos` | Where browsers load the photos: the bucket's public address, such as an R2 custom domain. The bucket must allow anonymous reads. |
 
 ## Scripts
 
@@ -55,6 +63,7 @@ CLI. Variables already set in the environment win.
 | `npm run test:e2e` | Runs HTTP tests against the whole app and a real PostgreSQL. |
 | `npm run test:cov` | Runs the unit tests with coverage. |
 | `npm run openapi` | Builds the app and writes the API contract to `openapi.json`. |
+| `npm run storage:init` | Creates the photo bucket when it is missing. |
 
 ## ES modules
 
@@ -83,7 +92,7 @@ after every install and every schema change.
 | Create a migration after a schema change | `npx prisma migrate dev --name <change>` |
 | Check that the database matches the migrations | `npx prisma migrate status` |
 | Browse the data | `npx prisma studio` |
-| Start over with an empty database | `docker compose down -v`, then `docker compose up -d` and migrate again |
+| Start over with an empty database | `docker compose down -v`, then `docker compose up -d`, migrate again and run `npm run storage:init` |
 
 The seed in `prisma/seed.ts` adds four users, ten jobs, seven applications,
 two ratings and three conversations. Every demo user signs in with
@@ -145,7 +154,10 @@ two sides of the conversation.
 | `POST` | `/api/listings` | Bearer | Creates a job and returns it like `GET /api/listings/:id`. |
 | `PATCH` | `/api/listings/:id` | Owner | Updates a job. |
 | `PATCH` | `/api/listings/:id/status` | Owner | Opens or closes a job. |
-| `DELETE` | `/api/listings/:id` | Owner | Deletes a job and its applications. Returns 204. |
+| `DELETE` | `/api/listings/:id` | Owner | Deletes a job with its applications and photos. Returns 204. |
+| `POST` | `/api/listings/:id/photos` | Owner | Adds a photo: `multipart/form-data` with the file in `photo`. |
+| `PUT` | `/api/listings/:id/photos/order` | Owner | Sets the order of the photos. The first is the cover. |
+| `DELETE` | `/api/listings/:id/photos/:photoId` | Owner | Deletes a photo. Returns 204. |
 | `POST` | `/api/applications` | Bearer | Applies to a job, once per job. |
 | `GET` | `/api/applications/my` | Bearer | Lists the applications you sent. |
 | `GET` | `/api/applications/my/listing-ids` | Bearer | Lists the IDs of the jobs you applied to. |
@@ -180,6 +192,25 @@ two sides of the conversation.
 - After a decision, the executor gets an email with the result and a link
   to the job. It is sent after the response. A failed email is logged, and
   the decision stays.
+
+**Photos.**
+- A job has up to five photos. A sixth returns 409 with the code
+  `PHOTO_LIMIT_REACHED`.
+- A photo is a JPG, PNG, WebP or AVIF file of up to 5 MB. A larger file
+  returns 413, and a file that is not such an image returns 400 with the
+  code `INVALID_IMAGE`. The file's name and type are not trusted: only what
+  decodes is saved.
+- The backend turns the photo upright, drops its EXIF data, such as the GPS
+  position, and saves two WebP versions: up to 1600 pixels for `url` and up
+  to 640 pixels for `thumbnailUrl`. `width` and `height` are the large
+  version's size.
+- Jobs return their photos in `photos`, the cover first. Lists return only
+  the cover, in `coverPhoto`, which is `null` when a job has no photos.
+- The files are stored under `listings/<job id>/<photo id>.webp`, and never
+  change. They are served with a one-year cache lifetime.
+- The files are deleted after their row. When that fails, the API logs it
+  and the files stay unused in the bucket.
+- When the storage is down, an upload returns 503.
 
 **Conversations.**
 - There is one conversation per job and user, between the job's client and

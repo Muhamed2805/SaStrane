@@ -49,6 +49,21 @@ describe('apiRequest', () => {
     expect(new Headers(options.headers).has('Content-Type')).toBe(false);
   });
 
+  it('leaves the content type of a file upload to the browser', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({}), { status: 201 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const body = new FormData();
+    body.append('photo', new Blob(['x'], { type: 'image/jpeg' }), 'a.jpg');
+
+    await apiRequest('/listings/1/photos', { method: 'POST', body });
+
+    const [, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(new Headers(options.headers).has('Content-Type')).toBe(false);
+    expect(options.body).toBe(body);
+  });
+
   it('joins backend validation messages for a bad request', async () => {
     vi.stubGlobal(
       'fetch',

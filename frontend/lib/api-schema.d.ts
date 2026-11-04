@@ -267,6 +267,62 @@ export interface paths {
         patch: operations["listings_updateStatus"];
         trace?: never;
     };
+    "/api/listings/{id}/photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Adds a photo to the user's own job.
+         * @description Send the file as `photo` in a multipart form, up to 5 MB, as
+         *     JPG, PNG, WebP or AVIF. The API stores two WebP versions without the
+         *     EXIF data. A job takes up to five photos; the first one is the cover.
+         */
+        post: operations["listingPhotos_add"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/listings/{id}/photos/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Sets the order of the photos of the user's own job. */
+        put: operations["listingPhotos_reorder"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/listings/{id}/photos/{photoId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Deletes a photo of the user's own job. */
+        delete: operations["listingPhotos_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/applications": {
         parameters: {
             query?: never;
@@ -556,8 +612,9 @@ export interface components {
             /**
              * @description Set when the client needs to tell this error apart from others with the
              *     same status: EMAIL_NOT_VERIFIED, EMAIL_ALREADY_REGISTERED,
-             *     EMAIL_VERIFICATION_PENDING, LISTING_CLOSED or
-             *     APPLICATION_ALREADY_DECIDED.
+             *     EMAIL_VERIFICATION_PENDING, LISTING_CLOSED,
+             *     APPLICATION_ALREADY_DECIDED, INVALID_IMAGE or PHOTO_LIMIT_REACHED. The
+             *     other codes of a route are listed with its errors.
              */
             code?: string;
         };
@@ -631,6 +688,16 @@ export interface components {
         ListingLocation: "SARAJEVO" | "ILIDZA" | "STUP" | "VOGOSCA" | "MOSTAR" | "BANJA_LUKA" | "TUZLA" | "ZENICA";
         /** @enum {string} */
         ListingStatus: "OPEN" | "CLOSED";
+        ListingPhotoDto: {
+            id: string;
+            /** @description At most 1600 pixels on the longest side. */
+            url: string;
+            /** @description At most 640 pixels on the longest side, for lists. */
+            thumbnailUrl: string;
+            /** @description The size of the image at `url`, in pixels. */
+            width: number;
+            height: number;
+        };
         ListingClientDto: {
             id: string;
             fullName: string;
@@ -640,6 +707,8 @@ export interface components {
             location: components["schemas"]["ListingLocation"];
             /** @description Only OPEN jobs take applications. */
             status: components["schemas"]["ListingStatus"];
+            /** @description The first photo, or null when the job has none. */
+            coverPhoto: components["schemas"]["ListingPhotoDto"] | null;
             id: string;
             title: string;
             /** @description In whole KM. Null means the price is agreed later. */
@@ -664,6 +733,8 @@ export interface components {
             location: components["schemas"]["ListingLocation"];
             /** @description Only OPEN jobs take applications. */
             status: components["schemas"]["ListingStatus"];
+            /** @description The first photo, or null when the job has none. */
+            coverPhoto: components["schemas"]["ListingPhotoDto"] | null;
             id: string;
             title: string;
             /** @description In whole KM. Null means the price is agreed later. */
@@ -672,6 +743,8 @@ export interface components {
             createdAt: string;
             client: components["schemas"]["ListingClientDto"];
             description: string | null;
+            /** @description Up to five, the cover first. */
+            photos: components["schemas"]["ListingPhotoDto"][];
         };
         CreateListingDto: {
             category: components["schemas"]["ListingCategory"];
@@ -691,6 +764,10 @@ export interface components {
         };
         UpdateListingStatusDto: {
             status: components["schemas"]["ListingStatus"];
+        };
+        ReorderPhotosDto: {
+            /** @description Every photo of the job, in the new order. The first is the cover. */
+            photoIds: string[];
         };
         CreateApplicationDto: {
             listingId: string;
@@ -1019,7 +1096,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1069,7 +1146,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1119,7 +1196,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1169,7 +1246,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1219,7 +1296,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1287,7 +1364,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1333,7 +1410,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1369,7 +1446,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1415,7 +1492,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1470,7 +1547,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1529,7 +1606,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1577,7 +1654,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1641,7 +1718,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1720,7 +1797,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1799,7 +1876,251 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    listingPhotos_add: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    photo: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListingPhotoDto"];
+                };
+            };
+            /** @description The file is missing, or it is not a JPG, PNG, WebP or AVIF image (INVALID_IMAGE). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The job belongs to another user. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The job does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The job has five photos already (PHOTO_LIMIT_REACHED). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The file is larger than 5 MB. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The database or the photo storage is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    listingPhotos_reorder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderPhotosDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListingPhotoDto"][];
+                };
+            };
+            /** @description photoIds does not list every photo of the job exactly once. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The job belongs to another user. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The job does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    listingPhotos_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                photoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The job belongs to another user. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The job or the photo does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1885,7 +2206,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1931,7 +2252,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -1989,7 +2310,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -2047,7 +2368,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -2113,7 +2434,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -2201,7 +2522,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -2287,7 +2608,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -2335,7 +2656,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -2395,7 +2716,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -2453,7 +2774,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -2539,7 +2860,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -2585,7 +2906,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -2651,7 +2972,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -2730,7 +3051,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -2809,7 +3130,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -2873,7 +3194,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The database or the email service is unavailable. */
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
             503: {
                 headers: {
                     [name: string]: unknown;
