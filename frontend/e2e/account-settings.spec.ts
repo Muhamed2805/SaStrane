@@ -10,6 +10,7 @@ const user = {
   email: 'amra@example.com',
   fullName: 'Amra Hodžić',
   role: 'CLIENT',
+  emailNotifications: true,
   createdAt: '2026-09-15T12:00:00.000Z',
 };
 
@@ -104,6 +105,26 @@ test('changes the name and the role', async ({ page }) => {
     page.getByRole('button', { name: /Amra H\./ }).first(),
   ).toBeVisible();
   await expect(save).toBeDisabled();
+});
+
+test('turns the email notifications off and on', async ({ page }) => {
+  const state = await mockAccountApi(page);
+  await page.goto('/settings');
+
+  const toggle = page.getByRole('switch', { name: 'Email obavijesti' });
+  await expect(toggle).toBeChecked();
+
+  await toggle.click();
+  await expect(page.getByText('Email obavijesti su isključene.')).toBeVisible();
+  await expect(toggle).not.toBeChecked();
+
+  await toggle.click();
+  await expect(page.getByText('Email obavijesti su uključene.')).toBeVisible();
+  await expect(toggle).toBeChecked();
+  expect(state.requests.map(({ body }) => body)).toEqual([
+    { emailNotifications: false },
+    { emailNotifications: true },
+  ]);
 });
 
 test('changes the password after checking the fields', async ({ page }) => {

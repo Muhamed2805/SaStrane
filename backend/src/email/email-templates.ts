@@ -111,3 +111,89 @@ export function applicationDecisionEmailHtml(input: ApplicationDecisionEmail) {
               ${button(input.listingsUrl, 'Pronađi drugi posao')}`,
   );
 }
+
+// The footer of the activity emails, which the user can turn off.
+function settingsNote(settingsUrl: string) {
+  return `<p style="${NOTE_STYLE};margin-top:8px;font-size:12px">Ove obavijesti možeš isključiti u <a href="${escapeHtml(settingsUrl)}" style="color:#0b746b">postavkama naloga</a>.</p>`;
+}
+
+// A quoted message, shortened to EXCERPT_LENGTH characters.
+const EXCERPT_LENGTH = 300;
+
+function quote(text: string) {
+  const trimmed = text.trim();
+  const excerpt =
+    trimmed.length > EXCERPT_LENGTH
+      ? `${trimmed.slice(0, EXCERPT_LENGTH).trimEnd()}…`
+      : trimmed;
+  return `<blockquote style="margin:20px 0 0;padding:12px 16px;border-left:3px solid #0f9f91;background:#f4f7f6;border-radius:8px;color:#1c2c33;line-height:1.6;white-space:pre-line">${escapeHtml(excerpt)}</blockquote>`;
+}
+
+// Whole KM with a dot between thousands, as on the site.
+export function formatPrice(price: number | null) {
+  if (price === null) return 'po dogovoru';
+  return `${String(price).replace(/\B(?=(\d{3})+(?!\d))/g, '.')} KM`;
+}
+
+export type NewApplicationEmail = {
+  fullName: string;
+  listingTitle: string;
+  executorName: string;
+  proposedPrice: number | null;
+  message: string;
+  // Absolute links into the web app.
+  applicationsUrl: string;
+  settingsUrl: string;
+};
+
+export function newApplicationSubject(input: { listingTitle: string }) {
+  return `Nova prijava za oglas „${input.listingTitle}“`;
+}
+
+export function newApplicationEmailHtml(input: NewApplicationEmail) {
+  return layout(
+    'Nova prijava na tvoj oglas',
+    `<p style="${TEXT_STYLE}">Zdravo ${escapeHtml(input.fullName)}, stigla je nova prijava za oglas „${escapeHtml(input.listingTitle)}“.</p>
+              <p style="${TEXT_STYLE};margin-top:12px"><strong>Izvođač:</strong> ${escapeHtml(input.executorName)}<br><strong>Predložena cijena:</strong> ${formatPrice(input.proposedPrice)}</p>
+              ${quote(input.message)}
+              ${button(input.applicationsUrl, 'Pogledaj prijave')}
+              ${settingsNote(input.settingsUrl)}`,
+  );
+}
+
+// "1 nepročitana poruka", "3 nepročitane poruke", "5 nepročitanih poruka".
+export function unreadMessagesText(count: number) {
+  const lastTwo = count % 100;
+  const last = count % 10;
+  if (last === 1 && lastTwo !== 11) return `${count} nepročitana poruka`;
+  if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) {
+    return `${count} nepročitane poruke`;
+  }
+  return `${count} nepročitanih poruka`;
+}
+
+export type UnreadMessagesEmail = {
+  fullName: string;
+  listingTitle: string;
+  senderName: string;
+  unreadCount: number;
+  lastMessage: string;
+  // Absolute links into the web app.
+  conversationUrl: string;
+  settingsUrl: string;
+};
+
+export function unreadMessagesSubject(input: { listingTitle: string }) {
+  return `Nova poruka o oglasu „${input.listingTitle}“`;
+}
+
+export function unreadMessagesEmailHtml(input: UnreadMessagesEmail) {
+  return layout(
+    'Imaš novu poruku',
+    `<p style="${TEXT_STYLE}">Zdravo ${escapeHtml(input.fullName)}, u razgovoru o oglasu „${escapeHtml(input.listingTitle)}“ čeka te ${unreadMessagesText(input.unreadCount)}. Posljednja poruka (${escapeHtml(input.senderName)}):</p>
+              ${quote(input.lastMessage)}
+              ${button(input.conversationUrl, 'Otvori razgovor')}
+              <p style="${NOTE_STYLE}">Za ovaj razgovor nema novih emailova dok ga ne otvoriš.</p>
+              ${settingsNote(input.settingsUrl)}`,
+  );
+}

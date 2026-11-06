@@ -9,6 +9,7 @@ const user: AuthUser = {
   email: 'user@example.com',
   fullName: 'Test User',
   role: 'BOTH',
+  emailNotifications: true,
   createdAt: '2026-09-15T12:00:00.000Z',
 };
 

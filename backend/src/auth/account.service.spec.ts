@@ -94,7 +94,11 @@ describe('AccountService', () => {
 
       expect(userRepository.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { fullName: undefined, role: UserRole.EXECUTOR },
+        data: {
+          fullName: undefined,
+          role: UserRole.EXECUTOR,
+          emailNotifications: undefined,
+        },
         select: PUBLIC_USER_SELECT,
       });
     });

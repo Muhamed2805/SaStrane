@@ -102,7 +102,15 @@ export class ApplicationsService {
   async create(dto: CreateApplicationDto, executorId: string) {
     const listing = await this.prisma.listing.findUnique({
       where: { id: dto.listingId },
-      select: { id: true, clientId: true, status: true },
+      select: {
+        id: true,
+        clientId: true,
+        status: true,
+        title: true,
+        client: {
+          select: { email: true, fullName: true, emailNotifications: true },
+        },
+      },
     });
 
     if (!listing) throw new NotFoundException('Listing not found');
@@ -116,15 +124,19 @@ export class ApplicationsService {
       });
     }
 
+    let created;
     try {
-      return await this.prisma.application.create({
+      created = await this.prisma.application.create({
         data: {
           listingId: dto.listingId,
           executorId,
           message: dto.message,
           proposedPrice: dto.proposedPrice,
         },
-        select: APPLICATION_SELECT,
+        select: {
+          ...APPLICATION_SELECT,
+          executor: { select: { fullName: true } },
+        },
       });
     } catch (error) {
       if (
@@ -135,6 +147,27 @@ export class ApplicationsService {
       }
       throw error;
     }
+
+    const { executor, ...application } = created;
+    if (listing.client.emailNotifications) {
+      // Like the decision email: sent after the response, and a failure
+      // does not undo the application.
+      this.email
+        .sendNewApplication({
+          email: listing.client.email,
+          fullName: listing.client.fullName,
+          listingTitle: listing.title,
+          executorName: executor.fullName,
+          proposedPrice: application.proposedPrice,
+          message: application.message,
+        })
+        .catch((error: unknown) => {
+          this.logger.error(
+            `New application email for ${application.id} failed: ${(error as Error).message}`,
+          );
+        });
+    }
+    return application;
   }
 
   async getAppliedListingIds(executorId: string) {
@@ -224,6 +257,7 @@ export class ApplicationsService {
     const application = await this.prisma.application.findUnique({
       where: { id },
       select: {
+        executor: { select: { emailNotifications: true } },
         listing: {
           select: {
             clientId: true,
@@ -260,20 +294,22 @@ export class ApplicationsService {
 
     // The decision is already saved, so a failed email must not fail the
     // request. The client does not wait for the email provider either.
-    this.email
-      .sendApplicationDecision({
-        email: decided.executor.email,
-        fullName: decided.executor.fullName,
-        listingId: decided.listingId,
-        listingTitle: application.listing.title,
-        clientName: application.listing.client.fullName,
-        accepted: decided.status === ApplicationStatus.ACCEPTED,
-      })
-      .catch((error: unknown) => {
-        this.logger.error(
-          `Application decision email for ${id} failed: ${(error as Error).message}`,
-        );
-      });
+    if (application.executor.emailNotifications) {
+      this.email
+        .sendApplicationDecision({
+          email: decided.executor.email,
+          fullName: decided.executor.fullName,
+          listingId: decided.listingId,
+          listingTitle: application.listing.title,
+          clientName: application.listing.client.fullName,
+          accepted: decided.status === ApplicationStatus.ACCEPTED,
+        })
+        .catch((error: unknown) => {
+          this.logger.error(
+            `Application decision email for ${id} failed: ${(error as Error).message}`,
+          );
+        });
+    }
 
     return forClient(
       decided,

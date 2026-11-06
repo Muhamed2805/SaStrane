@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ArrowLeft, LockKeyhole } from 'lucide-react';
 import { DeleteAccount } from '@/features/account/components/delete-account';
+import { NotificationSettings } from '@/features/account/components/notification-settings';
 import { PasswordSettings } from '@/features/account/components/password-settings';
 import { ProfileSettings } from '@/features/account/components/profile-settings';
 import { useAuthStore } from '@/features/auth/store';
@@ -58,12 +59,14 @@ export default function SettingsPage() {
           Postavke naloga
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Uredi podatke o profilu, promijeni lozinku ili obriši nalog.
+          Uredi podatke o profilu i obavijesti, promijeni lozinku ili obriši
+          nalog.
         </p>
       </div>
 
       {/* A change from another tab resets the form to the saved values. */}
       <ProfileSettings key={`${user.fullName}:${user.role}`} user={user} />
+      <NotificationSettings user={user} />
       <PasswordSettings />
       <DeleteAccount />
     </div>

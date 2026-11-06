@@ -150,7 +150,7 @@ two sides of the conversation.
 | `POST` | `/api/auth/refresh` | Cookie | Rotates the refresh token and returns a new access token. |
 | `POST` | `/api/auth/logout` | Cookie | Revokes the session. |
 | `GET` | `/api/auth/me` | Bearer | Returns the signed-in user. |
-| `PATCH` | `/api/auth/me` | Bearer | Changes the user's name or role. |
+| `PATCH` | `/api/auth/me` | Bearer | Changes the user's name, role or `emailNotifications`. |
 | `POST` | `/api/auth/change-password` | Bearer | Checks the current password, sets a new one and revokes the other sessions. Returns 204. |
 | `DELETE` | `/api/auth/me` | Bearer | Checks the password and deletes the account with its jobs, photos, applications, conversations and ratings. Returns 204. |
 | `POST` | `/api/auth/forgot-password` | | Emails a password reset code. |
@@ -195,6 +195,8 @@ two sides of the conversation.
 - A decision is final. Deciding on an application that is not `PENDING`
   returns 409 with the code `APPLICATION_ALREADY_DECIDED`.
 - The executor's email is `null` until the client accepts the application.
+- A new application emails the job's client with the executor's name, the
+  price and the message, and a link to the received applications.
 - After a decision, the executor gets an email with the result and a link
   to the job. It is sent after the response. A failed email is logged, and
   the decision stays.
@@ -229,6 +231,12 @@ two sides of the conversation.
   its conversations.
 - The site checks for new messages every few seconds, so the conversation
   routes allow 120 requests per minute. Sending allows 20.
+- Once a minute the API looks for messages that have been unread for 10
+  minutes and emails the recipient, with the count and the last message.
+  Each side of a conversation gets one email until it reads the
+  conversation, by opening it or by answering. The conversation is marked
+  before the email is sent, so two API instances cannot send it twice. A
+  failed email is logged and not retried.
 
 **Ratings.**
 - The client rates the executor of an accepted application with 1 to 5
@@ -247,7 +255,10 @@ two sides of the conversation.
 
 **Account.**
 - The email address cannot be changed. `PATCH /api/auth/me` changes only
-  `fullName` and `role`. Access tokens issued earlier keep the old role
+  `fullName`, `role` and `emailNotifications`.
+- `emailNotifications` turns off the emails about new applications,
+  decisions and unread messages. Security emails, such as codes and the
+  password change notice, are always sent. Access tokens issued earlier keep the old role
   until they expire, but no route reads it from the token.
 - Changing the password and deleting the account need the current
   password. A wrong one returns 400 with the code `WRONG_PASSWORD`, not

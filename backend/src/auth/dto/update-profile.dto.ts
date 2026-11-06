@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
+  IsBoolean,
   IsEnum,
   IsOptional,
   IsString,
@@ -24,4 +25,9 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsEnum(UserRole)
   role?: UserRole;
+
+  /** Whether to get emails about applications and messages. */
+  @IsOptional()
+  @IsBoolean()
+  emailNotifications?: boolean;
 }

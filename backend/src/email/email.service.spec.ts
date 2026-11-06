@@ -136,6 +136,63 @@ describe('EmailService', () => {
     ]);
   });
 
+  it('tells a client about a new application', async () => {
+    fetchMock.mockResolvedValue(new Response('{}', { status: 200 }));
+    const service = createService({
+      RESEND_API_KEY: 'key',
+      APP_URL: 'https://sastrane.example',
+    });
+
+    await service.sendNewApplication({
+      email: 'amra@example.com',
+      fullName: 'Amra',
+      listingTitle: 'Košenje trave',
+      executorName: 'Kenan <i>',
+      proposedPrice: 1500,
+      message: `Mogu doći u subotu.${'x'.repeat(400)}`,
+    });
+
+    const body = sentBody(fetchMock);
+    expect(body.to).toEqual(['amra@example.com']);
+    expect(body.subject).toBe('Nova prijava za oglas „Košenje trave“');
+    expect(body.html).toContain('Kenan &lt;i&gt;');
+    expect(body.html).toContain('1.500 KM');
+    expect(body.html).toContain('…');
+    expect(body.html).not.toContain('x'.repeat(400));
+    expect(body.html).toContain(
+      'href="https://sastrane.example/inbox?tab=received"',
+    );
+    expect(body.html).toContain('href="https://sastrane.example/settings"');
+    expect(body.tags).toEqual([{ name: 'category', value: 'new_application' }]);
+  });
+
+  it('tells a user about unread messages with a link to the conversation', async () => {
+    fetchMock.mockResolvedValue(new Response('{}', { status: 200 }));
+    const service = createService({
+      RESEND_API_KEY: 'key',
+      APP_URL: 'https://sastrane.example',
+    });
+
+    await service.sendUnreadMessages({
+      email: 'kenan@example.com',
+      fullName: 'Kenan',
+      conversationId: 'conversation-1',
+      listingTitle: 'Košenje trave',
+      senderName: 'Amra',
+      unreadCount: 3,
+      lastMessage: 'Može u <subotu>?',
+    });
+
+    const body = sentBody(fetchMock);
+    expect(body.subject).toBe('Nova poruka o oglasu „Košenje trave“');
+    expect(body.html).toContain('3 nepročitane poruke');
+    expect(body.html).toContain('Može u &lt;subotu&gt;?');
+    expect(body.html).toContain(
+      'href="https://sastrane.example/messages/conversation-1"',
+    );
+    expect(body.tags).toEqual([{ name: 'category', value: 'unread_messages' }]);
+  });
+
   it('maps a network failure or timeout to 503', async () => {
     fetchMock.mockRejectedValue(new DOMException('timed out', 'TimeoutError'));
     const service = createService({ RESEND_API_KEY: 'key' });

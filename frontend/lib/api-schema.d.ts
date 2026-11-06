@@ -208,7 +208,7 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Changes the name or the role of the signed-in user.
+         * Changes the name, the role or the email setting of the signed-in user.
          * @description Fields that are left out stay as they are.
          */
         patch: operations["account_updateProfile"];
@@ -682,6 +682,8 @@ export interface components {
             id: string;
             email: string;
             fullName: string;
+            /** @description Whether the user gets emails about applications and messages. */
+            emailNotifications: boolean;
             /** Format: date-time */
             createdAt: string;
         };
@@ -717,6 +719,8 @@ export interface components {
             /** @description Whether the user posts jobs, applies to them, or both. */
             role?: components["schemas"]["UserRole"];
             fullName?: string;
+            /** @description Whether to get emails about applications and messages. */
+            emailNotifications?: boolean;
         };
         ChangePasswordDto: {
             currentPassword: string;

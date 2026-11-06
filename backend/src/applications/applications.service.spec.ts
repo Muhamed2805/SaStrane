@@ -24,7 +24,10 @@ describe('ApplicationsService', () => {
     updateMany: vi.fn(),
   };
 
-  const email = { sendApplicationDecision: vi.fn() };
+  const email = {
+    sendApplicationDecision: vi.fn(),
+    sendNewApplication: vi.fn(),
+  };
   const ratings = { summaries: vi.fn() };
   const noRatings = { average: null, count: 0 };
 
@@ -49,14 +52,30 @@ describe('ApplicationsService', () => {
       proposedPrice: 50,
     };
 
-    it('creates an application for a listing owned by another user', async () => {
-      const created = { id: 'application-1', ...dto };
-      listingRepository.findUnique.mockResolvedValue({
-        id: 'listing-1',
-        clientId: 'client-1',
-        status: 'OPEN',
+    const openListing = {
+      id: 'listing-1',
+      clientId: 'client-1',
+      status: 'OPEN',
+      title: 'Košenje trave',
+      client: {
+        email: 'amra@example.com',
+        fullName: 'Amra',
+        emailNotifications: true,
+      },
+    };
+    const created = { id: 'application-1', ...dto };
+
+    function createdBy(fullName: string) {
+      applicationRepository.create.mockResolvedValue({
+        ...created,
+        executor: { fullName },
       });
-      applicationRepository.create.mockResolvedValue(created);
+    }
+
+    it('creates an application for a listing owned by another user', async () => {
+      listingRepository.findUnique.mockResolvedValue(openListing);
+      createdBy('Kenan');
+      email.sendNewApplication.mockResolvedValue(undefined);
 
       await expect(service.create(dto, 'executor-1')).resolves.toEqual(created);
       expect(applicationRepository.create).toHaveBeenCalledWith(
@@ -64,6 +83,52 @@ describe('ApplicationsService', () => {
           data: { ...dto, executorId: 'executor-1' },
         }),
       );
+    });
+
+    it('emails the client about the application', async () => {
+      listingRepository.findUnique.mockResolvedValue(openListing);
+      createdBy('Kenan');
+      email.sendNewApplication.mockResolvedValue(undefined);
+
+      await service.create(dto, 'executor-1');
+
+      expect(email.sendNewApplication).toHaveBeenCalledWith({
+        email: 'amra@example.com',
+        fullName: 'Amra',
+        listingTitle: 'Košenje trave',
+        executorName: 'Kenan',
+        proposedPrice: 50,
+        message: dto.message,
+      });
+    });
+
+    it('sends no email to a client who turned them off', async () => {
+      listingRepository.findUnique.mockResolvedValue({
+        ...openListing,
+        client: { ...openListing.client, emailNotifications: false },
+      });
+      createdBy('Kenan');
+
+      await service.create(dto, 'executor-1');
+
+      expect(email.sendNewApplication).not.toHaveBeenCalled();
+    });
+
+    it('keeps the application when the email fails', async () => {
+      listingRepository.findUnique.mockResolvedValue(openListing);
+      createdBy('Kenan');
+      const logged = vi
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+      email.sendNewApplication.mockRejectedValue(new Error('provider down'));
+
+      await expect(service.create(dto, 'executor-1')).resolves.toEqual(created);
+      await vi.waitFor(() =>
+        expect(logged).toHaveBeenCalledWith(
+          expect.stringContaining('provider down'),
+        ),
+      );
+      logged.mockRestore();
     });
 
     it('rejects an application for a missing listing', async () => {
@@ -102,11 +167,7 @@ describe('ApplicationsService', () => {
     });
 
     it('maps the database unique constraint to a conflict response', async () => {
-      listingRepository.findUnique.mockResolvedValue({
-        id: 'listing-1',
-        clientId: 'client-1',
-        status: 'OPEN',
-      });
+      listingRepository.findUnique.mockResolvedValue(openListing);
       applicationRepository.create.mockRejectedValue(
         new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
           code: 'P2002',
@@ -241,6 +302,7 @@ describe('ApplicationsService', () => {
 
   describe('updateStatus', () => {
     const ownApplication = {
+      executor: { emailNotifications: true },
       listing: {
         clientId: 'client-1',
         title: 'Košenje trave',
@@ -303,6 +365,22 @@ describe('ApplicationsService', () => {
         clientName: 'Amra',
         accepted: false,
       });
+    });
+
+    it('sends no decision email to an executor who turned them off', async () => {
+      decidedAs('ACCEPTED');
+      applicationRepository.findUnique.mockResolvedValue({
+        ...ownApplication,
+        executor: { emailNotifications: false },
+      });
+
+      await service.updateStatus(
+        'application-1',
+        { status: 'ACCEPTED' },
+        'client-1',
+      );
+
+      expect(email.sendApplicationDecision).not.toHaveBeenCalled();
     });
 
     it('keeps the decision when the email fails', async () => {

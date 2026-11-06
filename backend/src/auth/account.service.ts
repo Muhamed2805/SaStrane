@@ -39,7 +39,11 @@ export class AccountService {
   updateProfile(userId: string, dto: UpdateProfileDto): Promise<PublicUser> {
     return this.prisma.user.update({
       where: { id: userId },
-      data: { fullName: dto.fullName, role: dto.role },
+      data: {
+        fullName: dto.fullName,
+        role: dto.role,
+        emailNotifications: dto.emailNotifications,
+      },
       select: PUBLIC_USER_SELECT,
     });
   }

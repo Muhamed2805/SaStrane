@@ -18,6 +18,7 @@ describe('ConversationsService', () => {
     count: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
     aggregate: vi.fn(),
   };
   const messageRepository = {
@@ -278,8 +279,15 @@ describe('ConversationsService', () => {
           lastMessageId: 'm1',
           lastMessageAt: message.createdAt,
           executorUnread: 0,
+          executorUnreadSince: null,
+          executorEmailedAt: null,
           clientUnread: { increment: 1 },
         },
+      });
+      // Only the first unread message sets the time.
+      expect(conversationRepository.updateMany).toHaveBeenCalledWith({
+        where: { id: 'conversation-1', clientUnreadSince: null },
+        data: { clientUnreadSince: message.createdAt },
       });
     });
 
@@ -290,7 +298,11 @@ describe('ConversationsService', () => {
 
       expect(conversationRepository.update).toHaveBeenCalledWith({
         where: { id: 'conversation-1' },
-        data: { clientUnread: 0 },
+        data: {
+          clientUnread: 0,
+          clientUnreadSince: null,
+          clientEmailedAt: null,
+        },
       });
     });
   });

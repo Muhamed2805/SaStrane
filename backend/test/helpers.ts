@@ -68,6 +68,18 @@ export class CapturingEmailService {
     accepted: boolean;
   }[] = [];
   readonly passwordChanges: string[] = [];
+  readonly newApplications: {
+    email: string;
+    listingTitle: string;
+    executorName: string;
+  }[] = [];
+  readonly unreadMessages: {
+    email: string;
+    conversationId: string;
+    senderName: string;
+    unreadCount: number;
+    lastMessage: string;
+  }[] = [];
 
   sendVerificationCode(input: { email: string; code: string }) {
     this.sent.push({ kind: 'verification', ...input });
@@ -97,6 +109,35 @@ export class CapturingEmailService {
     return Promise.resolve();
   }
 
+  sendNewApplication(input: {
+    email: string;
+    listingTitle: string;
+    executorName: string;
+  }) {
+    const { email, listingTitle, executorName } = input;
+    this.newApplications.push({ email, listingTitle, executorName });
+    return Promise.resolve();
+  }
+
+  sendUnreadMessages(input: {
+    email: string;
+    conversationId: string;
+    senderName: string;
+    unreadCount: number;
+    lastMessage: string;
+  }) {
+    const { email, conversationId, senderName, unreadCount, lastMessage } =
+      input;
+    this.unreadMessages.push({
+      email,
+      conversationId,
+      senderName,
+      unreadCount,
+      lastMessage,
+    });
+    return Promise.resolve();
+  }
+
   sendPasswordChanged(input: { email: string }) {
     this.passwordChanges.push(input.email);
     return Promise.resolve();
@@ -114,6 +155,8 @@ export class CapturingEmailService {
     this.sent.length = 0;
     this.decisions.length = 0;
     this.passwordChanges.length = 0;
+    this.newApplications.length = 0;
+    this.unreadMessages.length = 0;
   }
 }
 

@@ -15,6 +15,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/app.setup.js';
 import { EmailService } from '../src/email/email.service.js';
+import { MessageEmailsService } from '../src/conversations/message-emails.service.js';
 import { ROTATION_GRACE_MS } from '../src/auth/sessions.service.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { StorageService } from '../src/storage/storage.service.js';
@@ -266,6 +267,7 @@ describe('App (e2e)', () => {
           email: user.email,
           fullName: user.fullName,
           role: user.role,
+          emailNotifications: true,
           createdAt: user.createdAt.toISOString(),
         },
         accessToken,
@@ -586,6 +588,46 @@ describe('App (e2e)', () => {
       };
     }
 
+    it('emails the client about a new application', async () => {
+      const { client } = await listingWithApplicant();
+
+      expect(emails.newApplications).toEqual([
+        {
+          email: client.user.email,
+          listingTitle: listingInput.title,
+          executorName: 'Kenan Mehić',
+        },
+      ]);
+    });
+
+    it('sends no activity emails to users who turned them off', async () => {
+      const client = await signedInUser('Amra Hodžić');
+      const executor = await signedInUser('Kenan Mehić');
+      for (const { auth } of [client, executor]) {
+        await http()
+          .patch('/api/auth/me')
+          .set('Authorization', auth)
+          .send({ emailNotifications: false })
+          .expect(200);
+      }
+      const { id: listingId } = await postListing(client.auth);
+      const application = await http()
+        .post('/api/applications')
+        .set('Authorization', executor.auth)
+        .send({ listingId, message })
+        .expect(201);
+      await http()
+        .patch(
+          `/api/applications/${(application.body as { id: string }).id}/status`,
+        )
+        .set('Authorization', client.auth)
+        .send({ status: 'ACCEPTED' })
+        .expect(200);
+
+      expect(emails.newApplications).toEqual([]);
+      expect(emails.decisions).toEqual([]);
+    });
+
     it('accepts one application per executor and job', async () => {
       const { executor, listingId } = await listingWithApplicant();
 
@@ -802,6 +844,47 @@ describe('App (e2e)', () => {
         .expect(200);
       return (response.body as { count: number }).count;
     }
+
+    it('emails a user once about messages left unread', async () => {
+      const { client, executor, listingId } = await openJob();
+      const id = await startAs(executor.auth, listingId);
+      const notifier = app.get(MessageEmailsService);
+      const later = (minutes: number) =>
+        new Date(Date.now() + minutes * 60_000);
+
+      await send(executor.auth, id, question).expect(201);
+      await send(executor.auth, id, 'I kada vam odgovara?').expect(201);
+
+      // Not yet: the client may still read it on the site.
+      expect(await notifier.sendDue(later(5))).toBe(0);
+      expect(await notifier.sendDue(later(11))).toBe(1);
+      expect(emails.unreadMessages).toEqual([
+        {
+          email: client.user.email,
+          conversationId: id,
+          senderName: 'Kenan Mehić',
+          unreadCount: 2,
+          lastMessage: 'I kada vam odgovara?',
+        },
+      ]);
+
+      // No second email until the client reads the conversation.
+      await send(executor.auth, id, 'Javite se.').expect(201);
+      expect(await notifier.sendDue(later(30))).toBe(0);
+
+      await http()
+        .post(`/api/conversations/${id}/read`)
+        .set('Authorization', client.auth)
+        .expect(204);
+      await send(executor.auth, id, 'Još nešto.').expect(201);
+      expect(await notifier.sendDue(later(11))).toBe(1);
+      expect(emails.unreadMessages).toHaveLength(2);
+
+      // The sender reads their own conversation: they get no email.
+      expect(emails.unreadMessages.map(({ email }) => email)).not.toContain(
+        executor.user.email,
+      );
+    });
 
     it('lets a user ask about a job and the client answer', async () => {
       const { client, executor, listingId } = await openJob();
@@ -1402,6 +1485,7 @@ describe('App (e2e)', () => {
         email: user.email,
         fullName: 'Amra Hodžić',
         role: 'EXECUTOR',
+        emailNotifications: true,
       });
       // A field that is left out stays.
       await updateProfile(auth, { role: 'BOTH' }).expect(200);

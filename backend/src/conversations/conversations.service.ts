@@ -44,6 +44,20 @@ type ConversationRow = Prisma.ConversationGetPayload<{
   select: typeof CONVERSATION_SELECT;
 }>;
 
+// One side has read the conversation. It can get an email again for the
+// next unread message.
+const READ_BY_CLIENT = {
+  clientUnread: 0,
+  clientUnreadSince: null,
+  clientEmailedAt: null,
+} satisfies Prisma.ConversationUpdateInput;
+
+const READ_BY_EXECUTOR = {
+  executorUnread: 0,
+  executorUnreadSince: null,
+  executorEmailedAt: null,
+} satisfies Prisma.ConversationUpdateInput;
+
 // Newest first. The ID orders messages sent in the same millisecond.
 const NEWEST_FIRST = [
   { createdAt: 'desc' },
@@ -253,10 +267,23 @@ export class ConversationsService {
           lastMessageId: message.id,
           lastMessageAt: message.createdAt,
           ...(role === 'CLIENT'
-            ? { clientUnread: 0, executorUnread: { increment: 1 } }
-            : { executorUnread: 0, clientUnread: { increment: 1 } }),
+            ? { ...READ_BY_CLIENT, executorUnread: { increment: 1 } }
+            : { ...READ_BY_EXECUTOR, clientUnread: { increment: 1 } }),
         },
       });
+      // The other side's first unread message starts the wait for an email
+      // (see MessageEmailsService).
+      const firstUnread: Prisma.ConversationUpdateManyArgs =
+        role === 'CLIENT'
+          ? {
+              where: { id, executorUnreadSince: null },
+              data: { executorUnreadSince: message.createdAt },
+            }
+          : {
+              where: { id, clientUnreadSince: null },
+              data: { clientUnreadSince: message.createdAt },
+            };
+      await tx.conversation.updateMany(firstUnread);
       return message;
     });
   }
@@ -265,7 +292,7 @@ export class ConversationsService {
     const role = roleOf(await this.findForUser(id, userId), userId);
     await this.prisma.conversation.update({
       where: { id },
-      data: role === 'CLIENT' ? { clientUnread: 0 } : { executorUnread: 0 },
+      data: role === 'CLIENT' ? READ_BY_CLIENT : READ_BY_EXECUTOR,
     });
   }
 

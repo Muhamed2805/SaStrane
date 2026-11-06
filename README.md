@@ -65,6 +65,8 @@ be both.
   closes, but a closed job takes no new conversations.
 - The navbar shows the number of unread messages. Open conversations check
   for new messages every few seconds.
+- Messages left unread for 10 minutes trigger one email per conversation,
+  until the user reads it.
 
 **Ratings**
 - After closing a job, the client rates the accepted executor with 1 to 5
@@ -81,6 +83,8 @@ be both.
   existing session.
 - A sign-in survives page reloads, and signing out in one tab signs out the
   others.
+- Email notices for a new application, a decision on an application and
+  unread messages. They can be turned off in the account settings.
 - Account settings: change the name and the role, or change the password
   with the current one. A password change signs out the other devices and
   sends a notice by email.

@@ -7,8 +7,12 @@ import { ConfigService } from '@nestjs/config';
 import {
   applicationDecisionEmailHtml,
   applicationDecisionSubject,
+  newApplicationEmailHtml,
+  newApplicationSubject,
   passwordChangedEmailHtml,
   passwordResetEmailHtml,
+  unreadMessagesEmailHtml,
+  unreadMessagesSubject,
   verificationEmailHtml,
   type ApplicationDecisionEmail,
 } from './email-templates.js';
@@ -87,6 +91,57 @@ export class EmailService {
       tag: 'application_decision',
       developmentMessage: `Application ${input.accepted ? 'accepted' : 'rejected'} email for ${input.email}: "${input.listingTitle}"`,
     });
+  }
+
+  // Tells a client that someone applied to their job.
+  async sendNewApplication(input: {
+    email: string;
+    fullName: string;
+    listingTitle: string;
+    executorName: string;
+    proposedPrice: number | null;
+    message: string;
+  }) {
+    await this.sendTransactionalEmail({
+      to: input.email,
+      subject: newApplicationSubject(input),
+      html: newApplicationEmailHtml({
+        ...input,
+        applicationsUrl: this.appUrl('/inbox?tab=received'),
+        settingsUrl: this.appUrl('/settings'),
+      }),
+      tag: 'new_application',
+      developmentMessage: `New application email for ${input.email}: "${input.listingTitle}"`,
+    });
+  }
+
+  // Tells a user about messages they have not read for a while.
+  async sendUnreadMessages(input: {
+    email: string;
+    fullName: string;
+    conversationId: string;
+    listingTitle: string;
+    senderName: string;
+    unreadCount: number;
+    lastMessage: string;
+  }) {
+    await this.sendTransactionalEmail({
+      to: input.email,
+      subject: unreadMessagesSubject(input),
+      html: unreadMessagesEmailHtml({
+        ...input,
+        conversationUrl: this.appUrl(
+          `/messages/${encodeURIComponent(input.conversationId)}`,
+        ),
+        settingsUrl: this.appUrl('/settings'),
+      }),
+      tag: 'unread_messages',
+      developmentMessage: `Unread messages email for ${input.email}: ${input.unreadCount} in "${input.listingTitle}"`,
+    });
+  }
+
+  private appUrl(path: string) {
+    return `${this.config.getOrThrow<string>('APP_URL')}${path}`;
   }
 
   private async sendTransactionalEmail(input: {

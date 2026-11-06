@@ -115,6 +115,7 @@ describe('AuthService', () => {
     email: 'user@example.com',
     fullName: 'Test User',
     role: UserRole.BOTH,
+    emailNotifications: true,
     emailVerifiedAt: new Date('2026-09-15T12:00:00.000Z'),
     passwordHash: 'stored-password-hash',
     emailVerificationCodeHash: null,
@@ -130,6 +131,7 @@ describe('AuthService', () => {
     email: user.email,
     fullName: user.fullName,
     role: user.role,
+    emailNotifications: user.emailNotifications,
     createdAt: user.createdAt,
   };
 
@@ -284,6 +286,7 @@ describe('AuthService', () => {
         email: user.email,
         fullName: user.fullName,
         role: user.role,
+        emailNotifications: true,
         createdAt: user.createdAt,
       });
       expect(result.user).not.toHaveProperty('passwordHash');
@@ -700,6 +703,7 @@ describe('AuthService', () => {
           email: true,
           fullName: true,
           role: true,
+          emailNotifications: true,
           createdAt: true,
         },
       });

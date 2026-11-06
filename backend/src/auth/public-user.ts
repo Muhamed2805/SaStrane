@@ -6,6 +6,7 @@ export const PUBLIC_USER_SELECT = {
   email: true,
   fullName: true,
   role: true,
+  emailNotifications: true,
   createdAt: true,
 } satisfies Prisma.UserSelect;
 
@@ -19,6 +20,7 @@ export function toPublicUser(user: PublicUser): PublicUser {
     email: user.email,
     fullName: user.fullName,
     role: user.role,
+    emailNotifications: user.emailNotifications,
     createdAt: user.createdAt,
   };
 }

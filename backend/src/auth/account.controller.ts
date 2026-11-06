@@ -48,7 +48,7 @@ export class AccountController {
   }
 
   /**
-   * Changes the name or the role of the signed-in user.
+   * Changes the name, the role or the email setting of the signed-in user.
    *
    * @remarks Fields that are left out stay as they are.
    */

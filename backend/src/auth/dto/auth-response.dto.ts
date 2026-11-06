@@ -13,6 +13,9 @@ export class PublicUserDto {
   @ApiProperty({ enum: UserRole, enumName: 'UserRole' })
   role!: UserRole;
 
+  /** Whether the user gets emails about applications and messages. */
+  emailNotifications!: boolean;
+
   createdAt!: Date;
 }
 

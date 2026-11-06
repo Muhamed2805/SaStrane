@@ -83,7 +83,7 @@ of date.
 | --- | --- |
 | `app/` | Routes: `/`, `/listings`, `/listings/[id]`, `/listings/create`, `/listings/[id]/edit`, `/inbox`, `/messages`, `/messages/[id]`, `/users/[id]`, `/profile`, `/settings`, `/login` |
 | `features/auth/` | The session: an in-memory access token, refresh on reload and on 401, and tab sync |
-| `features/account/` | Account settings: name and role, password change and account deletion |
+| `features/account/` | Account settings: name and role, email notifications, password change and account deletion |
 | `features/listings/` | The job list, detail, form, photos and API calls, and the names for the category and location codes |
 | `features/applications/` | Applying and the workspace |
 | `features/messages/` | Conversations, the unread count and the message thread |

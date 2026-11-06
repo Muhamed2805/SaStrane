@@ -63,12 +63,15 @@ enum SessionRevocationReason {
 }
 
 model User {
-  id              String    @id @default(cuid())
-  email           String    @unique
-  emailVerifiedAt DateTime?
-  passwordHash    String
-  fullName        String
-  role            UserRole  @default(BOTH)
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  emailVerifiedAt    DateTime?
+  passwordHash       String
+  fullName           String
+  role               UserRole  @default(BOTH)
+  // Emails about new applications, decisions and unread messages. Account
+  // security emails are always sent.
+  emailNotifications Boolean   @default(true)
 
   emailVerificationCodeHash  String?
   emailVerificationExpiresAt DateTime?
@@ -192,6 +195,14 @@ model Conversation {
   clientUnread   Int @default(0)
   executorUnread Int @default(0)
 
+  // When each side's oldest unread message arrived, and when that side got
+  // an email about it. Reading the conversation clears both, so each side
+  // gets at most one email until they read it.
+  clientUnreadSince   DateTime?
+  executorUnreadSince DateTime?
+  clientEmailedAt     DateTime?
+  executorEmailedAt   DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -204,6 +215,8 @@ model Conversation {
   @@unique([listingId, executorId])
   @@index([clientId, lastMessageAt])
   @@index([executorId, lastMessageAt])
+  @@index([clientUnreadSince])
+  @@index([executorUnreadSince])
 }
 
 model Message {
