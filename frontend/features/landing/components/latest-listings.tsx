@@ -34,7 +34,7 @@ export function LatestListings() {
   if (listings.length === 0) {
     return (
       <div className="rounded-xl border bg-white p-6 text-sm text-muted-foreground">
-        Još nema objavljenih oglasa. Budi prvi koji će objaviti posao.
+        Još nema objavljenih oglasa. Objavi prvi posao na SaStrane.
       </div>
     );
   }

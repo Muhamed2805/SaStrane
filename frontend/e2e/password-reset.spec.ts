@@ -114,6 +114,6 @@ test('requests a reset code and sets a new password', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Vrati se na prijavu' }).click();
   await expect(
-    page.getByRole('heading', { name: 'Dobro došao nazad' }),
+    page.getByRole('heading', { name: 'Drago nam je da si opet tu' }),
   ).toBeVisible();
 });

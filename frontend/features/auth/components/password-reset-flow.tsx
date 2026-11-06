@@ -305,7 +305,7 @@ export function PasswordResetFlow({ initialEmail }: { initialEmail: string }) {
       </button>
 
       <div className="flex flex-col items-center gap-3 border-t pt-5 text-sm">
-        <p className="text-muted-foreground">Nisi dobio email?</p>
+        <p className="text-muted-foreground">Email nije stigao?</p>
         <button
           type="button"
           disabled={isLoading || resendCooldown > 0}

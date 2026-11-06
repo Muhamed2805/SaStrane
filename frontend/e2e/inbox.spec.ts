@@ -74,7 +74,7 @@ async function markSignedIn(page: Page) {
 }
 
 const emptyApplications = (page: Page) =>
-  page.getByRole('heading', { name: 'Još nisi poslao nijednu prijavu' });
+  page.getByRole('heading', { name: 'Još nema poslanih prijava' });
 
 test('restores the session from the refresh cookie on page load', async ({
   page,

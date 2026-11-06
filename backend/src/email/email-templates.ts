@@ -52,18 +52,18 @@ function button(href: string, label: string) {
 export function verificationEmailHtml(fullName: string, code: string) {
   return codeEmail({
     heading: 'Potvrdi svoj email',
-    intro: `Zdravo ${escapeHtml(fullName)}, unesi ovaj kod kako bi aktivirao svoj račun:`,
+    intro: `Zdravo ${escapeHtml(fullName)}, unesi ovaj kod da aktiviraš svoj račun:`,
     code,
-    note: 'Kod vrijedi 10 minuta. Ako nisi kreirao SaStrane račun, možeš zanemariti ovu poruku.',
+    note: 'Kod vrijedi 10 minuta. Ako ovaj zahtjev nije od tebe, možeš zanemariti ovu poruku.',
   });
 }
 
 export function passwordResetEmailHtml(fullName: string, code: string) {
   return codeEmail({
     heading: 'Postavi novu lozinku',
-    intro: `Zdravo ${escapeHtml(fullName)}, unesi ovaj kod kako bi postavio novu lozinku:`,
+    intro: `Zdravo ${escapeHtml(fullName)}, unesi ovaj kod da postaviš novu lozinku:`,
     code,
-    note: 'Kod vrijedi 10 minuta. Ako nisi zatražio promjenu lozinke, možeš zanemariti ovu poruku.',
+    note: 'Kod vrijedi 10 minuta. Ako ovaj zahtjev nije od tebe, možeš zanemariti ovu poruku.',
   });
 }
 

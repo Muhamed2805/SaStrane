@@ -50,7 +50,7 @@ test.describe('authentication entry points', () => {
 
     await expect(page.getByRole('dialog')).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: 'Dobro došao nazad' }),
+      page.getByRole('heading', { name: 'Drago nam je da si opet tu' }),
     ).toBeVisible();
   });
 

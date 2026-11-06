@@ -24,11 +24,11 @@ export default function LoginPage() {
         <HeartHandshake className="size-8" aria-hidden="true" />
       </div>
       <h1 className="mt-6 text-3xl font-bold tracking-tight">
-        Dobro došao na SaStrane
+        Dobro došli na SaStrane
       </h1>
       <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
-        Prijavi se ili kreiraj račun kako bi objavljivao poslove, slao prijave i
-        upravljao svojom aktivnošću.
+        Prijavi se ili kreiraj račun da objavljuješ poslove, šalješ prijave i
+        upravljaš svojom aktivnošću.
       </p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">

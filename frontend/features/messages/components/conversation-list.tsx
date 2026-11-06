@@ -128,8 +128,8 @@ export function ConversationList({
         </span>
         <h2 className="mt-4 font-bold">Još nemaš poruka</h2>
         <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-muted-foreground">
-          Otvori oglas i pošalji poruku klijentu, ili odgovori nekome ko se
-          prijavio na tvoj oglas.
+          Otvori oglas i pošalji poruku klijentu, ili odgovori na prijave za
+          tvoje oglase.
         </p>
         <Link
           href="/listings"

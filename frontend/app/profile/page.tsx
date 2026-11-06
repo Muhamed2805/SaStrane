@@ -85,7 +85,7 @@ export default function ProfilePage() {
           Prijavi se za pristup profilu
         </h1>
         <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
-          Na jednom mjestu prati svoje oglase, prijave i ponude koje si primio.
+          Na jednom mjestu prati svoje oglase, poslane i primljene prijave.
         </p>
         <button
           type="button"

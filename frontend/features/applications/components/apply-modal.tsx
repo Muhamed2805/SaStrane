@@ -146,7 +146,7 @@ export function ApplyModal() {
             Prijava na posao
           </h2>
           <p className="mt-2 pr-8 text-sm leading-6 text-muted-foreground">
-            Predstavi se klijentu i napiši zašto si dobar izbor za ovaj posao.
+            Predstavi se klijentu i napiši šta te čini dobrim izborom za ovaj posao.
           </p>
         </header>
 
@@ -232,7 +232,7 @@ export function ApplyModal() {
                   <textarea
                     id="application-message"
                     className="min-h-36 w-full resize-y rounded-lg border bg-background px-4 py-3.5 pl-11 text-sm leading-6 outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:ring-3 focus:ring-primary/10"
-                    placeholder="Napiši kada si dostupan, relevantno iskustvo i koliko vremena ti je potrebno..."
+                    placeholder="Napiši kada možeš početi, relevantno iskustvo i koliko vremena ti je potrebno..."
                     value={message}
                     minLength={10}
                     maxLength={2000}

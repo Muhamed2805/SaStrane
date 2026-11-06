@@ -327,7 +327,7 @@ export function InboxView({
           {myApplications.length === 0 ? (
             <EmptyState
               icon={BriefcaseBusiness}
-              title="Još nisi poslao nijednu prijavu"
+              title="Još nema poslanih prijava"
               description="Pregledaj dostupne poslove i pronađi priliku koja odgovara tvojim vještinama."
               actionHref="/listings"
               actionLabel="Pregledaj oglase"
