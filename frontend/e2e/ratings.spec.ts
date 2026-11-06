@@ -42,6 +42,30 @@ const application = {
   canRate: true,
 };
 
+// The user's own accepted application to another client's closed job,
+// with the client not rated yet.
+const myApplication = {
+  id: 'application-e2e-2',
+  listingId: 'listing-e2e-2',
+  status: 'ACCEPTED',
+  message: 'Imam alat za montažu.',
+  proposedPrice: 60,
+  createdAt: '2026-10-28T10:00:00.000Z',
+  listing: {
+    title: 'Montaža ormara',
+    category: 'ASSEMBLY',
+    location: 'SARAJEVO',
+    status: 'CLOSED',
+  },
+  rating: null,
+  clientRating: null as null | {
+    score: number;
+    comment: string | null;
+    createdAt: string;
+  },
+  canRateClient: true,
+};
+
 function json(body: unknown, status = 200) {
   return {
     status,
@@ -58,7 +82,9 @@ function apiRoute(path: string) {
 async function mockRatingsApi(page: Page) {
   const state = {
     application: { ...application },
+    myApplication: { ...myApplication },
     posted: [] as unknown[],
+    postedForClients: [] as unknown[],
   };
 
   await page.addInitScript((key) => {
@@ -87,7 +113,15 @@ async function mockRatingsApi(page: Page) {
       );
     }
     if (/\/applications\/my\?/.test(url)) {
-      return route.fulfill(json(emptyPage));
+      return route.fulfill(
+        json({
+          items: [state.myApplication],
+          total: 1,
+          page: 1,
+          limit: 10,
+          totalPages: 1,
+        }),
+      );
     }
     return route.fulfill(json([]));
   });
@@ -116,6 +150,38 @@ async function mockRatingsApi(page: Page) {
           listingId: application.listingId,
           listingTitle: application.listing.title,
           client: { id: user.id, fullName: user.fullName },
+          createdAt,
+        },
+        201,
+      ),
+    );
+  });
+
+  await page.route(apiRoute('/client-ratings$'), (route) => {
+    const body = route.request().postDataJSON() as {
+      score: number;
+      comment?: string;
+    };
+    state.postedForClients.push(body);
+    const createdAt = new Date().toISOString();
+    state.myApplication = {
+      ...state.myApplication,
+      canRateClient: false,
+      clientRating: {
+        score: body.score,
+        comment: body.comment ?? null,
+        createdAt,
+      },
+    };
+    return route.fulfill(
+      json(
+        {
+          id: 'client-rating-e2e-1',
+          score: body.score,
+          comment: body.comment ?? null,
+          listingId: myApplication.listingId,
+          listingTitle: myApplication.listing.title,
+          executor: { id: user.id, fullName: user.fullName },
           createdAt,
         },
         201,
@@ -177,4 +243,31 @@ test('closing the dialog sends nothing', async ({ page }) => {
 
   await expect(dialog).toBeHidden();
   expect(state.posted).toEqual([]);
+});
+
+test('the executor rates the client of a closed job', async ({ page }) => {
+  const state = await mockRatingsApi(page);
+
+  await page.goto('/inbox?tab=applications');
+
+  const card = page.getByRole('article').filter({ hasText: 'Montaža ormara' });
+  await card.getByRole('button', { name: 'Ocijeni klijenta' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Ocijeni klijenta' });
+  await expect(dialog.getByText('Montaža ormara')).toBeVisible();
+  await expect(dialog.getByText(/javna na profilu klijenta/)).toBeVisible();
+
+  await dialog.getByRole('radio', { name: /^4 od 5/ }).click();
+  await dialog.getByLabel(/Komentar/).fill('Plaćeno odmah.');
+  await dialog.getByRole('button', { name: 'Sačuvaj ocjenu' }).click();
+
+  await expect(dialog).toBeHidden();
+  expect(state.postedForClients).toEqual([
+    { applicationId: myApplication.id, score: 4, comment: 'Plaćeno odmah.' },
+  ]);
+  expect(state.posted).toEqual([]);
+
+  await expect(card.getByText('Tvoja ocjena klijenta:')).toBeVisible();
+  await expect(
+    card.getByRole('button', { name: 'Ocijeni klijenta' }),
+  ).toHaveCount(0);
 });

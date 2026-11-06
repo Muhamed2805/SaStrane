@@ -227,6 +227,57 @@ describe('ApplicationsService', () => {
     avatarUrl: 'https://files.test/avatars/executor-1/avatar-1.webp',
   };
 
+  describe('getMyApplications', () => {
+    it('says which clients the user can rate', async () => {
+      const listing = (status: string) => ({
+        title: 'Selidba',
+        category: 'MOVING',
+        location: 'SARAJEVO',
+        status,
+      });
+      const rated = { score: 5, comment: null, createdAt: new Date() };
+      applicationRepository.findMany.mockResolvedValue([
+        {
+          id: 'a',
+          status: 'ACCEPTED',
+          listing: listing('CLOSED'),
+          clientRating: null,
+        },
+        {
+          id: 'b',
+          status: 'ACCEPTED',
+          listing: listing('CLOSED'),
+          clientRating: rated,
+        },
+        {
+          id: 'c',
+          status: 'ACCEPTED',
+          listing: listing('OPEN'),
+          clientRating: null,
+        },
+        {
+          id: 'd',
+          status: 'REJECTED',
+          listing: listing('CLOSED'),
+          clientRating: null,
+        },
+      ]);
+      applicationRepository.count.mockResolvedValue(4);
+
+      const page = await service.getMyApplications('executor-1', {});
+
+      expect(page.items.map((item) => [item.id, item.canRateClient])).toEqual([
+        ['a', true],
+        ['b', false],
+        ['c', false],
+        ['d', false],
+      ]);
+      expect(applicationRepository.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { executorId: 'executor-1' } }),
+      );
+    });
+  });
+
   describe('getReceivedApplications', () => {
     it('returns an owner-scoped page of applications', async () => {
       applicationRepository.findMany.mockResolvedValue([]);

@@ -15,6 +15,12 @@ describe('RatingsService', () => {
     findMany: vi.fn(),
     count: vi.fn(),
   };
+  const clientRatingRepository = {
+    create: vi.fn(),
+    groupBy: vi.fn(),
+    findMany: vi.fn(),
+    count: vi.fn(),
+  };
   const userRepository = { findUnique: vi.fn(), findMany: vi.fn() };
   const queryRaw = vi.fn();
 
@@ -25,6 +31,7 @@ describe('RatingsService', () => {
     {
       application: applicationRepository,
       rating: ratingRepository,
+      clientRating: clientRatingRepository,
       user: userRepository,
       $queryRaw: queryRaw,
     } as unknown as PrismaService,
@@ -34,8 +41,10 @@ describe('RatingsService', () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
-    // No completed jobs and no answers, unless a test says otherwise.
+    // No completed jobs, no answers and no ratings as a client, unless a
+    // test says otherwise.
     applicationRepository.groupBy.mockResolvedValue([]);
+    clientRatingRepository.groupBy.mockResolvedValue([]);
     queryRaw.mockResolvedValue([]);
   });
 
@@ -165,6 +174,135 @@ describe('RatingsService', () => {
     });
   });
 
+  describe('createForClient', () => {
+    const dto = {
+      applicationId: 'application-1',
+      score: 4,
+      comment: 'Tačno plaćeno',
+    };
+
+    function application(overrides: object = {}) {
+      return {
+        id: 'application-1',
+        status: 'ACCEPTED',
+        executorId: 'executor-1',
+        executor: { fullName: 'Kenan' },
+        clientRating: null,
+        listing: {
+          id: 'listing-1',
+          title: 'Košenje trave',
+          clientId: 'client-1',
+          status: 'CLOSED',
+        },
+        ...overrides,
+      };
+    }
+
+    it('rates the client of a closed job the user did', async () => {
+      applicationRepository.findUnique.mockResolvedValue(application());
+      clientRatingRepository.create.mockResolvedValue({ id: 'rating-1' });
+
+      await expect(service.createForClient(dto, 'executor-1')).resolves.toEqual(
+        { id: 'rating-1' },
+      );
+      expect(clientRatingRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            applicationId: 'application-1',
+            listingId: 'listing-1',
+            listingTitle: 'Košenje trave',
+            clientId: 'client-1',
+            executorId: 'executor-1',
+            score: 4,
+            comment: 'Tačno plaćeno',
+          },
+        }),
+      );
+      expect(notifications.notify).toHaveBeenCalledWith({
+        userId: 'client-1',
+        type: 'NEW_CLIENT_RATING',
+        listingId: 'listing-1',
+        listingTitle: 'Košenje trave',
+        actorName: 'Kenan',
+      });
+    });
+
+    it('returns 404 for an unknown application', async () => {
+      applicationRepository.findUnique.mockResolvedValue(null);
+
+      await expect(service.createForClient(dto, 'executor-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("refuses another user's application", async () => {
+      applicationRepository.findUnique.mockResolvedValue(application());
+
+      await expect(service.createForClient(dto, 'executor-2')).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(clientRatingRepository.create).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [{ status: 'PENDING' }, 'APPLICATION_NOT_ACCEPTED'],
+      [
+        {
+          listing: {
+            id: 'listing-1',
+            title: 'Košenje trave',
+            clientId: 'client-1',
+            status: 'OPEN',
+          },
+        },
+        'LISTING_NOT_CLOSED',
+      ],
+      [{ clientRating: { id: 'rating-1' } }, 'ALREADY_RATED'],
+    ])('returns 409 when %o (%s)', async (overrides, code) => {
+      applicationRepository.findUnique.mockResolvedValue(
+        application(overrides),
+      );
+
+      await expect(
+        service.createForClient(dto, 'executor-1'),
+      ).rejects.toMatchObject({ status: 409, response: { code } });
+      expect(clientRatingRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('maps a rating sent at the same time to ALREADY_RATED', async () => {
+      applicationRepository.findUnique.mockResolvedValue(application());
+      clientRatingRepository.create.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint', {
+          code: 'P2002',
+          clientVersion: 'test',
+        }),
+      );
+
+      await expect(
+        service.createForClient(dto, 'executor-1'),
+      ).rejects.toMatchObject({
+        status: 409,
+        response: { code: 'ALREADY_RATED' },
+      });
+    });
+  });
+
+  describe('clientSummaries', () => {
+    it('rounds the average and fills in clients without ratings', async () => {
+      clientRatingRepository.groupBy.mockResolvedValue([
+        { clientId: 'a', _avg: { score: 3.333 }, _count: { _all: 3 } },
+      ]);
+
+      const result = await service.clientSummaries(['a', 'b']);
+
+      expect(result.get('a')).toEqual({ average: 3.3, count: 3 });
+      expect(result.get('b')).toEqual({ average: null, count: 0 });
+      expect(clientRatingRepository.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { clientId: { in: ['a', 'b'] } } }),
+      );
+    });
+  });
+
   describe('summaries', () => {
     it('rounds the average and fills in executors without ratings', async () => {
       ratingRepository.groupBy.mockResolvedValue([
@@ -224,6 +362,10 @@ describe('RatingsService', () => {
         completedJobs: 0,
         responseMinutes: null,
       });
+      expect(result.items[0].clientRating).toEqual({
+        average: null,
+        count: 0,
+      });
       expect(result.items[0]).not.toHaveProperty('avatarId');
     });
 
@@ -267,6 +409,7 @@ describe('RatingsService', () => {
         location: 'ILIDZA',
         createdAt,
         rating: { average: null, count: 0 },
+        clientRating: { average: null, count: 0 },
         stats: { completedJobs: 0, responseMinutes: null },
       });
       expect(userRepository.findUnique).toHaveBeenCalledWith(
@@ -382,6 +525,37 @@ describe('RatingsService', () => {
           skip: 5,
           take: 5,
         }),
+      );
+    });
+  });
+
+  describe('getClientRatings', () => {
+    it("pages a user's ratings as a client, newest first", async () => {
+      userRepository.findUnique.mockResolvedValue({ id: 'user-1' });
+      clientRatingRepository.findMany.mockResolvedValue([]);
+      clientRatingRepository.count.mockResolvedValue(3);
+
+      await expect(
+        service.getClientRatings('user-1', { page: 1, limit: 10 }),
+      ).resolves.toEqual({
+        items: [],
+        total: 3,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      });
+      expect(clientRatingRepository.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { clientId: 'user-1' } }),
+      );
+    });
+
+    it('returns 404 for an unknown user', async () => {
+      userRepository.findUnique.mockResolvedValue(null);
+      clientRatingRepository.findMany.mockResolvedValue([]);
+      clientRatingRepository.count.mockResolvedValue(0);
+
+      await expect(service.getClientRatings('nobody', {})).rejects.toThrow(
+        NotFoundException,
       );
     });
   });

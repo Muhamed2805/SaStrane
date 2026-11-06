@@ -7,8 +7,9 @@ import {
   COMMON_ERRORS,
   SIGNED_IN_ERRORS,
 } from '../openapi/api-errors.decorator.js';
+import { CreateClientRatingDto } from './dto/create-client-rating.dto.js';
 import { CreateRatingDto } from './dto/create-rating.dto.js';
-import { RatingDto } from './dto/rating-response.dto.js';
+import { ClientRatingDto, RatingDto } from './dto/rating-response.dto.js';
 import { RatingsService } from './ratings.service.js';
 
 @ApiTags('ratings')
@@ -38,5 +39,36 @@ export class RatingsController {
   ): Promise<RatingDto> {
     const user = req.user as { id: string };
     return this.ratings.create(dto, user.id);
+  }
+}
+
+@ApiTags('ratings')
+@ApiBearerAuth()
+@ApiErrors({ ...COMMON_ERRORS, ...SIGNED_IN_ERRORS })
+@UseGuards(JwtAuthGuard)
+@Controller('client-ratings')
+export class ClientRatingsController {
+  constructor(private readonly ratings: RatingsService) {}
+
+  /**
+   * Rates the client of a job the user did, through the user's accepted
+   * application.
+   *
+   * @remarks The job must be closed. A rating is final, and there is one per
+   * application.
+   */
+  @ApiErrors({
+    400: 'A field is missing or invalid.',
+    403: "The application is another user's.",
+    404: 'The application does not exist.',
+    409: 'The application is not accepted (APPLICATION_NOT_ACCEPTED), the job is still open (LISTING_NOT_CLOSED), or the client is rated already (ALREADY_RATED).',
+  })
+  @Post()
+  create(
+    @Body() dto: CreateClientRatingDto,
+    @Req() req: Request,
+  ): Promise<ClientRatingDto> {
+    const user = req.user as { id: string };
+    return this.ratings.createForClient(dto, user.id);
   }
 }

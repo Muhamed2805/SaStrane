@@ -3,6 +3,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { ApiErrors, COMMON_ERRORS } from '../openapi/api-errors.decorator.js';
 import { ExecutorsQueryDto } from './dto/executors-query.dto.js';
 import {
+  ClientRatingsPageDto,
   ExecutorsPageDto,
   RatingsPageDto,
   UserProfileDto,
@@ -28,7 +29,7 @@ export class UsersController {
     return this.ratings.getExecutors(query);
   }
 
-  /** Returns a user's public profile with their rating as an executor. */
+  /** Returns a user's public profile with their ratings. */
   @ApiErrors({ 404: 'The user does not exist.' })
   @Get(':id')
   getProfile(@Param('id') id: string): Promise<UserProfileDto> {
@@ -46,5 +47,18 @@ export class UsersController {
     @Query() query: RatingsQueryDto,
   ): Promise<RatingsPageDto> {
     return this.ratings.getRatings(id, query);
+  }
+
+  /** Lists the ratings a user received as a client, newest first. */
+  @ApiErrors({
+    400: 'A query parameter is invalid.',
+    404: 'The user does not exist.',
+  })
+  @Get(':id/client-ratings')
+  getClientRatings(
+    @Param('id') id: string,
+    @Query() query: RatingsQueryDto,
+  ): Promise<ClientRatingsPageDto> {
+    return this.ratings.getClientRatings(id, query);
   }
 }

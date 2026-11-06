@@ -16,6 +16,8 @@ export const profileKeys = {
   detail: (userId: string) => [...profileKeys.all, userId] as const,
   ratings: (userId: string) =>
     [...profileKeys.detail(userId), 'ratings'] as const,
+  clientRatings: (userId: string) =>
+    [...profileKeys.detail(userId), 'client-ratings'] as const,
 };
 
 export function userProfileQuery(userId: string) {
@@ -35,6 +37,16 @@ export function userRatingsQuery(userId: string) {
   });
 }
 
+export function userClientRatingsQuery(userId: string) {
+  return infiniteQueryOptions({
+    queryKey: profileKeys.clientRatings(userId),
+    queryFn: ({ pageParam }) =>
+      ratingsApi.getClientRatings(userId, pageParam, RATINGS_PAGE_SIZE),
+    initialPageParam: 1,
+    getNextPageParam: nextPageParam,
+  });
+}
+
 // After the client rates an executor: the application lists show the
 // rating, and the executor's profile and place in the list change.
 export function ratingGiven(
@@ -47,4 +59,12 @@ export function ratingGiven(
     queryKey: profileKeys.detail(executorId),
   });
   void queryClient.invalidateQueries({ queryKey: executorKeys.all });
+}
+
+// After the executor rates a client: the application list shows the
+// rating. The client's ID is not on the application, so every profile in
+// the cache reloads when next shown.
+export function clientRatingGiven(queryClient: QueryClient, userId: string) {
+  void queryClient.invalidateQueries({ queryKey: applicationKeys.all(userId) });
+  void queryClient.invalidateQueries({ queryKey: profileKeys.all });
 }

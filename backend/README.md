@@ -100,7 +100,8 @@ after every install and every schema change.
 
 The seed in `prisma/seed.ts` adds four users, two of them with an
 introduction and skills, an admin (`admin@example.com`), ten jobs, seven
-photos, seven applications, two ratings, four conversations, one open
+photos, seven applications, two ratings of executors, one of a client,
+four conversations, one open
 report, two invitations and five notifications for Amra. The photos come from
 `prisma/seed-photos` and need the storage container and
 `npm run storage:init`. When the storage is not reachable, as in CI, the
@@ -199,9 +200,11 @@ admin, or the route returns 403.
 | `POST` | `/api/conversations/:id/messages` | Member | Sends a message. |
 | `POST` | `/api/conversations/:id/read` | Member | Marks the conversation as read. Returns 204. |
 | `POST` | `/api/ratings` | Owner | Rates the executor of an accepted application to a closed job. |
+| `POST` | `/api/client-ratings` | Executor | Rates the client of a closed job through your accepted application. Once per application, and final. |
 | `GET` | `/api/users` | | Lists the users who do jobs, the best rated first, each with the profile fields and `stats`. Only confirmed, not suspended users with at least one skill. Filters: `q` (name or introduction), `skill`, `location`. Paging: `page`, `limit` (max 50, default 12). |
-| `GET` | `/api/users/:id` | | Returns a user's public profile: photo, introduction, skills, location, rating and `stats`: completed jobs and the median minutes to answer a message in the last 90 days (null with fewer than 3 answers). |
-| `GET` | `/api/users/:id/ratings` | | Lists the ratings a user received, newest first. Paging: `page`, `limit` (max 50). |
+| `GET` | `/api/users/:id` | | Returns a user's public profile: photo, introduction, skills, location, `rating` as an executor, `clientRating` as a client and `stats`: completed jobs and the median minutes to answer a message in the last 90 days (null with fewer than 3 answers). |
+| `GET` | `/api/users/:id/ratings` | | Lists the ratings a user received as an executor, newest first. Paging: `page`, `limit` (max 50). |
+| `GET` | `/api/users/:id/client-ratings` | | Lists the ratings a user received as a client, newest first. Paging: `page`, `limit` (max 50). |
 | `POST` | `/api/reports` | Bearer | Reports a job (`listingId`) or a user (`userId`) with a reason and optional details. Returns 204. |
 | `GET` | `/api/admin/stats` | Admin | Returns the totals for the admin overview. |
 | `GET` | `/api/admin/users` | Admin | Lists every user, the newest first, with their counts. Filters: `q` (name or email), `filter` (`SUSPENDED` or `ADMINS`). Paging: `page`, `limit` (max 50). |

@@ -24,6 +24,8 @@ import {
 import { listingKeys } from '@/features/listings/queries';
 import { ListingApplications } from '@/features/applications/components/listing-applications';
 import { InvitationBanner } from '@/features/invitations/components/invitation-banner';
+import { ratingsApi } from '@/features/ratings/api';
+import { RatingSummary } from '@/features/ratings/components/rating-stars';
 import { formatDate } from '@/lib/format-date';
 import { formatPrice } from '@/lib/format-price';
 import { ApiError } from '@/lib/api-client';
@@ -100,12 +102,16 @@ export default async function ListingDetailsPage({ params }: PageProps) {
   const queryClient = getQueryClient();
   queryClient.setQueryData(listingKeys.detail(listing.id), listing);
 
-  const relatedListings = await listingsApi
-    .getAll({ category: listing.category, status: 'OPEN', limit: 4 })
-    .then((response) =>
-      response.items.filter((item) => item.id !== listing.id).slice(0, 3),
-    )
-    .catch(() => []);
+  // How executors rated the client. Without it the page still shows.
+  const [relatedListings, clientProfile] = await Promise.all([
+    listingsApi
+      .getAll({ category: listing.category, status: 'OPEN', limit: 4 })
+      .then((response) =>
+        response.items.filter((item) => item.id !== listing.id).slice(0, 3),
+      )
+      .catch(() => []),
+    ratingsApi.getProfile(listing.client.id).catch(() => null),
+  ]);
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
@@ -248,9 +254,12 @@ export default async function ListingDetailsPage({ params }: PageProps) {
                   className="size-12 rounded-full bg-primary/10 text-base font-bold text-primary"
                 />
                 <div className="min-w-0">
-                  <p className="truncate font-semibold">
+                  <Link
+                    href={`/users/${listing.client.id}`}
+                    className="block truncate font-semibold transition-colors hover:text-primary"
+                  >
                     {listing.client.fullName}
-                  </p>
+                  </Link>
                   <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <CheckCircle2
                       className="size-3.5 text-primary"
@@ -258,6 +267,15 @@ export default async function ListingDetailsPage({ params }: PageProps) {
                     />
                     Član SaStrane zajednice
                   </p>
+                  {clientProfile && clientProfile.clientRating.count > 0 ? (
+                    <p className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                      Ocjena izvođača:
+                      <RatingSummary
+                        rating={clientProfile.clientRating}
+                        href={`/users/${listing.client.id}#client-ratings`}
+                      />
+                    </p>
+                  ) : null}
                 </div>
               </div>
             </section>

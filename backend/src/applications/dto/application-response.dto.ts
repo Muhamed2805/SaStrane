@@ -8,7 +8,7 @@ import {
   ListingStatus,
 } from '../../generated/prisma/enums.js';
 
-// The client's rating of the executor for this job.
+// A rating for this job: the client's of the executor, or the other way.
 export class ApplicationRatingDto {
   /** Stars from 1 to 5. */
   score!: number;
@@ -72,6 +72,14 @@ export class ApplicationExecutorDto {
 // An application as the executor who sent it sees it.
 export class MyApplicationDto extends ApplicationDto {
   listing!: ApplicationListingDto;
+
+  /** The executor's rating of the client. Null until they rate. */
+  @ApiProperty({ type: () => ApplicationRatingDto, nullable: true })
+  clientRating!: ApplicationRatingDto | null;
+
+  /** True when the application is accepted, the job is closed and the
+   * client is not rated yet. */
+  canRateClient!: boolean;
 }
 
 // An application as the job's client sees it.

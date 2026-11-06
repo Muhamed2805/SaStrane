@@ -5,14 +5,69 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { LoaderCircle, MessageSquareQuote, RefreshCw } from 'lucide-react';
 import { formatDate } from '@/lib/format-date';
 import { pageItems } from '@/lib/paging';
-import { userRatingsQuery } from '../queries';
+import { userClientRatingsQuery, userRatingsQuery } from '../queries';
 import { RatingStars } from './rating-stars';
 
-// The reviews on a public profile, newest first.
+// The reviews on a public profile that clients wrote, newest first.
 export function UserRatings({ userId }: { userId: string }) {
   const query = useInfiniteQuery(userRatingsQuery(userId));
-  const ratings = pageItems(query.data?.pages);
+  const ratings = pageItems(query.data?.pages).map((rating) => ({
+    ...rating,
+    author: rating.client.fullName,
+  }));
 
+  return (
+    <RatingList
+      query={query}
+      ratings={ratings}
+      emptyText="Ocjene ostavljaju klijenti nakon završenog posla."
+    />
+  );
+}
+
+// The reviews on a public profile that executors wrote about the user as a
+// client, newest first.
+export function UserClientRatings({ userId }: { userId: string }) {
+  const query = useInfiniteQuery(userClientRatingsQuery(userId));
+  const ratings = pageItems(query.data?.pages).map((rating) => ({
+    ...rating,
+    author: rating.executor.fullName,
+  }));
+
+  return (
+    <RatingList
+      query={query}
+      ratings={ratings}
+      emptyText="Ocjene ostavljaju izvođači nakon završenog posla."
+    />
+  );
+}
+
+type ListedRating = {
+  id: string;
+  score: number;
+  comment: string | null;
+  listingId: string | null;
+  listingTitle: string;
+  author: string;
+  createdAt: string;
+};
+
+type RatingListProps = {
+  query: {
+    error: Error | null;
+    isPending: boolean;
+    hasNextPage: boolean;
+    isFetchingNextPage: boolean;
+    data: unknown;
+    refetch: () => Promise<unknown>;
+    fetchNextPage: () => Promise<unknown>;
+  };
+  ratings: ListedRating[];
+  emptyText: string;
+};
+
+function RatingList({ query, ratings, emptyText }: RatingListProps) {
   if (query.error && !query.data) {
     return (
       <div className="rounded-2xl border bg-white p-6 text-center text-sm shadow-sm">
@@ -47,7 +102,7 @@ export function UserRatings({ userId }: { userId: string }) {
         </span>
         <p className="mt-4 font-semibold">Još nema ocjena</p>
         <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-          Ocjene ostavljaju klijenti nakon završenog posla.
+          {emptyText}
         </p>
       </div>
     );
@@ -76,7 +131,7 @@ export function UserRatings({ userId }: { userId: string }) {
               </p>
             ) : null}
             <p className="mt-3 text-xs text-muted-foreground">
-              {rating.client.fullName} ·{' '}
+              {rating.author} ·{' '}
               {rating.listingId ? (
                 <Link
                   href={`/listings/${rating.listingId}`}

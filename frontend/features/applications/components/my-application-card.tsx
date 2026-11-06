@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   Banknote,
@@ -7,7 +8,9 @@ import {
   ChevronRight,
   MapPin,
   MessageCircle,
+  Star,
 } from 'lucide-react';
+import { useAuthStore } from '@/features/auth/store';
 import { ClosedBadge } from '@/features/listings/components/closed-badge';
 import {
   CATEGORY_LABELS,
@@ -15,6 +18,7 @@ import {
 } from '@/features/listings/constants';
 import { formatDate } from '@/lib/format-date';
 import { useOpenConversation } from '@/features/messages/hooks';
+import { RateClientDialog } from '@/features/ratings/components/rate-client-dialog';
 import { RatingStars } from '@/features/ratings/components/rating-stars';
 import { formatPrice } from '@/lib/format-price';
 import type { MyApplication } from '../api';
@@ -26,6 +30,8 @@ export function MyApplicationCard({
   application: MyApplication;
 }) {
   const { open: openConversation, isOpening } = useOpenConversation();
+  const userId = useAuthStore((state) => state.user?.id);
+  const [isRating, setIsRating] = useState(false);
 
   return (
     <article className="rounded-xl border bg-white p-5 shadow-sm transition-colors hover:border-primary/30">
@@ -58,7 +64,7 @@ export function MyApplicationCard({
       {application.rating ? (
         <div className="mt-4 rounded-xl bg-amber-50 p-4">
           <p className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-            Ocjena klijenta:
+            Ocjena od klijenta:
             <RatingStars score={application.rating.score} />
           </p>
           {application.rating.comment ? (
@@ -83,7 +89,23 @@ export function MyApplicationCard({
             Poslano {formatDate(application.createdAt)}
           </span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
+          {application.clientRating ? (
+            <p className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+              Tvoja ocjena klijenta:
+              <RatingStars score={application.clientRating.score} />
+            </p>
+          ) : null}
+          {application.canRateClient && userId ? (
+            <button
+              type="button"
+              onClick={() => setIsRating(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80"
+            >
+              <Star className="size-3.5" aria-hidden="true" />
+              Ocijeni klijenta
+            </button>
+          ) : null}
           <button
             type="button"
             disabled={isOpening}
@@ -104,6 +126,15 @@ export function MyApplicationCard({
           </Link>
         </div>
       </div>
+
+      {isRating && userId ? (
+        <RateClientDialog
+          userId={userId}
+          applicationId={application.id}
+          listingTitle={application.listing.title}
+          onClose={() => setIsRating(false)}
+        />
+      ) : null}
     </article>
   );
 }

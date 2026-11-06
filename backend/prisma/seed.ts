@@ -1,6 +1,7 @@
 // Demo data for local development: four users and an admin, ten jobs,
-// seven photos, seven applications, two ratings, four conversations, one
-// open report, two invitations and five notifications, with Bosnian text as in real use. Every demo user signs
+// seven photos, seven applications, two ratings, one rating of a client,
+// four conversations, one open report, two invitations and five
+// notifications, with Bosnian text as in real use. Every demo user signs
 // in with the password below.
 //
 // Run it with `npx prisma db seed`. It upserts fixed IDs, so a second run
@@ -333,6 +334,22 @@ const ratings = [
   },
 ];
 
+// Executors' ratings of the clients they worked for. Amra has not rated
+// Tarik for the wardrobe yet, so she can do it herself.
+const clientRatings = [
+  {
+    id: 'seed-client-rating-fence-kenan',
+    applicationId: 'seed-application-fence-kenan',
+    listingId: 'seed-listing-fence',
+    listingTitle: 'Farbanje drvene ograde u dvorištu',
+    clientId: 'seed-user-lejla',
+    executorId: 'seed-user-kenan',
+    score: 5,
+    comment: 'Sve dogovoreno unaprijed, boja kupljena i plaćeno odmah.',
+    hoursAgo: 190,
+  },
+];
+
 // Each conversation is between a job's client and the executor. The
 // messages are oldest first; minutesAgo is when each one was sent.
 const conversations: {
@@ -582,6 +599,14 @@ async function main() {
       });
     }
 
+    for (const { hoursAgo: age, ...rating } of clientRatings) {
+      await prisma.clientRating.upsert({
+        where: { id: rating.id },
+        update: {},
+        create: { ...rating, createdAt: hoursAgo(age) },
+      });
+    }
+
     for (const { messages, ...conversation } of conversations) {
       await prisma.conversation.upsert({
         where: { id: conversation.id },
@@ -719,7 +744,7 @@ async function main() {
     }
 
     console.log(
-      `Seeded ${users.length} users, ${listings.length} jobs, ${addedPhotos === null ? 0 : photos.length} photos, ${applications.length} applications, ${ratings.length} ratings, ${conversations.length} conversations, 1 report, ${invitations.length} invitations and ${notifications.length} notifications.`,
+      `Seeded ${users.length} users, ${listings.length} jobs, ${addedPhotos === null ? 0 : photos.length} photos, ${applications.length} applications, ${ratings.length} ratings of executors, ${clientRatings.length} of clients, ${conversations.length} conversations, 1 report, ${invitations.length} invitations and ${notifications.length} notifications.`,
     );
     console.log(`Sign in as amra@example.com with ${DEMO_PASSWORD}.`);
     console.log('Sign in as admin@example.com to handle reports.');

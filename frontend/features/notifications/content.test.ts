@@ -63,5 +63,14 @@ describe('notificationContent', () => {
       title: 'Nova ocjena za tvoj rad',
       href: '/users/user%201',
     });
+    expect(
+      notificationContent(
+        notification({ type: 'NEW_CLIENT_RATING' }),
+        'user 1',
+      ),
+    ).toEqual({
+      title: 'Nova ocjena za tebe kao klijenta',
+      href: '/users/user%201#client-ratings',
+    });
   });
 });

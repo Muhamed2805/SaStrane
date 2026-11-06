@@ -87,7 +87,7 @@ of date.
 | `features/listings/` | The job list, detail, form, photos and API calls, and the names for the category and location codes |
 | `features/applications/` | Applying and the workspace |
 | `features/messages/` | Conversations, the unread count and the message thread |
-| `features/ratings/` | The rating dialog, stars and the public profile's reviews |
+| `features/ratings/` | The rating dialogs for executors and clients, stars and the public profile's reviews |
 | `features/executors/` | The executor list with its search and filters |
 | `features/invitations/` | The invite dialog on a profile and the invitations in the workspace |
 | `features/notifications/` | The bell in the navbar with the unread count and the notifications |

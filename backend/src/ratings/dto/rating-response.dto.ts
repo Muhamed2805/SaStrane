@@ -5,7 +5,7 @@ import {
   ListingLocation,
 } from '../../generated/prisma/enums.js';
 
-// How an executor was rated so far.
+// How a user was rated so far, as an executor or as a client.
 export class RatingSummaryDto {
   /** The mean score, rounded to one decimal. Null without ratings. */
   average!: number | null;
@@ -57,6 +57,38 @@ export class RatingsPageDto extends PageDto {
   items!: RatingDto[];
 }
 
+// The executor who wrote a rating of a client.
+export class RatingExecutorDto {
+  id!: string;
+
+  fullName!: string;
+}
+
+// An executor's rating of the client they worked for.
+export class ClientRatingDto {
+  id!: string;
+
+  /** Stars from 1 to 5. */
+  score!: number;
+
+  comment!: string | null;
+
+  /** Null when the job was deleted. */
+  listingId!: string | null;
+
+  /** The job's title when it was rated. */
+  listingTitle!: string;
+
+  executor!: RatingExecutorDto;
+
+  createdAt!: Date;
+}
+
+// Newest first.
+export class ClientRatingsPageDto extends PageDto {
+  items!: ClientRatingDto[];
+}
+
 // What anyone can see about a user. The email stays private.
 export class UserProfileDto {
   id!: string;
@@ -90,6 +122,9 @@ export class UserProfileDto {
 
   /** Ratings received as an executor. */
   rating!: RatingSummaryDto;
+
+  /** Ratings received as a client, from the executors they hired. */
+  clientRating!: RatingSummaryDto;
 
   stats!: UserStatsDto;
 }

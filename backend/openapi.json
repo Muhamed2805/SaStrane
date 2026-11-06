@@ -3051,6 +3051,114 @@
         ]
       }
     },
+    "/api/client-ratings": {
+      "post": {
+        "description": "The job must be closed. A rating is final, and there is one per\napplication.",
+        "operationId": "clientRatings_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateClientRatingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientRatingDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field is missing or invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The application is another user's.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The application does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The application is not accepted (APPLICATION_NOT_ACCEPTED), the job is still open (LISTING_NOT_CLOSED), or the client is rated already (ALREADY_RATED).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rates the client of a job the user did, through the user's accepted\napplication.",
+        "tags": [
+          "ratings"
+        ]
+      }
+    },
     "/api/users": {
       "get": {
         "operationId": "users_getExecutors",
@@ -3207,7 +3315,7 @@
             }
           }
         },
-        "summary": "Returns a user's public profile with their rating as an executor.",
+        "summary": "Returns a user's public profile with their ratings.",
         "tags": [
           "users"
         ]
@@ -3300,6 +3408,98 @@
           }
         },
         "summary": "Lists the ratings a user received as an executor, newest first.",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/users/{id}/client-ratings": {
+      "get": {
+        "operationId": "users_getClientRatings",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientRatingsPageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A query parameter is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The user does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Lists the ratings a user received as a client, newest first.",
         "tags": [
           "users"
         ]
@@ -6241,6 +6441,23 @@
               }
             ]
           },
+          "clientRating": {
+            "nullable": true,
+            "description": "The executor's rating of the client. Null until they rate.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApplicationRatingDto"
+              }
+            ]
+          },
+          "listing": {
+            "$ref": "#/components/schemas/ApplicationListingDto"
+          },
+          "canRateClient": {
+            "type": "boolean",
+            "description": "True when the application is accepted, the job is closed and the\nclient is not rated yet."
+          },
           "id": {
             "type": "string"
           },
@@ -6258,20 +6475,19 @@
           "createdAt": {
             "format": "date-time",
             "type": "string"
-          },
-          "listing": {
-            "$ref": "#/components/schemas/ApplicationListingDto"
           }
         },
         "required": [
           "status",
           "rating",
+          "clientRating",
+          "listing",
+          "canRateClient",
           "id",
           "listingId",
           "message",
           "proposedPrice",
-          "createdAt",
-          "listing"
+          "createdAt"
         ]
       },
       "MyApplicationsPageDto": {
@@ -6539,7 +6755,8 @@
           "NEW_APPLICATION",
           "APPLICATION_ACCEPTED",
           "APPLICATION_REJECTED",
-          "NEW_RATING"
+          "NEW_RATING",
+          "NEW_CLIENT_RATING"
         ],
         "description": "INVITATION: a client invites the user to a job. NEW_APPLICATION:\nsomeone applied to the user's job. APPLICATION_ACCEPTED and\nAPPLICATION_REJECTED: the client decided on the user's application.\nNEW_RATING: a client rated the user."
       },
@@ -6717,6 +6934,87 @@
           "createdAt"
         ]
       },
+      "CreateClientRatingDto": {
+        "type": "object",
+        "properties": {
+          "applicationId": {
+            "type": "string",
+            "description": "The user's accepted application. Its job's client is rated.",
+            "maxLength": 64
+          },
+          "score": {
+            "type": "number",
+            "description": "Stars from 1 to 5.",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "comment": {
+            "type": "string",
+            "description": "How the client was to work for. Leave it out to rate with stars only.",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "applicationId",
+          "score"
+        ]
+      },
+      "RatingExecutorDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fullName"
+        ]
+      },
+      "ClientRatingDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number",
+            "description": "Stars from 1 to 5."
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          },
+          "listingId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Null when the job was deleted."
+          },
+          "listingTitle": {
+            "type": "string",
+            "description": "The job's title when it was rated."
+          },
+          "executor": {
+            "$ref": "#/components/schemas/RatingExecutorDto"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "score",
+          "comment",
+          "listingId",
+          "listingTitle",
+          "executor",
+          "createdAt"
+        ]
+      },
       "UserStatsDto": {
         "type": "object",
         "properties": {
@@ -6783,6 +7081,14 @@
               }
             ]
           },
+          "clientRating": {
+            "description": "Ratings received as a client, from the executors they hired.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RatingSummaryDto"
+              }
+            ]
+          },
           "stats": {
             "$ref": "#/components/schemas/UserStatsDto"
           }
@@ -6796,6 +7102,7 @@
           "bio",
           "createdAt",
           "rating",
+          "clientRating",
           "stats"
         ]
       },
@@ -6840,6 +7147,40 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RatingDto"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "The number of items on all pages together."
+          },
+          "page": {
+            "type": "number",
+            "description": "The current page, starting at 1."
+          },
+          "limit": {
+            "type": "number",
+            "description": "The maximum number of items per page."
+          },
+          "totalPages": {
+            "type": "number",
+            "description": "The number of pages, 0 when there are no items."
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "totalPages"
+        ]
+      },
+      "ClientRatingsPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClientRatingDto"
             }
           },
           "total": {

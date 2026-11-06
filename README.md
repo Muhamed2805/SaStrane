@@ -62,7 +62,8 @@ be both.
   jobs you saved.
 - A bell in the navbar counts what happened since your last look: an
   invitation, an application to your job, a decision on your application or
-  a new rating. Each notice leads to its page and is then marked read.
+  a new rating, as an executor or as a client. Each notice leads to its page
+  and is then marked read.
 
 **Messages**
 - An executor can message the client of an open job, before or after
@@ -78,6 +79,9 @@ be both.
 - After closing a job, the client rates the accepted executor with 1 to 5
   stars and an optional comment. Each job's executor is rated once, and
   the rating is final.
+- The executor rates the client the same way, from the applications they
+  sent. A client's profile shows these ratings in a section of its own, and
+  the job's page shows them next to the client's name.
 - Every user has a public profile with a photo, a short introduction, the
   kinds of jobs they do, where they work, their average rating and the
   reviews. Application cards show the executor's rating and link to it.
@@ -320,6 +324,8 @@ erDiagram
   Conversation ||--o{ Message : holds
   Application ||--o| Rating : "is rated by"
   User ||--o{ Rating : receives
+  Application ||--o| ClientRating : "rates the client in"
+  User ||--o{ ClientRating : "receives as a client"
   Listing ||--o{ ListingPhoto : shows
   User ||--o{ SavedListing : saves
   Listing ||--o{ SavedListing : "is saved in"

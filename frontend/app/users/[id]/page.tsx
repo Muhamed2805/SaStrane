@@ -17,15 +17,25 @@ import {
 } from '@/features/listings/constants';
 import { ReportButton } from '@/features/moderation/components/report-button';
 import { ratingsApi } from '@/features/ratings/api';
-import { RatingStars } from '@/features/ratings/components/rating-stars';
-import { UserRatings } from '@/features/ratings/components/user-ratings';
+import {
+  RatingStars,
+  RatingSummary,
+} from '@/features/ratings/components/rating-stars';
+import {
+  UserClientRatings,
+  UserRatings,
+} from '@/features/ratings/components/user-ratings';
 import {
   completedJobsLabel,
   formatAverage,
   ratingCountLabel,
   responseTimeLabel,
 } from '@/features/ratings/format';
-import { profileKeys, userRatingsQuery } from '@/features/ratings/queries';
+import {
+  profileKeys,
+  userClientRatingsQuery,
+  userRatingsQuery,
+} from '@/features/ratings/queries';
 import { ApiError } from '@/lib/api-client';
 import { formatDate } from '@/lib/format-date';
 import { getQueryClient } from '@/lib/query-client';
@@ -76,7 +86,13 @@ export default async function UserProfilePage({ params }: PageProps) {
   queryClient.setQueryData(profileKeys.detail(profile.id), profile);
   // The first page of reviews comes with the page. A failure here leaves
   // the list to load in the browser.
-  await queryClient.prefetchInfiniteQuery(userRatingsQuery(profile.id));
+  const hasClientRatings = profile.clientRating.count > 0;
+  await Promise.all([
+    queryClient.prefetchInfiniteQuery(userRatingsQuery(profile.id)),
+    hasClientRatings
+      ? queryClient.prefetchInfiniteQuery(userClientRatingsQuery(profile.id))
+      : null,
+  ]);
 
   const { average, count } = profile.rating;
   const { completedJobs, responseMinutes } = profile.stats;
@@ -128,6 +144,16 @@ export default async function UserProfilePage({ params }: PageProps) {
                   </p>
                 ) : null}
               </div>
+              {hasClientRatings ? (
+                <p className="mt-2 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+                  Kao klijent:
+                  <RatingSummary
+                    rating={profile.clientRating}
+                    href="#client-ratings"
+                    className="text-sm"
+                  />
+                </p>
+              ) : null}
             </div>
             <div className="rounded-xl bg-amber-50 px-5 py-4 text-center">
               {average === null ? (
@@ -201,6 +227,19 @@ export default async function UserProfilePage({ params }: PageProps) {
           </h2>
           <UserRatings userId={profile.id} />
         </section>
+
+        {hasClientRatings ? (
+          <section
+            id="client-ratings"
+            aria-labelledby="client-ratings-title"
+            className="scroll-mt-24 space-y-3"
+          >
+            <h2 id="client-ratings-title" className="text-lg font-bold">
+              Ocjene izvođača za ovog klijenta
+            </h2>
+            <UserClientRatings userId={profile.id} />
+          </section>
+        ) : null}
       </div>
     </HydrationBoundary>
   );

@@ -1569,6 +1569,7 @@ describe('App (e2e)', () => {
         location: null,
         createdAt: expect.any(String) as unknown,
         rating: { average: 4, count: 1 },
+        clientRating: { average: null, count: 0 },
         stats: { completedJobs: 1, responseMinutes: null },
       });
 
@@ -1664,6 +1665,128 @@ describe('App (e2e)', () => {
     it('returns 404 for the profile of an unknown user', async () => {
       await http().get('/api/users/does-not-exist').expect(404);
       await http().get('/api/users/does-not-exist/ratings').expect(404);
+      await http().get('/api/users/does-not-exist/client-ratings').expect(404);
+    });
+
+    function rateClient(auth: string, body: object) {
+      return http()
+        .post('/api/client-ratings')
+        .set('Authorization', auth)
+        .send(body);
+    }
+
+    it('lets the executor rate the client once the job is closed', async () => {
+      const { client, executor, listingId, applicationId } =
+        await finishedJob();
+
+      const before = await http()
+        .get('/api/applications/my')
+        .set('Authorization', executor.auth)
+        .expect(200);
+      expect(before.body).toMatchObject({
+        items: [{ id: applicationId, canRateClient: true, clientRating: null }],
+      });
+
+      const rated = await rateClient(executor.auth, {
+        applicationId,
+        score: 3,
+        comment: '  Kasnio sa plaćanjem.  ',
+      }).expect(201);
+      expect(rated.body).toMatchObject({
+        score: 3,
+        comment: 'Kasnio sa plaćanjem.',
+        listingId,
+        listingTitle: listingInput.title,
+        executor: { id: executor.user.id, fullName: 'Kenan Mehić' },
+      });
+
+      const after = await http()
+        .get('/api/applications/my')
+        .set('Authorization', executor.auth)
+        .expect(200);
+      expect(after.body).toMatchObject({
+        items: [{ canRateClient: false, clientRating: { score: 3 } }],
+      });
+
+      // The client's own rating of the executor is a separate one.
+      const received = await http()
+        .get(`/api/applications/listing/${listingId}`)
+        .set('Authorization', client.auth)
+        .expect(200);
+      expect(received.body).toMatchObject([{ canRate: true, rating: null }]);
+
+      const profile = await http()
+        .get(`/api/users/${client.user.id}`)
+        .expect(200);
+      expect(profile.body).toMatchObject({
+        rating: { average: null, count: 0 },
+        clientRating: { average: 3, count: 1 },
+      });
+      const ratings = await http()
+        .get(`/api/users/${client.user.id}/client-ratings`)
+        .expect(200);
+      expect(ratings.body).toMatchObject({
+        total: 1,
+        items: [{ score: 3, listingTitle: listingInput.title }],
+      });
+
+      const notifications = await http()
+        .get('/api/notifications')
+        .set('Authorization', client.auth)
+        .expect(200);
+      expect(
+        (notifications.body as { items: object[] }).items[0],
+      ).toMatchObject({ type: 'NEW_CLIENT_RATING', actorName: 'Kenan Mehić' });
+    });
+
+    it('lets only the executor rate the client, once', async () => {
+      const { client, executor, applicationId } = await finishedJob();
+      const stranger = await signedInUser();
+
+      await rateClient(client.auth, { applicationId, score: 5 }).expect(403);
+      await rateClient(stranger.auth, { applicationId, score: 5 }).expect(403);
+      await rateClient(executor.auth, { applicationId, score: 6 }).expect(400);
+      await rateClient(executor.auth, {
+        applicationId: 'missing',
+        score: 5,
+      }).expect(404);
+
+      await rateClient(executor.auth, { applicationId, score: 5 }).expect(201);
+      const second = await rateClient(executor.auth, {
+        applicationId,
+        score: 1,
+      });
+      expect(second.status).toBe(409);
+      expect(second.body).toMatchObject({ code: 'ALREADY_RATED' });
+      expect(await prisma.clientRating.count()).toBe(1);
+    });
+
+    it('waits until the job is closed before the client is rated', async () => {
+      const client = await signedInUser();
+      const executor = await signedInUser();
+      const { id: listingId } = await postListing(client.auth);
+      const application = await http()
+        .post('/api/applications')
+        .set('Authorization', executor.auth)
+        .send({ listingId, message: 'Mogu doći u subotu ujutro.' })
+        .expect(201);
+      const applicationId = (application.body as { id: string }).id;
+
+      const pending = await rateClient(executor.auth, {
+        applicationId,
+        score: 5,
+      });
+      expect(pending.body).toMatchObject({ code: 'APPLICATION_NOT_ACCEPTED' });
+
+      await http()
+        .patch(`/api/applications/${applicationId}/status`)
+        .set('Authorization', client.auth)
+        .send({ status: 'ACCEPTED' })
+        .expect(200);
+      const open = await rateClient(executor.auth, { applicationId, score: 5 });
+      expect(open.status).toBe(409);
+      expect(open.body).toMatchObject({ code: 'LISTING_NOT_CLOSED' });
+      expect(await prisma.clientRating.count()).toBe(0);
     });
 
     it('shows completed jobs and how fast the user answers', async () => {
@@ -2365,6 +2488,15 @@ describe('App (e2e)', () => {
           listingTitle: 'Montaža',
         },
       });
+      // Tarik also posted a job, and its executor rated him.
+      await prisma.clientRating.create({
+        data: {
+          clientId: tarik.id,
+          executorId: client.id,
+          score: 4,
+          listingTitle: 'Montaža',
+        },
+      });
       for (const data of [
         { suspendedAt: new Date() },
         { emailVerifiedAt: null },
@@ -2389,11 +2521,13 @@ describe('App (e2e)', () => {
             location: 'SARAJEVO',
             createdAt: expect.any(String) as unknown,
             rating: { average: 5, count: 1 },
+            clientRating: { average: 4, count: 1 },
             stats: { completedJobs: 0, responseMinutes: null },
           },
           expect.objectContaining({
             id: kenan.id,
             rating: { average: null, count: 0 },
+            clientRating: { average: null, count: 0 },
           }) as unknown,
         ],
         total: 2,

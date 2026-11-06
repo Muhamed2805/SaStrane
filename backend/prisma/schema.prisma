@@ -70,6 +70,7 @@ enum NotificationType {
   APPLICATION_ACCEPTED
   APPLICATION_REJECTED
   NEW_RATING
+  NEW_CLIENT_RATING
 }
 
 enum ReportReason {
@@ -130,6 +131,8 @@ model User {
   sentMessages          Message[]      @relation("SentMessages")
   receivedRatings       Rating[]       @relation("ReceivedRatings")
   givenRatings          Rating[]       @relation("GivenRatings")
+  receivedClientRatings ClientRating[] @relation("ReceivedClientRatings")
+  givenClientRatings    ClientRating[] @relation("GivenClientRatings")
   savedListings         SavedListing[]
   invitations           Invitation[]
   notifications         Notification[]
@@ -191,6 +194,7 @@ model Listing {
   applications  Application[]
   conversations Conversation[]
   ratings       Rating[]
+  clientRatings ClientRating[]
   photos        ListingPhoto[]
   savedBy       SavedListing[]
   invitations   Invitation[]
@@ -267,9 +271,10 @@ model Application {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  listing  Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  executor User    @relation("UserApplications", fields: [executorId], references: [id], onDelete: Cascade)
-  rating   Rating?
+  listing      Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  executor     User          @relation("UserApplications", fields: [executorId], references: [id], onDelete: Cascade)
+  rating       Rating?
+  clientRating ClientRating?
 
   @@unique([listingId, executorId]) // jedan executor može jednom aplicirati na isti oglas
   @@index([listingId, status])
@@ -354,6 +359,29 @@ model Rating {
   executor    User         @relation("ReceivedRatings", fields: [executorId], references: [id], onDelete: Cascade)
 
   @@index([executorId, createdAt])
+  @@index([listingId])
+}
+
+// The executor's rating of the client, the other way round from Rating.
+// One per accepted application, once the job is closed.
+model ClientRating {
+  id            String  @id @default(cuid())
+  applicationId String? @unique
+  listingId     String?
+  listingTitle  String
+  clientId      String
+  executorId    String
+  score         Int // 1 to 5
+  comment       String?
+
+  createdAt DateTime @default(now())
+
+  application Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  listing     Listing?     @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  client      User         @relation("ReceivedClientRatings", fields: [clientId], references: [id], onDelete: Cascade)
+  executor    User         @relation("GivenClientRatings", fields: [executorId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, createdAt])
   @@index([listingId])
 }
 

@@ -46,6 +46,7 @@ const EXECUTOR_SELECT = {
 const MY_APPLICATION_SELECT = {
   ...APPLICATION_SELECT,
   listing: LISTING_SELECT,
+  clientRating: { select: { score: true, comment: true, createdAt: true } },
 } satisfies Prisma.ApplicationSelect;
 
 const LISTING_APPLICATION_SELECT = {
@@ -220,7 +221,19 @@ export class ApplicationsService {
       this.prisma.application.count({ where }),
     ]);
 
-    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+    return {
+      items: items.map((application) => ({
+        ...application,
+        canRateClient:
+          application.status === ApplicationStatus.ACCEPTED &&
+          application.listing.status === ListingStatus.CLOSED &&
+          application.clientRating === null,
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async getReceivedApplications(clientId: string, query: ApplicationsQueryDto) {

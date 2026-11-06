@@ -42,5 +42,10 @@ export function notificationContent(
         title: 'Nova ocjena za tvoj rad',
         href: `/users/${encodeURIComponent(userId)}`,
       };
+    case 'NEW_CLIENT_RATING':
+      return {
+        title: 'Nova ocjena za tebe kao klijenta',
+        href: `/users/${encodeURIComponent(userId)}#client-ratings`,
+      };
   }
 }
