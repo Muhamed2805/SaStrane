@@ -147,7 +147,10 @@ export default async function ListingDetailsPage({ params }: PageProps) {
                   />
                   {LOCATION_LABELS[listing.location]}
                 </span>
-                <ClosedBadge status={listing.status} />
+                <ClosedBadge
+                  status={listing.status}
+                  expiresAt={listing.expiresAt}
+                />
               </div>
 
               <h1 className="mt-5 text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
@@ -229,6 +232,7 @@ export default async function ListingDetailsPage({ params }: PageProps) {
                 listingId={listing.id}
                 clientId={listing.client.id}
                 status={listing.status}
+                expiresAt={listing.expiresAt}
                 title={listing.title}
               />
               <div className="mt-5 flex gap-3 rounded-xl bg-primary/[0.06] p-4">

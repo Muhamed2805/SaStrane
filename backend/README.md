@@ -102,7 +102,9 @@ The seed in `prisma/seed.ts` adds four users, two of them with an
 introduction and skills, an admin (`admin@example.com`), ten jobs, seven
 photos, seven applications, two ratings of executors, one of a client,
 four conversations, one open
-report, two invitations, two job alerts and five notifications for Amra. The photos come from
+report, two invitations, two job alerts and five notifications for Amra.
+Amra's laptop job is 28 days old, so the API reminds her that it expires
+soon when it starts. The photos come from
 `prisma/seed-photos` and need the storage container and
 `npm run storage:init`. When the storage is not reachable, as in CI, the
 seed skips them with a warning. Every demo user signs in with
@@ -169,7 +171,8 @@ admin, or the route returns 403.
 | `GET` | `/api/listings/:id` | | Returns one job. |
 | `POST` | `/api/listings` | Bearer | Creates a job and returns it like `GET /api/listings/:id`. |
 | `PATCH` | `/api/listings/:id` | Owner | Updates a job. |
-| `PATCH` | `/api/listings/:id/status` | Owner | Opens or closes a job. |
+| `PATCH` | `/api/listings/:id/status` | Owner | Opens or closes a job. Reopening gives it a new 30 days. |
+| `POST` | `/api/listings/:id/extend` | Owner | Keeps an open job open for 30 days from now. Refuses a closed job with 409 `LISTING_CLOSED`. |
 | `DELETE` | `/api/listings/:id` | Owner | Deletes a job with its applications and photos. Returns 204. |
 | `POST` | `/api/listings/:id/photos` | Owner | Adds a photo: `multipart/form-data` with the file in `photo`. |
 | `PUT` | `/api/listings/:id/photos/order` | Owner | Sets the order of the photos. The first is the cover. |
@@ -188,7 +191,7 @@ admin, or the route returns 403.
 | `GET` | `/api/invitations` | Bearer | Lists your invitations to open jobs, newest first, with the job, the client and whether you applied. `listingId` returns only the invitation to that job. Paging: `page`, `limit` (max 50). |
 | `GET` | `/api/invitations/options` | Bearer | Lists your newest 50 open jobs and whether the user in `executorId` can be invited to each: `AVAILABLE`, `INVITED` or `APPLIED`. |
 | `DELETE` | `/api/invitations/:id` | Bearer | Declines your invitation. The client is not told. Returns 204. |
-| `GET` | `/api/notifications` | Bearer | Lists your notifications, newest first: `INVITATION`, `NEW_APPLICATION`, `APPLICATION_ACCEPTED`, `APPLICATION_REJECTED`, `NEW_RATING`, `NEW_CLIENT_RATING` or `NEW_LISTING_MATCH`, with the job title and the other user's name. Paging: `page`, `limit` (max 50). |
+| `GET` | `/api/notifications` | Bearer | Lists your notifications, newest first: `INVITATION`, `NEW_APPLICATION`, `APPLICATION_ACCEPTED`, `APPLICATION_REJECTED`, `NEW_RATING`, `NEW_CLIENT_RATING`, `NEW_LISTING_MATCH`, `LISTING_EXPIRING` or `LISTING_EXPIRED`, with the job title and the other user's name. Paging: `page`, `limit` (max 50). |
 | `GET` | `/api/notifications/unread-count` | Bearer | Counts your unread notifications. |
 | `POST` | `/api/notifications/:id/read` | Bearer | Marks one notification as read. Returns 204. |
 | `POST` | `/api/notifications/read-all` | Bearer | Marks all your notifications as read. Returns 204. |
@@ -277,6 +280,17 @@ admin, or the route returns 403.
   conversation, by opening it or by answering. The conversation is marked
   before the email is sent, so two API instances cannot send it twice. A
   failed email is logged and not retried.
+
+**Job expiry.**
+- An open job gets `expiresAt` 30 days after posting, reopening or
+  extending. Closing it by hand, by an admin or by a suspension clears it.
+- Once an hour, and when the API starts, the API tells the clients whose
+  open jobs expire within 3 days, once per job, and closes the jobs whose
+  time ran out. A closed job keeps its `expiresAt`, which the site shows as
+  expired instead of closed. Both send a notification, and an email when
+  email notifications are on.
+- Each job is claimed with a conditional update before the client is told,
+  so two API instances never tell a client twice. A failure is logged.
 
 **Job alerts.**
 - A new job is matched against every alert with the same category or none,

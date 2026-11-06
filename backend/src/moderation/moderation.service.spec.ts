@@ -172,7 +172,7 @@ describe('ModerationService', () => {
       );
       expect(prisma.listing.updateMany).toHaveBeenCalledWith({
         where: { clientId: 'user-1', status: 'OPEN' },
-        data: { status: 'CLOSED' },
+        data: { status: 'CLOSED', expiresAt: null, expiryReminderSentAt: null },
       });
       expect(prisma.report.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({

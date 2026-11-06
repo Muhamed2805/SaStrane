@@ -84,7 +84,7 @@ of date.
 | `app/` | Routes: `/`, `/listings`, `/listings/[id]`, `/listings/create`, `/listings/[id]/edit`, `/executors`, `/inbox`, `/messages`, `/messages/[id]`, `/users/[id]`, `/profile`, `/settings`, `/admin` with `reports`, `users` and `listings`, `/login` |
 | `features/auth/` | The session: an in-memory access token, refresh on reload and on 401, and tab sync |
 | `features/account/` | Account settings: profile photo, name, role, introduction, skills and location, email notifications, password change and account deletion |
-| `features/listings/` | The job list, detail, form, photos and API calls, and the names for the category and location codes |
+| `features/listings/` | The job list, detail, form, photos and API calls, the names for the category and location codes, and the expiry with its extend button |
 | `features/applications/` | Applying and the workspace |
 | `features/messages/` | Conversations, the unread count and the message thread |
 | `features/ratings/` | The rating dialogs for executors and clients, stars and the public profile's reviews |

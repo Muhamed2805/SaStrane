@@ -10,9 +10,13 @@ import { formatDate } from '@/lib/format-date';
 import { formatPrice } from '@/lib/format-price';
 import type { ListingSummary } from '../api';
 import { CATEGORY_LABELS, LOCATION_LABELS } from '../constants';
+import { expiryLabel, isExpiringSoon } from '../expiry';
 import { ClosedBadge } from './closed-badge';
+import { ExtendListingButton } from './extend-listing-button';
 
 export function MyListingCard({ listing }: { listing: ListingSummary }) {
+  const expiringSoon = isExpiringSoon(listing);
+
   return (
     <article className="rounded-xl border bg-white p-5 shadow-sm transition-colors hover:border-primary/30">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
@@ -21,7 +25,10 @@ export function MyListingCard({ listing }: { listing: ListingSummary }) {
             <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
               {CATEGORY_LABELS[listing.category]}
             </span>
-            <ClosedBadge status={listing.status} />
+            <ClosedBadge
+              status={listing.status}
+              expiresAt={listing.expiresAt}
+            />
           </div>
           <Link
             href={`/listings/${listing.id}`}
@@ -46,6 +53,21 @@ export function MyListingCard({ listing }: { listing: ListingSummary }) {
           Objavljeno {formatDate(listing.createdAt)}
         </span>
       </div>
+
+      {expiringSoon && listing.expiresAt ? (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-amber-50 px-4 py-3">
+          <p className="text-sm text-amber-900">
+            <span className="font-semibold">
+              {expiryLabel(listing.expiresAt)}.
+            </span>{' '}
+            Nakon toga se zatvara za nove prijave.
+          </p>
+          <ExtendListingButton
+            listingId={listing.id}
+            className="h-9 px-3 text-xs"
+          />
+        </div>
+      ) : null}
 
       <div className="mt-5 flex flex-wrap items-center justify-end gap-3 border-t pt-4">
         <Link

@@ -12,6 +12,7 @@ import {
   SessionRevocationReason,
 } from '../generated/prisma/enums.js';
 import { SessionsService } from '../auth/sessions.service.js';
+import { expiryFor } from '../listings/listing-expiry.js';
 import { ListingsService } from '../listings/listings.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateReportDto } from './dto/create-report.dto.js';
@@ -223,7 +224,10 @@ export class ModerationService {
       );
       await tx.listing.updateMany({
         where: { clientId: userId, status: ListingStatus.OPEN },
-        data: { status: ListingStatus.CLOSED },
+        data: {
+          status: ListingStatus.CLOSED,
+          ...expiryFor(ListingStatus.CLOSED),
+        },
       });
       await tx.report.updateMany({
         where: { reportedUserId: userId, status: ReportStatus.OPEN },

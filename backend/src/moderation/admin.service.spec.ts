@@ -94,7 +94,7 @@ describe('AdminService', () => {
 
       expect(prisma.listing.update).toHaveBeenCalledWith({
         where: { id: 'listing-1' },
-        data: { status: 'CLOSED' },
+        data: { status: 'CLOSED', expiresAt: null, expiryReminderSentAt: null },
       });
     });
 

@@ -65,6 +65,24 @@ describe('notificationContent', () => {
     });
     expect(
       notificationContent(
+        notification({ type: 'LISTING_EXPIRING', listingId: 'listing-1' }),
+        'user 1',
+      ),
+    ).toEqual({
+      title: 'Tvoj oglas uskoro ističe',
+      href: '/listings/listing-1',
+    });
+    expect(
+      notificationContent(
+        notification({ type: 'LISTING_EXPIRED', listingId: null }),
+        'user 1',
+      ),
+    ).toEqual({
+      title: 'Tvoj oglas je istekao',
+      href: '/inbox?tab=listings',
+    });
+    expect(
+      notificationContent(
         notification({ type: 'NEW_LISTING_MATCH', listingId: null }),
         'user 1',
       ),

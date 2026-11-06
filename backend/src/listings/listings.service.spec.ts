@@ -16,6 +16,7 @@ describe('ListingsService', () => {
     count: vi.fn(),
     findUnique: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
     delete: vi.fn(),
   };
   const photoRepository = { findMany: vi.fn() };
@@ -162,6 +163,13 @@ describe('ListingsService', () => {
       );
 
       expect(jobAlerts.listingPosted).toHaveBeenCalledWith(row);
+      expect(listingRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            expiresAt: expect.any(Date) as unknown,
+          }) as unknown,
+        }),
+      );
       expect(listing).toMatchObject({ id: 'listing-1', client: clientDto });
     });
   });
@@ -272,8 +280,33 @@ describe('ListingsService', () => {
       expect(listingRepository.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'listing-1' },
-          data: { status: 'CLOSED' },
+          data: {
+            status: 'CLOSED',
+            expiresAt: null,
+            expiryReminderSentAt: null,
+          },
         }),
+      );
+    });
+
+    it('gives a reopened job a new 30 days', async () => {
+      listingRepository.findUnique.mockResolvedValue({ clientId: 'user-1' });
+      listingRepository.update.mockResolvedValue({
+        id: 'listing-1',
+        description: null,
+        client,
+        photos: [],
+      });
+      const before = Date.now();
+
+      await service.updateStatus('listing-1', { status: 'OPEN' }, 'user-1');
+
+      const { data } = listingRepository.update.mock.calls[0][0] as {
+        data: { expiresAt: Date; expiryReminderSentAt: null };
+      };
+      expect(data.expiryReminderSentAt).toBeNull();
+      expect(data.expiresAt.getTime() - before).toBeGreaterThanOrEqual(
+        30 * 24 * 60 * 60_000,
       );
     });
 
@@ -284,6 +317,49 @@ describe('ListingsService', () => {
         service.updateStatus('listing-1', { status: 'CLOSED' }, 'user-1'),
       ).rejects.toThrow(ForbiddenException);
       expect(listingRepository.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('extend', () => {
+    it('keeps an open job open for 30 more days', async () => {
+      listingRepository.findUnique
+        .mockResolvedValueOnce({ clientId: 'user-1' })
+        .mockResolvedValueOnce({
+          id: 'listing-1',
+          description: null,
+          client,
+          photos: [],
+        });
+      listingRepository.updateMany.mockResolvedValue({ count: 1 });
+
+      await expect(
+        service.extend('listing-1', 'user-1'),
+      ).resolves.toMatchObject({ id: 'listing-1' });
+      expect(listingRepository.updateMany).toHaveBeenCalledWith({
+        where: { id: 'listing-1', status: 'OPEN' },
+        data: {
+          expiresAt: expect.any(Date) as unknown,
+          expiryReminderSentAt: null,
+        },
+      });
+    });
+
+    it('refuses a closed job', async () => {
+      listingRepository.findUnique.mockResolvedValue({ clientId: 'user-1' });
+      listingRepository.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(service.extend('listing-1', 'user-1')).rejects.toMatchObject(
+        { status: 409, response: { code: 'LISTING_CLOSED' } },
+      );
+    });
+
+    it("refuses another user's job", async () => {
+      listingRepository.findUnique.mockResolvedValue({ clientId: 'user-2' });
+
+      await expect(service.extend('listing-1', 'user-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(listingRepository.updateMany).not.toHaveBeenCalled();
     });
   });
 

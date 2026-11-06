@@ -195,6 +195,41 @@ describe('EmailService', () => {
     expect(body.tags).toEqual([{ name: 'category', value: 'invitation' }]);
   });
 
+  it('warns a client before their job expires, and when it did', async () => {
+    fetchMock.mockResolvedValue(new Response('{}', { status: 200 }));
+    const service = createService({
+      RESEND_API_KEY: 'key',
+      APP_URL: 'https://sastrane.example',
+    });
+    const input = {
+      email: 'amra@example.com',
+      fullName: 'Amra',
+      listingId: 'listing-1',
+      listingTitle: 'Selidba',
+      // Late evening in UTC is already the next day in Sarajevo.
+      expiresAt: new Date('2026-12-08T23:30:00.000Z'),
+    };
+
+    await service.sendListingExpiry({ ...input, expired: false });
+    let body = sentBody(fetchMock);
+    expect(body.subject).toBe('Oglas „Selidba“ uskoro ističe');
+    expect(body.html).toContain('9. decembar 2026.');
+    expect(body.html).toContain('Produži oglas');
+    expect(body.html).toContain(
+      'href="https://sastrane.example/listings/listing-1"',
+    );
+    expect(body.tags).toEqual([
+      { name: 'category', value: 'listing_expiring' },
+    ]);
+
+    fetchMock.mockClear();
+    await service.sendListingExpiry({ ...input, expired: true });
+    body = sentBody(fetchMock);
+    expect(body.subject).toBe('Oglas „Selidba“ je istekao');
+    expect(body.html).toContain('ponovo otvoriti');
+    expect(body.tags).toEqual([{ name: 'category', value: 'listing_expired' }]);
+  });
+
   it('announces a job that matches an alert, with a link to it', async () => {
     fetchMock.mockResolvedValue(new Response('{}', { status: 200 }));
     const service = createService({

@@ -46,6 +46,9 @@ be both.
   the job page shows them all. Each photo is resized and saved as WebP,
   without the camera's location data.
 - Close a job to stop new applications, and reopen it at any time.
+- An open job closes by itself after 30 days, so the job list stays fresh.
+  Three days before, the client gets a notice and an email, and extends
+  the job by 30 days with one click on its page or in the workspace.
 - Save jobs from a job card or the job page, and find them later under
   Saved in the workspace.
 

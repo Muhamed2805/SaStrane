@@ -31,7 +31,10 @@ export function ListingCard({ listing }: { listing: ListingSummary }) {
               </div>
             )}
             <div className="absolute left-3 top-3">
-              <ClosedBadge status={listing.status} />
+              <ClosedBadge
+                status={listing.status}
+                expiresAt={listing.expiresAt}
+              />
             </div>
           </div>
 

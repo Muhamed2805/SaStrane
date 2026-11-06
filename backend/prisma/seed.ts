@@ -25,6 +25,10 @@ import {
   NotificationType,
   ReportReason,
 } from '../src/generated/prisma/enums.js';
+import {
+  daysFrom,
+  LISTING_LIFETIME_DAYS,
+} from '../src/listings/listing-expiry.js';
 import { processPhoto } from '../src/listings/photos/photo-image.js';
 import { photoKeys } from '../src/listings/photos/photo-keys.js';
 import { createS3Client, IMMUTABLE_CACHE } from '../src/storage/s3-client.js';
@@ -79,7 +83,9 @@ const users = [
 ];
 
 // hoursAgo spreads the jobs over the last few days, newest first. Prices
-// are whole KM, and null means the price is agreed later.
+// are whole KM, and null means the price is agreed later. Open jobs expire
+// 30 days after posting; the laptop job is 28 days old, so Amra gets the
+// reminder when the API starts.
 const listings: {
   id: string;
   clientId: string;
@@ -122,7 +128,7 @@ const listings: {
     budget: 40,
     description:
       'Laptop je usporio. Treba mi čista instalacija, prebacivanje slika i dokumenata i podešavanje printera.',
-    hoursAgo: 20,
+    hoursAgo: 28 * 24 - 4,
   },
   {
     id: 'seed-listing-car',
@@ -572,7 +578,14 @@ async function main() {
       await prisma.listing.upsert({
         where: { id: listing.id },
         update: {},
-        create: { ...listing, createdAt: hoursAgo(age) },
+        create: {
+          ...listing,
+          createdAt: hoursAgo(age),
+          expiresAt:
+            listing.status === ListingStatus.CLOSED
+              ? null
+              : daysFrom(hoursAgo(age), LISTING_LIFETIME_DAYS),
+        },
       });
     }
 

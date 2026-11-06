@@ -1,10 +1,12 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
+import { ListingStatus } from '../generated/prisma/enums.js';
 import { avatarUrl } from '../auth/avatar.js';
 import { JobAlertsService } from '../job-alerts/job-alerts.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -14,6 +16,7 @@ import { ListingsQueryDto } from './dto/listings-query.dto.js';
 import { SavedListingsQueryDto } from './dto/saved-listings-query.dto.js';
 import { UpdateListingDto } from './dto/update-listing.dto.js';
 import { UpdateListingStatusDto } from './dto/update-listing-status.dto.js';
+import { expiryFor } from './listing-expiry.js';
 import { PHOTO_ORDER } from './photos/listing-photos.service.js';
 import { allPhotoKeys, toPhotoDto } from './photos/photo-keys.js';
 
@@ -29,6 +32,7 @@ const LISTING_SUMMARY_SELECT = {
   status: true,
   budget: true,
   createdAt: true,
+  expiresAt: true,
   client: { select: { id: true, fullName: true, avatarId: true } },
   photos: { select: PHOTO_FIELDS, orderBy: PHOTO_ORDER, take: 1 },
 } satisfies Prisma.ListingSelect;
@@ -128,6 +132,7 @@ export class ListingsService {
       data: {
         ...dto,
         clientId,
+        ...expiryFor(ListingStatus.OPEN),
       },
       select: LISTING_SELECT,
     });
@@ -151,16 +156,33 @@ export class ListingsService {
   }
 
   // Closing a job stops new applications. The client can still decide on
-  // the ones already sent.
+  // the ones already sent. Reopening gives the job a new 30 days.
   async updateStatus(id: string, dto: UpdateListingStatusDto, userId: string) {
     await this.assertOwner(id, userId);
 
     const listing = await this.prisma.listing.update({
       where: { id },
-      data: { status: dto.status },
+      data: { status: dto.status, ...expiryFor(dto.status) },
       select: LISTING_SELECT,
     });
     return this.toListing(listing);
+  }
+
+  // Keeps an open job open for 30 days from now.
+  async extend(id: string, userId: string) {
+    await this.assertOwner(id, userId);
+
+    const { count } = await this.prisma.listing.updateMany({
+      where: { id, status: ListingStatus.OPEN },
+      data: expiryFor(ListingStatus.OPEN),
+    });
+    if (count === 0) {
+      throw new ConflictException({
+        code: 'LISTING_CLOSED',
+        message: 'Zatvoren oglas se ne može produžiti. Otvori ga ponovo.',
+      });
+    }
+    return this.getById(id);
   }
 
   async delete(id: string, userId: string) {

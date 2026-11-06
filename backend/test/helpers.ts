@@ -156,6 +156,21 @@ export class CapturingEmailService {
   }
 
   readonly listingMatches: { email: string; listingId: string }[] = [];
+  readonly listingExpiries: {
+    email: string;
+    listingId: string;
+    expired: boolean;
+  }[] = [];
+
+  sendListingExpiry(input: {
+    email: string;
+    listingId: string;
+    expired: boolean;
+  }) {
+    const { email, listingId, expired } = input;
+    this.listingExpiries.push({ email, listingId, expired });
+    return Promise.resolve();
+  }
 
   sendNewListingMatch(input: { email: string; listingId: string }) {
     this.listingMatches.push({
@@ -184,6 +199,7 @@ export class CapturingEmailService {
     this.passwordChanges.length = 0;
     this.newApplications.length = 0;
     this.listingMatches.length = 0;
+    this.listingExpiries.length = 0;
     this.unreadMessages.length = 0;
     this.invitations.length = 0;
   }

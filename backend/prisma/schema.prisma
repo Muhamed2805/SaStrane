@@ -72,6 +72,8 @@ enum NotificationType {
   NEW_RATING
   NEW_CLIENT_RATING
   NEW_LISTING_MATCH
+  LISTING_EXPIRING
+  LISTING_EXPIRED
 }
 
 enum ReportReason {
@@ -186,6 +188,11 @@ model Listing {
   status      ListingStatus   @default(OPEN)
   budget      Int?
   description String?
+  // An open job closes by itself at this time unless the client extends it.
+  // Null after the client or an admin closes it; kept when the job expired.
+  expiresAt            DateTime?
+  // When the client was told the job expires soon. Null until then.
+  expiryReminderSentAt DateTime?
 
   clientId String
   client   User   @relation("UserListings", fields: [clientId], references: [id], onDelete: Cascade)
@@ -205,6 +212,7 @@ model Listing {
 
   @@index([status, createdAt])
   @@index([clientId, createdAt])
+  @@index([status, expiresAt])
 }
 
 // A client asks a user who does jobs to apply to one of their open jobs.

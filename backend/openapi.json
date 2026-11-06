@@ -1507,6 +1507,103 @@
         ]
       }
     },
+    "/api/listings/{id}/extend": {
+      "post": {
+        "description": "An open job closes by itself 30 days after posting, reopening\nor extending. The client is told 3 days before.",
+        "operationId": "listings_extend",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The job belongs to another user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The job does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The job is closed: `LISTING_CLOSED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Keeps the user's own open job open for 30 days from now.",
+        "tags": [
+          "listings"
+        ]
+      }
+    },
     "/api/listings/{id}/photos": {
       "post": {
         "description": "Send the file as `photo` in a multipart form, up to 5 MB, as\nJPG, PNG, WebP or AVIF. The API stores two WebP versions without the\nEXIF data. A job takes up to five photos; the first one is the cover.",
@@ -6260,6 +6357,12 @@
             "format": "date-time",
             "type": "string"
           },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When an open job closes by itself. Null when the client or an admin\nclosed it; set on a closed job means it expired."
+          },
           "client": {
             "$ref": "#/components/schemas/ListingClientDto"
           }
@@ -6273,6 +6376,7 @@
           "title",
           "budget",
           "createdAt",
+          "expiresAt",
           "client"
         ]
       },
@@ -6360,6 +6464,12 @@
             "format": "date-time",
             "type": "string"
           },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When an open job closes by itself. Null when the client or an admin\nclosed it; set on a closed job means it expired."
+          },
           "client": {
             "$ref": "#/components/schemas/ListingClientDto"
           },
@@ -6384,6 +6494,7 @@
           "title",
           "budget",
           "createdAt",
+          "expiresAt",
           "client",
           "description",
           "photos"
@@ -6559,7 +6670,9 @@
           "APPLICATION_REJECTED",
           "NEW_RATING",
           "NEW_CLIENT_RATING",
-          "NEW_LISTING_MATCH"
+          "NEW_LISTING_MATCH",
+          "LISTING_EXPIRING",
+          "LISTING_EXPIRED"
         ],
         "description": "INVITATION: a client invites the user to a job. NEW_APPLICATION:\nsomeone applied to the user's job. APPLICATION_ACCEPTED and\nAPPLICATION_REJECTED: the client decided on the user's application.\nNEW_RATING: a client rated the user."
       },

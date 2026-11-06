@@ -47,7 +47,9 @@ function NotificationItem({
             {unread ? <span className="sr-only"> (nepročitano)</span> : null}
           </span>
           <span className="mt-0.5 line-clamp-2 block text-sm text-muted-foreground">
-            „{notification.listingTitle}” · {notification.actorName}
+            „{notification.listingTitle}”
+            {/* Notices from the site itself have no other user. */}
+            {notification.actorName ? ` · ${notification.actorName}` : null}
           </span>
           <span className="mt-1 block text-xs text-muted-foreground">
             {formatMessageTime(notification.createdAt)}

@@ -57,6 +57,10 @@ export const listingsApi = {
       body: JSON.stringify({ status }),
     }),
 
+  // Keeps an open job open for 30 days from now.
+  extend: (id: string) =>
+    authRequest<Listing>(`/listings/${id}/extend`, { method: "POST" }),
+
   // Answers 204 without a body.
   delete: (id: string) =>
     authRequest<null>(`/listings/${id}`, { method: "DELETE" }),

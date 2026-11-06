@@ -109,6 +109,27 @@ export class ListingsController {
     return this.listings.updateStatus(id, dto, user.id);
   }
 
+  /**
+   * Keeps the user's own open job open for 30 days from now.
+   *
+   * @remarks An open job closes by itself 30 days after posting, reopening
+   * or extending. The client is told 3 days before.
+   */
+  @ApiBearerAuth()
+  @ApiErrors({
+    ...SIGNED_IN_ERRORS,
+    403: 'The job belongs to another user.',
+    404: 'The job does not exist.',
+    409: 'The job is closed: `LISTING_CLOSED`.',
+  })
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200)
+  @Post(':id/extend')
+  extend(@Param('id') id: string, @Req() req: Request): Promise<ListingDto> {
+    const user = req.user as { id: string };
+    return this.listings.extend(id, user.id);
+  }
+
   /** Deletes the user's own job together with its applications. */
   @ApiBearerAuth()
   @ApiErrors({

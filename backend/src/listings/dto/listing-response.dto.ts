@@ -38,6 +38,12 @@ export class ListingSummaryDto {
 
   createdAt!: Date;
 
+  /**
+   * When an open job closes by itself. Null when the client or an admin
+   * closed it; set on a closed job means it expired.
+   */
+  expiresAt!: Date | null;
+
   client!: ListingClientDto;
 
   /** The first photo, or null when the job has none. */

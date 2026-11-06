@@ -47,6 +47,16 @@ export function notificationContent(
         title: 'Nov oglas po tvom upozorenju',
         href: listingHref(notification, '/listings'),
       };
+    case 'LISTING_EXPIRING':
+      return {
+        title: 'Tvoj oglas uskoro ističe',
+        href: listingHref(notification, '/inbox?tab=listings'),
+      };
+    case 'LISTING_EXPIRED':
+      return {
+        title: 'Tvoj oglas je istekao',
+        href: listingHref(notification, '/inbox?tab=listings'),
+      };
     case 'NEW_CLIENT_RATING':
       return {
         title: 'Nova ocjena za tebe kao klijenta',

@@ -210,6 +210,71 @@ export function newListingMatchEmailHtml(input: NewListingMatchEmail) {
   );
 }
 
+const MONTHS = [
+  'januar',
+  'februar',
+  'mart',
+  'april',
+  'maj',
+  'juni',
+  'juli',
+  'august',
+  'septembar',
+  'oktobar',
+  'novembar',
+  'decembar',
+];
+
+// "9. decembar 2026." in Sarajevo time, spelled like the web app's dates.
+export function formatDate(date: Date) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Sarajevo',
+    day: 'numeric',
+    month: 'numeric',
+    year: 'numeric',
+  }).formatToParts(date);
+  const part = (type: string) =>
+    Number(parts.find((item) => item.type === type)?.value);
+  return `${part('day')}. ${MONTHS[part('month') - 1]} ${part('year')}.`;
+}
+
+export type ListingExpiryEmail = {
+  fullName: string;
+  listingTitle: string;
+  expiresAt: Date;
+  // True once the job closed; false for the reminder before.
+  expired: boolean;
+  // Absolute links into the web app.
+  listingUrl: string;
+  settingsUrl: string;
+};
+
+export function listingExpirySubject(input: {
+  listingTitle: string;
+  expired: boolean;
+}) {
+  return input.expired
+    ? `Oglas „${input.listingTitle}“ je istekao`
+    : `Oglas „${input.listingTitle}“ uskoro ističe`;
+}
+
+export function listingExpiryEmailHtml(input: ListingExpiryEmail) {
+  const title = escapeHtml(input.listingTitle);
+  const body = input.expired
+    ? `<p style="${TEXT_STYLE}">Zdravo ${escapeHtml(input.fullName)}, tvoj oglas „${title}“ je istekao i zatvoren je za nove prijave. Prijave koje već imaš i dalje možeš prihvatiti ili odbiti.</p>
+              ${button(input.listingUrl, 'Otvori oglas')}
+              <p style="${NOTE_STYLE}">Ako još tražiš izvođača, na stranici oglasa ga možeš ponovo otvoriti na 30 dana.</p>`
+    : `<p style="${TEXT_STYLE}">Zdravo ${escapeHtml(input.fullName)}, tvoj oglas „${title}“ ističe i zatvara se za nove prijave.</p>
+              <p style="${TEXT_STYLE};margin-top:12px"><strong>Datum isteka:</strong> ${formatDate(input.expiresAt)}</p>
+              ${button(input.listingUrl, 'Produži oglas')}
+              <p style="${NOTE_STYLE}">Ako još tražiš izvođača, produži oglas za 30 dana na njegovoj stranici. Ako ne, ne moraš ništa raditi.</p>`;
+  return layout(
+    input.expired ? 'Oglas je istekao' : 'Oglas uskoro ističe',
+    `${body}
+              ${settingsNote(input.settingsUrl)}`,
+  );
+}
+
 // "1 nepročitana poruka", "3 nepročitane poruke", "5 nepročitanih poruka".
 export function unreadMessagesText(count: number) {
   const lastTwo = count % 100;

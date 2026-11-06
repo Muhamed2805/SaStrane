@@ -6,6 +6,7 @@ import {
 import { avatarUrl } from '../auth/avatar.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { ListingStatus, ReportStatus } from '../generated/prisma/enums.js';
+import { expiryFor } from '../listings/listing-expiry.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { AdminListingsQueryDto } from './dto/admin-listings.dto.js';
@@ -191,6 +192,9 @@ export class AdminService {
           'Nalog vlasnika oglasa je suspendovan, pa se oglas ne može ponovo otvoriti.',
       });
     }
-    await this.prisma.listing.update({ where: { id }, data: { status } });
+    await this.prisma.listing.update({
+      where: { id },
+      data: { status, ...expiryFor(status) },
+    });
   }
 }

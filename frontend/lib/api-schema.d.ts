@@ -322,6 +322,27 @@ export interface paths {
         patch: operations["listings_updateStatus"];
         trace?: never;
     };
+    "/api/listings/{id}/extend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Keeps the user's own open job open for 30 days from now.
+         * @description An open job closes by itself 30 days after posting, reopening
+         *     or extending. The client is told 3 days before.
+         */
+        post: operations["listings_extend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/listings/{id}/photos": {
         parameters: {
             query?: never;
@@ -1275,6 +1296,12 @@ export interface components {
             budget: number | null;
             /** Format: date-time */
             createdAt: string;
+            /**
+             * Format: date-time
+             * @description When an open job closes by itself. Null when the client or an admin
+             *     closed it; set on a closed job means it expired.
+             */
+            expiresAt: string | null;
             client: components["schemas"]["ListingClientDto"];
         };
         ListingsPageDto: {
@@ -1301,6 +1328,12 @@ export interface components {
             budget: number | null;
             /** Format: date-time */
             createdAt: string;
+            /**
+             * Format: date-time
+             * @description When an open job closes by itself. Null when the client or an admin
+             *     closed it; set on a closed job means it expired.
+             */
+            expiresAt: string | null;
             client: components["schemas"]["ListingClientDto"];
             description: string | null;
             /** @description Up to five, the cover first. */
@@ -1349,7 +1382,7 @@ export interface components {
          *     NEW_RATING: a client rated the user.
          * @enum {string}
          */
-        NotificationType: "INVITATION" | "NEW_APPLICATION" | "APPLICATION_ACCEPTED" | "APPLICATION_REJECTED" | "NEW_RATING" | "NEW_CLIENT_RATING" | "NEW_LISTING_MATCH";
+        NotificationType: "INVITATION" | "NEW_APPLICATION" | "APPLICATION_ACCEPTED" | "APPLICATION_REJECTED" | "NEW_RATING" | "NEW_CLIENT_RATING" | "NEW_LISTING_MATCH" | "LISTING_EXPIRING" | "LISTING_EXPIRED";
         NotificationDto: {
             /**
              * @description INVITATION: a client invites the user to a job. NEW_APPLICATION:
@@ -3050,6 +3083,81 @@ export interface operations {
             };
             /** @description The job does not exist. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    listings_extend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListingDto"];
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The job belongs to another user. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The job does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The job is closed: `LISTING_CLOSED`. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

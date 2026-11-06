@@ -23,12 +23,16 @@ import { listingKeys, listingSaved } from '@/features/listings/queries';
 import { useOpenConversation } from '@/features/messages/hooks';
 import { ReportButton } from '@/features/moderation/components/report-button';
 import { SaveListingButton } from '@/features/saved-listings/components/save-listing-button';
+import { formatDate } from '@/lib/format-date';
 import { cn } from '@/lib/utils';
+import { expiryLabel, isExpiringSoon } from '../expiry';
+import { ExtendListingButton } from './extend-listing-button';
 
 type ListingActionsProps = {
   listingId: string;
   clientId: string;
   status: ListingStatus;
+  expiresAt: string | null;
   title: string;
 };
 
@@ -36,6 +40,7 @@ export function ListingActions({
   listingId,
   clientId,
   status,
+  expiresAt,
   title,
 }: ListingActionsProps) {
   const router = useRouter();
@@ -109,8 +114,27 @@ export function ListingActions({
   };
 
   if (isOwner) {
+    const expiringSoon = isExpiringSoon({ status, expiresAt });
     return (
       <div className="space-y-3">
+        {!isClosed && expiresAt ? (
+          expiringSoon ? (
+            <div className="space-y-3 rounded-xl bg-amber-50 p-4">
+              <p className="text-sm text-amber-900">
+                <span className="font-semibold">{expiryLabel(expiresAt)}.</span>{' '}
+                Nakon toga se zatvara za nove prijave.
+              </p>
+              <ExtendListingButton
+                listingId={listingId}
+                className="h-10 w-full px-4 text-sm"
+              />
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Otvoren do {formatDate(expiresAt)}
+            </p>
+          )
+        ) : null}
         <Link
           className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
           href={`/listings/${listingId}/edit`}

@@ -9,6 +9,8 @@ import {
   applicationDecisionSubject,
   invitationEmailHtml,
   invitationSubject,
+  listingExpiryEmailHtml,
+  listingExpirySubject,
   newApplicationEmailHtml,
   newApplicationSubject,
   newListingMatchEmailHtml,
@@ -163,6 +165,30 @@ export class EmailService {
       }),
       tag: 'new_listing_match',
       developmentMessage: `Job alert email for ${input.email}: "${input.listingTitle}"`,
+    });
+  }
+
+  // Tells a client that their open job expires soon, or that it expired.
+  async sendListingExpiry(input: {
+    email: string;
+    fullName: string;
+    listingId: string;
+    listingTitle: string;
+    expiresAt: Date;
+    expired: boolean;
+  }) {
+    await this.sendTransactionalEmail({
+      to: input.email,
+      subject: listingExpirySubject(input),
+      html: listingExpiryEmailHtml({
+        ...input,
+        listingUrl: this.appUrl(
+          `/listings/${encodeURIComponent(input.listingId)}`,
+        ),
+        settingsUrl: this.appUrl('/settings'),
+      }),
+      tag: input.expired ? 'listing_expired' : 'listing_expiring',
+      developmentMessage: `${input.expired ? 'Expired' : 'Expiring'} job email for ${input.email}: "${input.listingTitle}"`,
     });
   }
 

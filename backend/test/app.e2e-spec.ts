@@ -16,6 +16,7 @@ import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/app.setup.js';
 import { EmailService } from '../src/email/email.service.js';
 import { MessageEmailsService } from '../src/conversations/message-emails.service.js';
+import { ListingExpiryService } from '../src/listings/listing-expiry.service.js';
 import { ROTATION_GRACE_MS } from '../src/auth/sessions.service.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { StorageService } from '../src/storage/storage.service.js';
@@ -2271,6 +2272,119 @@ describe('App (e2e)', () => {
       });
       const full = await invite(client.auth, pair).expect(409);
       expect(full.body).toMatchObject({ code: 'INVITATION_LIMIT' });
+    });
+  });
+
+  describe('listing expiry', () => {
+    const DAY_MS = 24 * 60 * 60_000;
+
+    async function listingOf(id: string) {
+      const response = await http().get(`/api/listings/${id}`).expect(200);
+      return response.body as { status: string; expiresAt: string | null };
+    }
+
+    it('gives a job 30 days, which the owner extends, closing or reopening', async () => {
+      const client = await signedInUser();
+      const other = await signedInUser();
+      const before = Date.now();
+      const { id } = await postListing(client.auth);
+
+      const posted = await listingOf(id);
+      expect(Date.parse(posted.expiresAt!) - before).toBeGreaterThanOrEqual(
+        30 * DAY_MS,
+      );
+
+      // Pretend the job was posted 29 days ago.
+      await prisma.listing.update({
+        where: { id },
+        data: { expiresAt: new Date(Date.now() + DAY_MS) },
+      });
+      await http()
+        .post(`/api/listings/${id}/extend`)
+        .set('Authorization', other.auth)
+        .expect(403);
+      const extended = await http()
+        .post(`/api/listings/${id}/extend`)
+        .set('Authorization', client.auth)
+        .expect(200);
+      const extendedAt = Date.parse(
+        (extended.body as { expiresAt: string }).expiresAt,
+      );
+      expect(extendedAt - Date.now()).toBeGreaterThan(29 * DAY_MS);
+
+      await http()
+        .patch(`/api/listings/${id}/status`)
+        .set('Authorization', client.auth)
+        .send({ status: 'CLOSED' })
+        .expect(200);
+      expect((await listingOf(id)).expiresAt).toBeNull();
+      const closed = await http()
+        .post(`/api/listings/${id}/extend`)
+        .set('Authorization', client.auth);
+      expect(closed.status).toBe(409);
+      expect(closed.body).toMatchObject({ code: 'LISTING_CLOSED' });
+
+      await http()
+        .patch(`/api/listings/${id}/status`)
+        .set('Authorization', client.auth)
+        .send({ status: 'OPEN' })
+        .expect(200);
+      expect((await listingOf(id)).expiresAt).not.toBeNull();
+    });
+
+    it('reminds the client 3 days ahead and closes the job when it runs out', async () => {
+      const client = await signedInUser('Amra Hodžić');
+      const { id } = await postListing(client.auth);
+      const expiry = app.get(ListingExpiryService);
+      const expiresAt = Date.parse((await listingOf(id)).expiresAt!);
+
+      // Four days before: nothing yet.
+      await expect(
+        expiry.runDue(new Date(expiresAt - 4 * DAY_MS)),
+      ).resolves.toEqual({ reminded: 0, expired: 0 });
+
+      // Two days before: one reminder, even when checked again.
+      const soon = new Date(expiresAt - 2 * DAY_MS);
+      await expect(expiry.runDue(soon)).resolves.toEqual({
+        reminded: 1,
+        expired: 0,
+      });
+      await expect(expiry.runDue(soon)).resolves.toEqual({
+        reminded: 0,
+        expired: 0,
+      });
+
+      // Time is up: the job closes and keeps its expiry time.
+      await expect(
+        expiry.runDue(new Date(expiresAt + 60_000)),
+      ).resolves.toEqual({ reminded: 0, expired: 1 });
+      const expired = await listingOf(id);
+      expect(expired.status).toBe('CLOSED');
+      expect(Date.parse(expired.expiresAt!)).toBe(expiresAt);
+
+      const notices = await http()
+        .get('/api/notifications')
+        .set('Authorization', client.auth)
+        .expect(200);
+      expect(
+        (notices.body as { items: { type: string; listingId: string }[] })
+          .items,
+      ).toMatchObject([
+        { type: 'LISTING_EXPIRED', listingId: id },
+        { type: 'LISTING_EXPIRING', listingId: id },
+      ]);
+      expect(emails.listingExpiries).toEqual([
+        { email: client.user.email, listingId: id, expired: false },
+        { email: client.user.email, listingId: id, expired: true },
+      ]);
+
+      // Applying is closed now.
+      const executor = await signedInUser();
+      const apply = await http()
+        .post('/api/applications')
+        .set('Authorization', executor.auth)
+        .send({ listingId: id, message: 'Mogu odmah doći i završiti posao.' });
+      expect(apply.status).toBe(409);
     });
   });
 
