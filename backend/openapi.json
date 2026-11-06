@@ -2786,6 +2786,107 @@
         ]
       }
     },
+    "/api/users": {
+      "get": {
+        "operationId": "users_getExecutors",
+        "parameters": [
+          {
+            "name": "skill",
+            "required": false,
+            "in": "query",
+            "description": "Only executors who do this kind of job.",
+            "schema": {
+              "$ref": "#/components/schemas/ListingCategory"
+            }
+          },
+          {
+            "name": "location",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ListingLocation"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 12,
+              "type": "number"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Words from the name or the introduction.",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutorsPageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A query parameter is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Lists the users who do jobs, the best rated first. Only users with at\nleast one kind of job are listed. Filters: `q` (name or introduction),\n`skill`, `location`.",
+        "tags": [
+          "users"
+        ]
+      }
+    },
     "/api/users/{id}": {
       "get": {
         "operationId": "users_getProfile",
@@ -4756,6 +4857,20 @@
         ],
         "description": "The kinds of jobs the user does."
       },
+      "ListingLocation": {
+        "type": "string",
+        "enum": [
+          "SARAJEVO",
+          "ILIDZA",
+          "STUP",
+          "VOGOSCA",
+          "MOSTAR",
+          "BANJA_LUKA",
+          "TUZLA",
+          "ZENICA"
+        ],
+        "description": "Where the user does jobs."
+      },
       "PublicUserDto": {
         "type": "object",
         "properties": {
@@ -4773,6 +4888,15 @@
             "items": {
               "$ref": "#/components/schemas/ListingCategory"
             }
+          },
+          "location": {
+            "nullable": true,
+            "description": "Where the user does jobs.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingLocation"
+              }
+            ]
           },
           "id": {
             "type": "string"
@@ -4809,6 +4933,7 @@
         "required": [
           "role",
           "skills",
+          "location",
           "id",
           "email",
           "fullName",
@@ -4936,6 +5061,15 @@
               "$ref": "#/components/schemas/ListingCategory"
             }
           },
+          "location": {
+            "nullable": true,
+            "description": "Where the user does jobs. Null removes it.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingLocation"
+              }
+            ]
+          },
           "fullName": {
             "type": "string",
             "minLength": 2,
@@ -4981,19 +5115,6 @@
         },
         "required": [
           "password"
-        ]
-      },
-      "ListingLocation": {
-        "type": "string",
-        "enum": [
-          "SARAJEVO",
-          "ILIDZA",
-          "STUP",
-          "VOGOSCA",
-          "MOSTAR",
-          "BANJA_LUKA",
-          "TUZLA",
-          "ZENICA"
         ]
       },
       "ListingStatus": {
@@ -5882,6 +6003,15 @@
               "$ref": "#/components/schemas/ListingCategory"
             }
           },
+          "location": {
+            "nullable": true,
+            "description": "Where the user does jobs.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingLocation"
+              }
+            ]
+          },
           "id": {
             "type": "string"
           },
@@ -5914,12 +6044,47 @@
         },
         "required": [
           "skills",
+          "location",
           "id",
           "fullName",
           "avatarUrl",
           "bio",
           "createdAt",
           "rating"
+        ]
+      },
+      "ExecutorsPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserProfileDto"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "The number of items on all pages together."
+          },
+          "page": {
+            "type": "number",
+            "description": "The current page, starting at 1."
+          },
+          "limit": {
+            "type": "number",
+            "description": "The maximum number of items per page."
+          },
+          "totalPages": {
+            "type": "number",
+            "description": "The number of pages, 0 when there are no items."
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "totalPages"
         ]
       },
       "RatingsPageDto": {

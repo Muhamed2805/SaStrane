@@ -4,7 +4,9 @@
 // in with the password below.
 //
 // Run it with `npx prisma db seed`. It upserts fixed IDs, so a second run
-// changes nothing, and it never deletes data. The photos need the storage
+// changes nothing, and it never deletes data. It only fills a demo user's
+// empty introduction, skills and location, for databases seeded before
+// those existed. The photos need the storage
 // from docker-compose.yml and `npm run storage:init`; without it, the seed
 // skips them.
 import { existsSync } from 'node:fs';
@@ -29,18 +31,29 @@ const DEMO_PASSWORD = 'demo-password-123';
 const HOUR_MS = 60 * 60 * 1000;
 
 const users = [
-  { id: 'seed-user-amra', email: 'amra@example.com', fullName: 'Amra Hodžić' },
+  {
+    id: 'seed-user-amra',
+    email: 'amra@example.com',
+    fullName: 'Amra Hodžić',
+    bio: 'Sklapam namještaj i pomažem oko sitnih popravki u kući.',
+    skills: [ListingCategory.ASSEMBLY, ListingCategory.OTHER],
+    location: ListingLocation.ILIDZA,
+  },
   {
     id: 'seed-user-kenan',
     email: 'kenan@example.com',
     fullName: 'Kenan Mehić',
     bio: 'Student informatike. Popravljam računare, postavljam mreže i pomažem oko selidbi vikendom.',
     skills: [ListingCategory.IT_HELP, ListingCategory.MOVING],
+    location: ListingLocation.SARAJEVO,
   },
   {
     id: 'seed-user-lejla',
     email: 'lejla@example.com',
     fullName: 'Lejla Begić',
+    bio: 'Čistim stanove i poslovne prostore. Imam svoja sredstva i usisivač.',
+    skills: [ListingCategory.CLEANING, ListingCategory.CAR_WASH],
+    location: ListingLocation.MOSTAR,
   },
   {
     id: 'seed-user-tarik',
@@ -52,6 +65,7 @@ const users = [
       ListingCategory.LAWN_MOWING,
       ListingCategory.DELIVERY,
     ],
+    location: ListingLocation.SARAJEVO,
   },
   // Handles reports on /admin.
   {
@@ -474,6 +488,26 @@ async function main() {
           createdAt: hoursAgo(30 * 24),
         },
       });
+      // Only empty fields, so changes made in the app stay.
+      const { email, bio, skills, location } = user;
+      if (bio) {
+        await prisma.user.updateMany({
+          where: { email, bio: null },
+          data: { bio },
+        });
+      }
+      if (skills) {
+        await prisma.user.updateMany({
+          where: { email, skills: { isEmpty: true } },
+          data: { skills },
+        });
+      }
+      if (location) {
+        await prisma.user.updateMany({
+          where: { email, location: null },
+          data: { location },
+        });
+      }
     }
 
     for (const { hoursAgo: age, ...listing } of listings) {

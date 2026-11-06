@@ -75,7 +75,11 @@ be both.
   stars and an optional comment. Each job's executor is rated once, and
   the rating is final.
 - Every user has a public profile with a photo, a short introduction, the
-  kinds of jobs they do, their average rating and the reviews. Application cards show the executor's rating and link to it.
+  kinds of jobs they do, where they work, their average rating and the
+  reviews. Application cards show the executor's rating and link to it.
+- Find executors by the kind of job, the location or a word from the name
+  or introduction, the best rated first. Users who do jobs and picked at
+  least one kind of job are listed.
 - A rating stays on the profile when the job is deleted.
 
 **Accounts**
@@ -88,7 +92,7 @@ be both.
 - Email notices for a new application, a decision on an application and
   unread messages. They can be turned off in the account settings.
 - Account settings: add a profile photo, change the name, the role, the
-  introduction and the kinds of jobs, or change the password
+  introduction, the kinds of jobs and the location, or change the password
   with the current one. A password change signs out the other devices and
   sends a notice by email.
 - Delete the account with the password. This also deletes the user's jobs
@@ -132,45 +136,51 @@ be both.
       <p align="center"><sub><b>Messages</b>: one conversation per job and executor</sub></p>
     </td>
     <td width="50%">
-      <img src="docs/screenshots/user-profile.png" alt="Public profile with a bio, skills and ratings">
+      <img src="docs/screenshots/user-profile.png" alt="Public profile with a bio, skills, location and ratings">
       <p align="center"><sub><b>Public profile</b>: bio, skills and ratings from clients</sub></p>
     </td>
   </tr>
   <tr>
     <td width="50%">
+      <img src="docs/screenshots/executors.png" alt="List of executors with ratings, skills and locations">
+      <p align="center"><sub><b>Find an executor</b>: by job, location or name, the best rated first</sub></p>
+    </td>
+    <td width="50%">
       <img src="docs/screenshots/saved.png" alt="Workspace tab with saved jobs">
       <p align="center"><sub><b>Saved jobs</b>: one click on a job card</sub></p>
     </td>
+  </tr>
+  <tr>
     <td width="50%">
       <img src="docs/screenshots/settings.png" alt="Account settings with a profile photo">
       <p align="center"><sub><b>Settings</b>: photo, profile, notices, password</sub></p>
     </td>
-  </tr>
-  <tr>
     <td width="50%">
       <img src="docs/screenshots/sign-up.png" alt="Sign-up dialog with role choice">
       <p align="center"><sub><b>Sign up</b>: choose to post jobs, do jobs or both</sub></p>
     </td>
+  </tr>
+  <tr>
     <td width="50%">
       <img src="docs/screenshots/profile.png" alt="Profile page with activity counts">
       <p align="center"><sub><b>Profile</b>: activity at a glance</sub></p>
     </td>
-  </tr>
-  <tr>
     <td width="50%">
       <img src="docs/screenshots/report-dialog.png" alt="Dialog for reporting a job">
       <p align="center"><sub><b>Report</b>: a job or a user, seen only by admins</sub></p>
     </td>
+  </tr>
+  <tr>
     <td width="50%">
       <img src="docs/screenshots/admin-reports.png" alt="Admin page with an open report">
       <p align="center"><sub><b>Reports</b>: resolve, dismiss, delete the job or suspend</sub></p>
     </td>
-  </tr>
-  <tr>
     <td width="50%">
       <img src="docs/screenshots/admin.png" alt="Admin overview with platform totals">
       <p align="center"><sub><b>Admin overview</b>: platform totals</sub></p>
     </td>
+  </tr>
+  <tr>
     <td width="50%">
       <img src="docs/screenshots/admin-users.png" alt="Admin list of every user">
       <p align="center"><sub><b>Users</b>: search, filters and suspension</sub></p>

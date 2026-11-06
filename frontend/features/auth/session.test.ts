@@ -12,6 +12,7 @@ const user: AuthUser = {
   emailNotifications: true,
   bio: null,
   skills: [],
+  location: null,
   avatarUrl: null,
   isAdmin: false,
   createdAt: '2026-09-15T12:00:00.000Z',

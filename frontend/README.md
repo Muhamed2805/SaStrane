@@ -54,7 +54,7 @@ of date.
 - **Query options.** `features/*/queries.ts` define the query keys and
   options. The signed-in user's data is under `['user', userId, ...]`, and
   signing out or switching users removes it.
-- **Server rendering.** `/listings` fetches the first page on the server and
+- **Server rendering.** `/listings` and `/executors` fetch the first page on the server and
   passes it to the browser cache with `HydrationBoundary`. The job detail
   page stores its job in the cache too, for the apply dialog and the edit
   page. The public profile `/users/[id]` fetches the profile and the first
@@ -81,13 +81,14 @@ of date.
 
 | Folder | Contents |
 | --- | --- |
-| `app/` | Routes: `/`, `/listings`, `/listings/[id]`, `/listings/create`, `/listings/[id]/edit`, `/inbox`, `/messages`, `/messages/[id]`, `/users/[id]`, `/profile`, `/settings`, `/admin` with `reports`, `users` and `listings`, `/login` |
+| `app/` | Routes: `/`, `/listings`, `/listings/[id]`, `/listings/create`, `/listings/[id]/edit`, `/executors`, `/inbox`, `/messages`, `/messages/[id]`, `/users/[id]`, `/profile`, `/settings`, `/admin` with `reports`, `users` and `listings`, `/login` |
 | `features/auth/` | The session: an in-memory access token, refresh on reload and on 401, and tab sync |
-| `features/account/` | Account settings: profile photo, name, role, introduction and skills, email notifications, password change and account deletion |
+| `features/account/` | Account settings: profile photo, name, role, introduction, skills and location, email notifications, password change and account deletion |
 | `features/listings/` | The job list, detail, form, photos and API calls, and the names for the category and location codes |
 | `features/applications/` | Applying and the workspace |
 | `features/messages/` | Conversations, the unread count and the message thread |
 | `features/ratings/` | The rating dialog, stars and the public profile's reviews |
+| `features/executors/` | The executor list with its search and filters |
 | `features/moderation/` | The report button and dialog, and the admin pages: overview, reports, users and jobs |
 | `features/landing/` | Home page sections |
 | `components/` | Navbar, footer, auth provider and UI primitives |

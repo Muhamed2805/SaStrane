@@ -14,7 +14,8 @@ describe('RatingsService', () => {
     findMany: vi.fn(),
     count: vi.fn(),
   };
-  const userRepository = { findUnique: vi.fn() };
+  const userRepository = { findUnique: vi.fn(), findMany: vi.fn() };
+  const queryRaw = vi.fn();
 
   const storage = { url: (key: string) => `https://files.test/${key}` };
 
@@ -23,6 +24,7 @@ describe('RatingsService', () => {
       application: applicationRepository,
       rating: ratingRepository,
       user: userRepository,
+      $queryRaw: queryRaw,
     } as unknown as PrismaService,
     storage as unknown as StorageService,
   );
@@ -170,6 +172,57 @@ describe('RatingsService', () => {
     });
   });
 
+  describe('getExecutors', () => {
+    function profile(id: string) {
+      return {
+        id,
+        fullName: id,
+        avatarId: null,
+        bio: null,
+        skills: ['MOVING'],
+        location: 'TUZLA',
+        createdAt: new Date(0),
+      };
+    }
+
+    it('keeps the order from SQL and adds the rating summaries', async () => {
+      queryRaw
+        .mockResolvedValueOnce([
+          { id: 'b', average: 4.666, count: 3 },
+          { id: 'a', average: null, count: null },
+        ])
+        .mockResolvedValueOnce([{ total: 14 }]);
+      userRepository.findMany.mockResolvedValue([profile('a'), profile('b')]);
+
+      const result = await service.getExecutors({ page: 2, limit: 12 });
+
+      expect(result).toMatchObject({
+        total: 14,
+        page: 2,
+        limit: 12,
+        totalPages: 2,
+      });
+      expect(result.items.map((item) => [item.id, item.rating])).toEqual([
+        ['b', { average: 4.7, count: 3 }],
+        ['a', { average: null, count: 0 }],
+      ]);
+      expect(result.items[0]).not.toHaveProperty('avatarId');
+    });
+
+    it('leaves out a user deleted between the reads', async () => {
+      queryRaw
+        .mockResolvedValueOnce([{ id: 'gone', average: null, count: null }])
+        .mockResolvedValueOnce([{ total: 1 }]);
+      userRepository.findMany.mockResolvedValue([]);
+
+      await expect(service.getExecutors({})).resolves.toMatchObject({
+        items: [],
+        page: 1,
+        limit: 12,
+      });
+    });
+  });
+
   describe('getProfile', () => {
     it('returns the public fields with the rating summary', async () => {
       const createdAt = new Date();
@@ -179,6 +232,7 @@ describe('RatingsService', () => {
         avatarId: 'avatar-1',
         bio: 'Montiram namještaj.',
         skills: ['ASSEMBLY'],
+        location: 'ILIDZA',
         createdAt,
       });
       ratingRepository.aggregate.mockResolvedValue({
@@ -192,6 +246,7 @@ describe('RatingsService', () => {
         avatarUrl: 'https://files.test/avatars/user-1/avatar-1.webp',
         bio: 'Montiram namještaj.',
         skills: ['ASSEMBLY'],
+        location: 'ILIDZA',
         createdAt,
         rating: { average: null, count: 0 },
       });
@@ -203,6 +258,7 @@ describe('RatingsService', () => {
             avatarId: true,
             bio: true,
             skills: true,
+            location: true,
             createdAt: true,
           },
         }),
@@ -216,6 +272,7 @@ describe('RatingsService', () => {
         avatarId: null,
         bio: null,
         skills: [],
+        location: null,
         createdAt: new Date(),
       });
       ratingRepository.aggregate.mockResolvedValue({

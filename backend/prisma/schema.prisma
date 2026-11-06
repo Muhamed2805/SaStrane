@@ -90,6 +90,8 @@ model User {
   // on the public profile.
   bio                String?
   skills             ListingCategory[] @default([])
+  // Where the user does jobs. Clients find executors by it.
+  location           ListingLocation?
   // The current profile photo. Its file lives in S3 storage under a key
   // made from the user and avatar IDs (see src/auth/avatar.ts).
   avatarId           String?

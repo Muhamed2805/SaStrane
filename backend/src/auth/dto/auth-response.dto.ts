@@ -1,5 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ListingCategory, UserRole } from '../../generated/prisma/enums.js';
+import {
+  ListingCategory,
+  ListingLocation,
+  UserRole,
+} from '../../generated/prisma/enums.js';
 
 // The user fields that are safe to send to the client. See public-user.ts.
 export class PublicUserDto {
@@ -26,6 +30,14 @@ export class PublicUserDto {
     isArray: true,
   })
   skills!: ListingCategory[];
+
+  /** Where the user does jobs. */
+  @ApiProperty({
+    enum: ListingLocation,
+    enumName: 'ListingLocation',
+    nullable: true,
+  })
+  location!: ListingLocation | null;
 
   /** A square WebP image of 256 pixels. Null without a profile photo. */
   avatarUrl!: string | null;

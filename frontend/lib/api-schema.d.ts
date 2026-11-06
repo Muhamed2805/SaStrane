@@ -568,6 +568,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lists the users who do jobs, the best rated first. Only users with at
+         *     least one kind of job are listed. Filters: `q` (name or introduction),
+         *     `skill`, `location`.
+         */
+        get: operations["users_getExecutors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/{id}": {
         parameters: {
             query?: never;
@@ -942,11 +963,18 @@ export interface components {
          * @enum {string}
          */
         ListingCategory: "LAWN_MOWING" | "CAR_WASH" | "MOVING" | "IT_HELP" | "CLEANING" | "ASSEMBLY" | "DELIVERY" | "OTHER";
+        /**
+         * @description Where the user does jobs.
+         * @enum {string}
+         */
+        ListingLocation: "SARAJEVO" | "ILIDZA" | "STUP" | "VOGOSCA" | "MOSTAR" | "BANJA_LUKA" | "TUZLA" | "ZENICA";
         PublicUserDto: {
             /** @description Whether the user posts jobs, applies to them, or both. */
             role: components["schemas"]["UserRole"];
             /** @description The kinds of jobs the user does. */
             skills: components["schemas"]["ListingCategory"][];
+            /** @description Where the user does jobs. */
+            location: components["schemas"]["ListingLocation"] | null;
             id: string;
             email: string;
             fullName: string;
@@ -994,6 +1022,8 @@ export interface components {
             role?: components["schemas"]["UserRole"];
             /** @description The kinds of jobs the user does. Repeated values count once. */
             skills?: components["schemas"]["ListingCategory"][];
+            /** @description Where the user does jobs. Null removes it. */
+            location?: components["schemas"]["ListingLocation"] | null;
             fullName?: string;
             /** @description Whether to get emails about applications and messages. */
             emailNotifications?: boolean;
@@ -1009,8 +1039,6 @@ export interface components {
             /** @description The current password, to confirm that the owner deletes the account. */
             password: string;
         };
-        /** @enum {string} */
-        ListingLocation: "SARAJEVO" | "ILIDZA" | "STUP" | "VOGOSCA" | "MOSTAR" | "BANJA_LUKA" | "TUZLA" | "ZENICA";
         /** @enum {string} */
         ListingStatus: "OPEN" | "CLOSED";
         ListingPhotoDto: {
@@ -1255,6 +1283,8 @@ export interface components {
         UserProfileDto: {
             /** @description The kinds of jobs the user does. */
             skills: components["schemas"]["ListingCategory"][];
+            /** @description Where the user does jobs. */
+            location: components["schemas"]["ListingLocation"] | null;
             id: string;
             fullName: string;
             /** @description A square WebP image of 256 pixels. Null without a profile photo. */
@@ -1268,6 +1298,17 @@ export interface components {
             createdAt: string;
             /** @description Ratings received as an executor. */
             rating: components["schemas"]["RatingSummaryDto"];
+        };
+        ExecutorsPageDto: {
+            items: components["schemas"]["UserProfileDto"][];
+            /** @description The number of items on all pages together. */
+            total: number;
+            /** @description The current page, starting at 1. */
+            page: number;
+            /** @description The maximum number of items per page. */
+            limit: number;
+            /** @description The number of pages, 0 when there are no items. */
+            totalPages: number;
         };
         RatingsPageDto: {
             items: components["schemas"]["RatingDto"][];
@@ -3572,6 +3613,60 @@ export interface operations {
             };
             /** @description The application is not accepted (APPLICATION_NOT_ACCEPTED), the job is still open (LISTING_NOT_CLOSED), or the executor is rated already (ALREADY_RATED). */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    users_getExecutors: {
+        parameters: {
+            query?: {
+                /** @description Only executors who do this kind of job. */
+                skill?: components["schemas"]["ListingCategory"];
+                location?: components["schemas"]["ListingLocation"];
+                page?: number;
+                limit?: number;
+                /** @description Words from the name or the introduction. */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutorsPageDto"];
+                };
+            };
+            /** @description A query parameter is invalid. */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

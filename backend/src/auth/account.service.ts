@@ -57,6 +57,7 @@ export class AccountService {
         // An empty introduction removes it.
         bio: dto.bio === undefined ? undefined : dto.bio || null,
         skills: dto.skills && [...new Set(dto.skills)],
+        location: dto.location,
       },
       select: PUBLIC_USER_SELECT,
     });

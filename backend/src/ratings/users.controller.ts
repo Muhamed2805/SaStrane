@@ -1,7 +1,12 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ApiErrors, COMMON_ERRORS } from '../openapi/api-errors.decorator.js';
-import { RatingsPageDto, UserProfileDto } from './dto/rating-response.dto.js';
+import { ExecutorsQueryDto } from './dto/executors-query.dto.js';
+import {
+  ExecutorsPageDto,
+  RatingsPageDto,
+  UserProfileDto,
+} from './dto/rating-response.dto.js';
 import { RatingsQueryDto } from './dto/ratings-query.dto.js';
 import { RatingsService } from './ratings.service.js';
 
@@ -11,6 +16,17 @@ import { RatingsService } from './ratings.service.js';
 @Controller('users')
 export class UsersController {
   constructor(private readonly ratings: RatingsService) {}
+
+  /**
+   * Lists the users who do jobs, the best rated first. Only users with at
+   * least one kind of job are listed. Filters: `q` (name or introduction),
+   * `skill`, `location`.
+   */
+  @ApiErrors({ 400: 'A query parameter is invalid.' })
+  @Get()
+  getExecutors(@Query() query: ExecutorsQueryDto): Promise<ExecutorsPageDto> {
+    return this.ratings.getExecutors(query);
+  }
 
   /** Returns a user's public profile with their rating as an executor. */
   @ApiErrors({ 404: 'The user does not exist.' })

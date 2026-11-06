@@ -2,15 +2,25 @@
 
 import { FormEvent, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Check, LoaderCircle, Mail, UserRound } from 'lucide-react';
+import {
+  Check,
+  ChevronRight,
+  LoaderCircle,
+  Mail,
+  MapPin,
+  UserRound,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import type { AuthUser } from '@/features/auth/api';
 import { ROLE_OPTIONS, type UserRole } from '@/features/auth/roles';
 import { updateSessionUser } from '@/features/auth/session';
-import type { ListingCategory } from '@/features/listings/api';
+import type { ListingCategory, ListingLocation } from '@/features/listings/api';
 import {
   CATEGORY_LABELS,
+  isListingLocation,
   LISTING_CATEGORIES,
+  LISTING_LOCATIONS,
+  LOCATION_LABELS,
 } from '@/features/listings/constants';
 import { accountApi } from '../api';
 import { fieldClassName } from './password-input';
@@ -19,13 +29,17 @@ const NAME_MIN_LENGTH = 2;
 const NAME_MAX_LENGTH = 100;
 const BIO_MAX_LENGTH = 500;
 
-// The name, the role, the introduction and the kinds of jobs the user does.
-// The email address cannot be changed.
+// The name, the role, the introduction, the kinds of jobs the user does and
+// where. The email address cannot be changed.
 export function ProfileSettings({ user }: { user: AuthUser }) {
   const [fullName, setFullName] = useState(user.fullName);
   const [role, setRole] = useState<UserRole>(user.role);
   const [bio, setBio] = useState(user.bio ?? '');
   const [skills, setSkills] = useState<ListingCategory[]>(user.skills);
+  const savedLocation = user.location ?? null;
+  const [location, setLocation] = useState<ListingLocation | null>(
+    savedLocation,
+  );
 
   const save = useMutation({
     mutationFn: () =>
@@ -34,6 +48,7 @@ export function ProfileSettings({ user }: { user: AuthUser }) {
         role,
         bio: bio.trim(),
         skills,
+        location,
       }),
     onSuccess: (updated) => {
       updateSessionUser(updated);
@@ -47,7 +62,8 @@ export function ProfileSettings({ user }: { user: AuthUser }) {
     trimmedName !== user.fullName ||
     role !== user.role ||
     bio.trim() !== (user.bio ?? '') ||
-    skills.join() !== user.skills.join();
+    skills.join() !== user.skills.join() ||
+    location !== savedLocation;
   const nameTooShort = trimmedName.length < NAME_MIN_LENGTH;
 
   // Kept in the order of the list, so picking the same skills again counts
@@ -223,7 +239,8 @@ export function ProfileSettings({ user }: { user: AuthUser }) {
         <fieldset>
           <legend className="text-sm font-semibold">Poslovi koje radiš</legend>
           <p className="mt-1 text-xs text-muted-foreground">
-            Neobavezno. Klijentima pokazuje u čemu možeš pomoći.
+            Neobavezno. Uz barem jedan posao klijenti te nađu na stranici
+            Pronađi izvođača.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {LISTING_CATEGORIES.map((category) => {
@@ -252,6 +269,47 @@ export function ProfileSettings({ user }: { user: AuthUser }) {
             })}
           </div>
         </fieldset>
+
+        <div>
+          <label htmlFor="settings-location" className="text-sm font-semibold">
+            Gdje radiš
+          </label>
+          <div className="relative mt-2">
+            <MapPin
+              className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-primary"
+              aria-hidden="true"
+            />
+            <select
+              id="settings-location"
+              className={`${fieldClassName} appearance-none pr-9`}
+              value={location ?? ''}
+              aria-describedby="settings-location-hint"
+              onChange={(event) => {
+                const value = event.target.value;
+                setLocation(isListingLocation(value) ? value : null);
+                save.reset();
+              }}
+            >
+              <option value="">Nije odabrano</option>
+              {LISTING_LOCATIONS.map((item) => (
+                <option key={item} value={item}>
+                  {LOCATION_LABELS[item]}
+                </option>
+              ))}
+            </select>
+            <ChevronRight
+              className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 rotate-90 text-muted-foreground"
+              aria-hidden="true"
+            />
+          </div>
+          <p
+            id="settings-location-hint"
+            className="mt-2 text-xs text-muted-foreground"
+          >
+            Neobavezno. Vidi se na tvom javnom profilu, a klijenti po njoj traže
+            izvođače.
+          </p>
+        </div>
 
         {save.error ? (
           <div

@@ -120,9 +120,10 @@ export function Navbar() {
       <div className="site-container flex h-16 items-center justify-between">
         <BrandLogo />
 
-        <nav className="hidden items-center gap-7 md:flex">
+        <nav className="hidden items-center gap-7 xl:flex">
           <NavLink href="/" label="Početna" />
           <NavLink href="/listings" label="Pronađi posao" />
+          <NavLink href="/executors" label="Pronađi izvođača" />
           <NavLink href="/#kako-funkcionise" label="Kako funkcioniše" />
           {user ? (
             <NavLink href="/inbox?tab=applications" label="Moje prijave" />
@@ -228,7 +229,7 @@ export function Navbar() {
         </nav>
 
         <button
-          className="relative flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted md:hidden"
+          className="relative flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted xl:hidden"
           onClick={() => setIsMenuOpen((open) => !open)}
           aria-label={isMenuOpen ? 'Zatvori meni' : 'Otvori meni'}
           aria-expanded={isMenuOpen}
@@ -251,10 +252,15 @@ export function Navbar() {
       {isMenuOpen && (
         <nav
           id="mobile-navigation"
-          className="site-container flex flex-col gap-4 border-t py-5 md:hidden"
+          className="site-container flex flex-col gap-4 border-t py-5 xl:hidden"
         >
           <NavLink href="/" label="Početna" onClick={closeMenu} />
           <NavLink href="/listings" label="Pronađi posao" onClick={closeMenu} />
+          <NavLink
+            href="/executors"
+            label="Pronađi izvođača"
+            onClick={closeMenu}
+          />
           <NavLink
             href="/#kako-funkcionise"
             label="Kako funkcioniše"

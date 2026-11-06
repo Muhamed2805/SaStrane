@@ -10,7 +10,19 @@ import { avatarUrl } from '../auth/avatar.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { CreateRatingDto } from './dto/create-rating.dto.js';
+import { ExecutorsQueryDto } from './dto/executors-query.dto.js';
 import { RatingsQueryDto } from './dto/ratings-query.dto.js';
+
+// The fields of UserProfileDto, besides the rating.
+const PROFILE_SELECT = {
+  id: true,
+  fullName: true,
+  avatarId: true,
+  bio: true,
+  skills: true,
+  location: true,
+  createdAt: true,
+} satisfies Prisma.UserSelect;
 
 // The fields of RatingDto.
 const RATING_SELECT = {
@@ -30,6 +42,11 @@ const NO_RATINGS: RatingSummary = { average: null, count: 0 };
 function toSummary(average: number | null, count: number): RatingSummary {
   if (count === 0 || average === null) return NO_RATINGS;
   return { average: Math.round(average * 10) / 10, count };
+}
+
+// For ILIKE: the user's % and _ match themselves.
+function likePattern(text: string) {
+  return `%${text.replace(/[\\%_]/g, '\\$&')}%`;
 }
 
 function isUniqueViolation(error: unknown) {
@@ -132,14 +149,7 @@ export class RatingsService {
     const [user, aggregate] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
-        select: {
-          id: true,
-          fullName: true,
-          avatarId: true,
-          bio: true,
-          skills: true,
-          createdAt: true,
-        },
+        select: PROFILE_SELECT,
       }),
       this.prisma.rating.aggregate({
         where: { executorId: userId },
@@ -155,9 +165,86 @@ export class RatingsService {
       avatarUrl: avatarUrl(this.storage, user),
       bio: user.bio,
       skills: user.skills,
+      location: user.location,
       createdAt: user.createdAt,
       rating: toSummary(aggregate._avg.score, aggregate._count._all),
     };
+  }
+
+  // Users who do jobs and named at least one kind of job, the best rated
+  // first. Prisma cannot order by an average, so the page of IDs comes from
+  // SQL. Suspended and unconfirmed accounts are left out.
+  async getExecutors(query: ExecutorsQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 12;
+
+    const conditions = [
+      Prisma.sql`u."role" IN ('EXECUTOR', 'BOTH')`,
+      Prisma.sql`u."suspendedAt" IS NULL`,
+      Prisma.sql`u."emailVerifiedAt" IS NOT NULL`,
+      Prisma.sql`cardinality(u."skills") > 0`,
+    ];
+    if (query.skill) {
+      conditions.push(
+        Prisma.sql`${query.skill}::"ListingCategory" = ANY(u."skills")`,
+      );
+    }
+    if (query.location) {
+      conditions.push(
+        Prisma.sql`u."location" = ${query.location}::"ListingLocation"`,
+      );
+    }
+    if (query.q) {
+      const pattern = likePattern(query.q);
+      conditions.push(
+        Prisma.sql`(u."fullName" ILIKE ${pattern} OR u."bio" ILIKE ${pattern})`,
+      );
+    }
+    const where = Prisma.join(conditions, ' AND ');
+
+    const [rows, [{ total }]] = await Promise.all([
+      this.prisma.$queryRaw<
+        { id: string; average: number | null; count: number | null }[]
+      >`
+        SELECT u.id, r.average, r.count
+        FROM "User" u
+        LEFT JOIN (
+          SELECT "executorId", AVG(score)::float8 AS average, COUNT(*)::int AS count
+          FROM "Rating"
+          GROUP BY "executorId"
+        ) r ON r."executorId" = u.id
+        WHERE ${where}
+        ORDER BY r.average DESC NULLS LAST, r.count DESC NULLS LAST,
+          u."createdAt" DESC, u.id DESC
+        LIMIT ${limit} OFFSET ${(page - 1) * limit}`,
+      this.prisma.$queryRaw<{ total: number }[]>`
+        SELECT COUNT(*)::int AS total FROM "User" u WHERE ${where}`,
+    ]);
+
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: rows.map((row) => row.id) } },
+      select: PROFILE_SELECT,
+    });
+    const byId = new Map(users.map((user) => [user.id, user]));
+
+    // A user deleted between the two reads is left out.
+    const items = rows.flatMap((row) => {
+      const user = byId.get(row.id);
+      if (!user) return [];
+      return [
+        {
+          id: user.id,
+          fullName: user.fullName,
+          avatarUrl: avatarUrl(this.storage, user),
+          bio: user.bio,
+          skills: user.skills,
+          location: user.location,
+          createdAt: user.createdAt,
+          rating: toSummary(row.average, row.count ?? 0),
+        },
+      ];
+    });
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async getRatings(userId: string, query: RatingsQueryDto) {

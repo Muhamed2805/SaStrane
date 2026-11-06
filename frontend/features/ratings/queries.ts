@@ -4,6 +4,7 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 import { applicationKeys } from '@/features/applications/queries';
+import { executorKeys } from '@/features/executors/queries';
 import { nextPageParam } from '@/lib/paging';
 import { ratingsApi } from './api';
 
@@ -35,7 +36,7 @@ export function userRatingsQuery(userId: string) {
 }
 
 // After the client rates an executor: the application lists show the
-// rating, and the executor's profile has a new average.
+// rating, and the executor's profile and place in the list change.
 export function ratingGiven(
   queryClient: QueryClient,
   userId: string,
@@ -45,4 +46,5 @@ export function ratingGiven(
   void queryClient.invalidateQueries({
     queryKey: profileKeys.detail(executorId),
   });
+  void queryClient.invalidateQueries({ queryKey: executorKeys.all });
 }

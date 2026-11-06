@@ -4,7 +4,6 @@ import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
-  ChevronLeft,
   ChevronRight,
   MapPin,
   Search,
@@ -12,6 +11,7 @@ import {
   SlidersHorizontal,
   X,
 } from 'lucide-react';
+import { Pagination } from '@/components/pagination';
 import {
   CATEGORY_LABELS,
   isListingCategory,
@@ -34,12 +34,6 @@ import { ListingCardSkeleton } from './listing-card-skeleton';
 const ALL_FILTER = '';
 
 const SEARCH_DEBOUNCE_MS = 300;
-
-function getVisiblePages(page: number, totalPages: number) {
-  const firstPage = Math.max(1, Math.min(page - 2, totalPages - 4));
-  const count = Math.min(5, totalPages);
-  return Array.from({ length: count }, (_, index) => firstPage + index);
-}
 
 function resultsLabel(total: number) {
   if (total === 1) return 'Pronađen 1 oglas';
@@ -100,10 +94,6 @@ export function ListingsFeed() {
   const isRefreshing = isPlaceholderData || isTyping;
   const hasActiveFilters =
     Boolean(searchText.trim()) || Boolean(category) || Boolean(location);
-  const visiblePages = useMemo(
-    () => getVisiblePages(page, totalPages),
-    [page, totalPages],
-  );
 
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     setSearchText(event.target.value);
@@ -306,50 +296,13 @@ export function ListingsFeed() {
             </div>
           )}
 
-          {totalPages > 1 ? (
-            <nav
-              className="flex items-center justify-center gap-1 pt-3"
-              aria-label="Paginacija oglasa"
-            >
-              <button
-                type="button"
-                onClick={() => changePage(page - 1)}
-                disabled={page === 1 || isRefreshing}
-                className="flex size-10 items-center justify-center rounded-lg border bg-white text-muted-foreground hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label="Prethodna stranica"
-              >
-                <ChevronLeft className="size-4" aria-hidden="true" />
-              </button>
-
-              {visiblePages.map((pageNumber) => (
-                <button
-                  key={pageNumber}
-                  type="button"
-                  onClick={() => changePage(pageNumber)}
-                  disabled={isRefreshing}
-                  className={`size-10 rounded-lg text-sm font-semibold transition-colors ${
-                    pageNumber === page
-                      ? 'bg-primary text-white'
-                      : 'border bg-white text-muted-foreground hover:border-primary/30 hover:text-primary'
-                  }`}
-                  aria-label={`Stranica ${pageNumber}`}
-                  aria-current={pageNumber === page ? 'page' : undefined}
-                >
-                  {pageNumber}
-                </button>
-              ))}
-
-              <button
-                type="button"
-                onClick={() => changePage(page + 1)}
-                disabled={page === totalPages || isRefreshing}
-                className="flex size-10 items-center justify-center rounded-lg border bg-white text-muted-foreground hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label="Sljedeća stranica"
-              >
-                <ChevronRight className="size-4" aria-hidden="true" />
-              </button>
-            </nav>
-          ) : null}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            disabled={isRefreshing}
+            label="Paginacija oglasa"
+            onChange={changePage}
+          />
         </>
       ) : null}
     </div>

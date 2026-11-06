@@ -270,6 +270,7 @@ describe('App (e2e)', () => {
           emailNotifications: true,
           bio: null,
           skills: [],
+          location: null,
           avatarUrl: null,
           isAdmin: false,
           createdAt: user.createdAt.toISOString(),
@@ -1565,6 +1566,7 @@ describe('App (e2e)', () => {
         avatarUrl: null,
         bio: null,
         skills: [],
+        location: null,
         createdAt: expect.any(String) as unknown,
         rating: { average: 4, count: 1 },
       });
@@ -1854,6 +1856,101 @@ describe('App (e2e)', () => {
     });
   });
 
+  describe('executors', () => {
+    it('lists the users who do jobs, the best rated first', async () => {
+      const tarik = await createUser(prisma, { fullName: 'Tarik Selimović' });
+      const kenan = await createUser(prisma, { fullName: 'Kenan Mehić' });
+      const client = await createUser(prisma, { fullName: 'Amra Hodžić' });
+      await prisma.user.update({
+        where: { id: tarik.id },
+        data: {
+          bio: 'Imam kombi i svoj alat.',
+          skills: ['ASSEMBLY', 'MOVING'],
+          location: 'SARAJEVO',
+        },
+      });
+      await prisma.user.update({
+        where: { id: kenan.id },
+        data: { skills: ['IT_HELP'], location: 'TUZLA' },
+      });
+      await prisma.rating.create({
+        data: {
+          clientId: client.id,
+          executorId: tarik.id,
+          score: 5,
+          listingTitle: 'Selidba',
+        },
+      });
+      // Left out: no skills, suspended, unconfirmed, or only posts jobs.
+      await prisma.rating.create({
+        data: {
+          clientId: tarik.id,
+          executorId: client.id,
+          score: 5,
+          listingTitle: 'Montaža',
+        },
+      });
+      for (const data of [
+        { suspendedAt: new Date() },
+        { emailVerifiedAt: null },
+        { role: 'CLIENT' as const },
+      ]) {
+        const user = await createUser(prisma);
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { ...data, skills: ['MOVING'] },
+        });
+      }
+
+      const all = await http().get('/api/users').expect(200);
+      expect(all.body).toEqual({
+        items: [
+          {
+            id: tarik.id,
+            fullName: 'Tarik Selimović',
+            avatarUrl: null,
+            bio: 'Imam kombi i svoj alat.',
+            skills: ['ASSEMBLY', 'MOVING'],
+            location: 'SARAJEVO',
+            createdAt: expect.any(String) as unknown,
+            rating: { average: 5, count: 1 },
+          },
+          expect.objectContaining({
+            id: kenan.id,
+            rating: { average: null, count: 0 },
+          }) as unknown,
+        ],
+        total: 2,
+        page: 1,
+        limit: 12,
+        totalPages: 1,
+      });
+
+      const ids = async (query: string) => {
+        const response = await http().get(`/api/users?${query}`).expect(200);
+        return (response.body as { items: { id: string }[] }).items.map(
+          (item) => item.id,
+        );
+      };
+      expect(await ids('skill=IT_HELP')).toEqual([kenan.id]);
+      expect(await ids('location=SARAJEVO')).toEqual([tarik.id]);
+      expect(await ids('q=KOMBI')).toEqual([tarik.id]);
+      expect(await ids('q=mehić')).toEqual([kenan.id]);
+      expect(await ids('q=%25')).toEqual([]);
+      expect(await ids('skill=MOVING&location=TUZLA')).toEqual([]);
+
+      const second = await http().get('/api/users?limit=1&page=2').expect(200);
+      expect(second.body).toMatchObject({
+        items: [{ id: kenan.id }],
+        total: 2,
+        totalPages: 2,
+      });
+
+      await http().get('/api/users?skill=FLYING').expect(400);
+      await http().get('/api/users?limit=51').expect(400);
+    });
+  });
+
   describe('account', () => {
     function updateProfile(auth: string, body: object) {
       return http().patch('/api/auth/me').set('Authorization', auth).send(body);
@@ -1929,6 +2026,29 @@ describe('App (e2e)', () => {
       await updateProfile(auth, { bio: 'a'.repeat(501) }).expect(400);
       await updateProfile(auth, { skills: ['FLYING'] }).expect(400);
       await updateProfile(auth, { skills: 'MOVING' }).expect(400);
+    });
+
+    it('sets and removes the location', async () => {
+      const { auth, user, accessToken } = await signedInUser();
+
+      const response = await updateProfile(auth, {
+        location: 'MOSTAR',
+      }).expect(200);
+      expect(response.body).toMatchObject({ location: 'MOSTAR' });
+      const profile = await http().get(`/api/users/${user.id}`).expect(200);
+      expect(profile.body).toMatchObject({ location: 'MOSTAR' });
+
+      // Leaving it out keeps it; null removes it.
+      await updateProfile(auth, { fullName: 'Amra Hodžić' }).expect(200);
+      expect((await me(accessToken).expect(200)).body).toMatchObject({
+        location: 'MOSTAR',
+      });
+      await updateProfile(auth, { location: null }).expect(200);
+      expect((await me(accessToken).expect(200)).body).toMatchObject({
+        location: null,
+      });
+
+      await updateProfile(auth, { location: 'LONDON' }).expect(400);
     });
 
     describe('profile photo', () => {

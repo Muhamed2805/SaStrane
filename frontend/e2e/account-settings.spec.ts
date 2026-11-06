@@ -13,6 +13,7 @@ const user = {
   emailNotifications: true,
   bio: null as string | null,
   skills: [] as string[],
+  location: null as string | null,
   avatarUrl: null as string | null,
   createdAt: '2026-09-15T12:00:00.000Z',
 };
@@ -126,7 +127,13 @@ test('changes the name and the role', async ({ page }) => {
     {
       method: 'PATCH',
       path: '/auth/me',
-      body: { fullName: 'Amra H.', role: 'BOTH', bio: '', skills: [] },
+      body: {
+        fullName: 'Amra H.',
+        role: 'BOTH',
+        bio: '',
+        skills: [],
+        location: null,
+      },
     },
   ]);
   // The navbar shows the new name right away.
@@ -157,8 +164,28 @@ test('writes an introduction and picks the jobs', async ({ page }) => {
     bio: 'Imam kombi i radim vikendom.',
     // In the order of the list, not of the clicks.
     skills: ['LAWN_MOWING', 'MOVING'],
+    location: null,
   });
   await expect(save).toBeDisabled();
+});
+
+test('picks and removes the location', async ({ page }) => {
+  const state = await mockAccountApi(page);
+  await page.goto('/settings');
+
+  const save = page.getByRole('button', { name: 'Sačuvaj promjene' });
+  const select = page.getByLabel('Gdje radiš');
+  await select.selectOption({ label: 'Mostar' });
+  await save.click();
+
+  await expect(page.getByText('Profil je sačuvan.')).toBeVisible();
+  expect(state.requests.at(-1)?.body).toMatchObject({ location: 'MOSTAR' });
+  await expect(save).toBeDisabled();
+
+  await select.selectOption({ label: 'Nije odabrano' });
+  await save.click();
+  await expect.poll(() => state.requests.length).toBe(2);
+  expect(state.requests.at(-1)?.body).toMatchObject({ location: null });
 });
 
 test('adds and removes the profile photo', async ({ page }) => {

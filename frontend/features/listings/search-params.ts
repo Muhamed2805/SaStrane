@@ -18,9 +18,10 @@ export type ListingFilters = {
   page: number;
 };
 
-type SearchParamsRecord = Record<string, string | string[] | undefined>;
+export type SearchParamsRecord = Record<string, string | string[] | undefined>;
 
-function read(
+// The first value of a query parameter, from the browser or the server page.
+export function readSearchParam(
   source: URLSearchParams | SearchParamsRecord,
   key: string,
 ): string | undefined {
@@ -33,12 +34,12 @@ function read(
 export function parseListingFilters(
   source: URLSearchParams | SearchParamsRecord,
 ): ListingFilters {
-  const category = read(source, 'category');
-  const location = read(source, 'location');
-  const page = Number(read(source, 'page'));
+  const category = readSearchParam(source, 'category');
+  const location = readSearchParam(source, 'location');
+  const page = Number(readSearchParam(source, 'page'));
 
   return {
-    q: read(source, 'q')?.trim() ?? '',
+    q: readSearchParam(source, 'q')?.trim() ?? '',
     category: isListingCategory(category) ? category : undefined,
     location: isListingLocation(location) ? location : undefined,
     page: Number.isInteger(page) && page > 1 ? page : 1,

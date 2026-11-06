@@ -45,6 +45,7 @@ describe('AccountService', () => {
     emailNotifications: true,
     bio: null,
     skills: [],
+    location: null,
     avatarId: 'avatar-new',
     isAdmin: false,
     createdAt: new Date('2026-11-01T12:00:00Z'),
@@ -122,6 +123,7 @@ describe('AccountService', () => {
           emailNotifications: undefined,
           bio: undefined,
           skills: undefined,
+          location: undefined,
         },
         select: PUBLIC_USER_SELECT,
       });
@@ -143,6 +145,16 @@ describe('AccountService', () => {
             bio: null,
             skills: [ListingCategory.MOVING, ListingCategory.CLEANING],
           }) as unknown,
+        }),
+      );
+    });
+
+    it('removes the location when it is null', async () => {
+      await service.updateProfile('user-1', { location: null });
+
+      expect(userRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ location: null }) as unknown,
         }),
       );
     });

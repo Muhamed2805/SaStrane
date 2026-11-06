@@ -2,9 +2,12 @@ import { cache } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
-import { CalendarDays, Star } from 'lucide-react';
+import { CalendarDays, MapPin, Star } from 'lucide-react';
 import { UserAvatar } from '@/components/user-avatar';
-import { CATEGORY_LABELS } from '@/features/listings/constants';
+import {
+  CATEGORY_LABELS,
+  LOCATION_LABELS,
+} from '@/features/listings/constants';
 import { ReportButton } from '@/features/moderation/components/report-button';
 import { ratingsApi } from '@/features/ratings/api';
 import { RatingStars } from '@/features/ratings/components/rating-stars';
@@ -79,13 +82,24 @@ export default async function UserProfilePage({ params }: PageProps) {
               <h1 className="truncate text-2xl font-bold tracking-tight">
                 {profile.fullName}
               </h1>
-              <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-                <CalendarDays
-                  className="size-4 text-primary"
-                  aria-hidden="true"
-                />
-                Član od {formatDate(profile.createdAt)}
-              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                {profile.location ? (
+                  <p className="flex items-center gap-1.5">
+                    <MapPin
+                      className="size-4 text-primary"
+                      aria-hidden="true"
+                    />
+                    {LOCATION_LABELS[profile.location]}
+                  </p>
+                ) : null}
+                <p className="flex items-center gap-1.5">
+                  <CalendarDays
+                    className="size-4 text-primary"
+                    aria-hidden="true"
+                  />
+                  Član od {formatDate(profile.createdAt)}
+                </p>
+              </div>
             </div>
             <div className="rounded-xl bg-amber-50 px-5 py-4 text-center">
               {average === null ? (

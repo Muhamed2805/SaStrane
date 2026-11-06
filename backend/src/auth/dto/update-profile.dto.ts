@@ -11,7 +11,11 @@ import {
   MinLength,
 } from 'class-validator';
 import { trimString } from '../../common/transforms/trim-string.transform.js';
-import { ListingCategory, UserRole } from '../../generated/prisma/enums.js';
+import {
+  ListingCategory,
+  ListingLocation,
+  UserRole,
+} from '../../generated/prisma/enums.js';
 
 export const BIO_MAX_LENGTH = 500;
 
@@ -53,4 +57,14 @@ export class UpdateProfileDto {
   @ArrayMaxSize(Object.keys(ListingCategory).length)
   @IsEnum(ListingCategory, { each: true })
   skills?: ListingCategory[];
+
+  /** Where the user does jobs. Null removes it. */
+  @ApiPropertyOptional({
+    enum: ListingLocation,
+    enumName: 'ListingLocation',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsEnum(ListingLocation)
+  location?: ListingLocation | null;
 }

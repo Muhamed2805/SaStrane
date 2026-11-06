@@ -157,7 +157,7 @@ admin, or the route returns 403.
 | `POST` | `/api/auth/refresh` | Cookie | Rotates the refresh token and returns a new access token. |
 | `POST` | `/api/auth/logout` | Cookie | Revokes the session. |
 | `GET` | `/api/auth/me` | Bearer | Returns the signed-in user. |
-| `PATCH` | `/api/auth/me` | Bearer | Changes the user's name, role, `bio`, `skills` or `emailNotifications`. |
+| `PATCH` | `/api/auth/me` | Bearer | Changes the user's name, role, `bio`, `skills`, `location` or `emailNotifications`. A `location` of null removes it. |
 | `PUT` | `/api/auth/me/avatar` | Bearer | Sets the profile photo: `multipart/form-data` with the file in `photo`. |
 | `DELETE` | `/api/auth/me/avatar` | Bearer | Removes the profile photo. |
 | `POST` | `/api/auth/change-password` | Bearer | Checks the current password, sets a new one and revokes the other sessions. Returns 204. |
@@ -191,7 +191,8 @@ admin, or the route returns 403.
 | `POST` | `/api/conversations/:id/messages` | Member | Sends a message. |
 | `POST` | `/api/conversations/:id/read` | Member | Marks the conversation as read. Returns 204. |
 | `POST` | `/api/ratings` | Owner | Rates the executor of an accepted application to a closed job. |
-| `GET` | `/api/users/:id` | | Returns a user's public profile: photo, introduction, skills and rating. |
+| `GET` | `/api/users` | | Lists the users who do jobs, the best rated first. Only confirmed, not suspended users with at least one skill. Filters: `q` (name or introduction), `skill`, `location`. Paging: `page`, `limit` (max 50, default 12). |
+| `GET` | `/api/users/:id` | | Returns a user's public profile: photo, introduction, skills, location and rating. |
 | `GET` | `/api/users/:id/ratings` | | Lists the ratings a user received, newest first. Paging: `page`, `limit` (max 50). |
 | `POST` | `/api/reports` | Bearer | Reports a job (`listingId`) or a user (`userId`) with a reason and optional details. Returns 204. |
 | `GET` | `/api/admin/stats` | Admin | Returns the totals for the admin overview. |

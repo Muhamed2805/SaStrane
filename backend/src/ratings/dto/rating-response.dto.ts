@@ -1,6 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { PageDto } from '../../common/dto/page.dto.js';
-import { ListingCategory } from '../../generated/prisma/enums.js';
+import {
+  ListingCategory,
+  ListingLocation,
+} from '../../generated/prisma/enums.js';
 
 // How an executor was rated so far.
 export class RatingSummaryDto {
@@ -61,9 +64,22 @@ export class UserProfileDto {
   })
   skills!: ListingCategory[];
 
+  /** Where the user does jobs. */
+  @ApiProperty({
+    enum: ListingLocation,
+    enumName: 'ListingLocation',
+    nullable: true,
+  })
+  location!: ListingLocation | null;
+
   /** When the user signed up. */
   createdAt!: Date;
 
   /** Ratings received as an executor. */
   rating!: RatingSummaryDto;
+}
+
+// The best rated first. See RatingsService.getExecutors.
+export class ExecutorsPageDto extends PageDto {
+  items!: UserProfileDto[];
 }
