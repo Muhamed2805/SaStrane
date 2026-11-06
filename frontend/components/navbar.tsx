@@ -76,7 +76,11 @@ const workspaceLinks = [
   { href: '/settings', label: 'Postavke naloga', icon: Settings },
 ];
 
-const adminLink = { href: '/admin', label: 'Prijave', icon: ShieldCheck };
+const adminLink = {
+  href: '/admin',
+  label: 'Administracija',
+  icon: ShieldCheck,
+};
 
 export function Navbar() {
   const { user, status, logout, openAuthModal, openRegistrationModal } =

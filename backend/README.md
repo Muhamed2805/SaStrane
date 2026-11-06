@@ -194,6 +194,10 @@ admin, or the route returns 403.
 | `GET` | `/api/users/:id` | | Returns a user's public profile: photo, introduction, skills and rating. |
 | `GET` | `/api/users/:id/ratings` | | Lists the ratings a user received, newest first. Paging: `page`, `limit` (max 50). |
 | `POST` | `/api/reports` | Bearer | Reports a job (`listingId`) or a user (`userId`) with a reason and optional details. Returns 204. |
+| `GET` | `/api/admin/stats` | Admin | Returns the totals for the admin overview. |
+| `GET` | `/api/admin/users` | Admin | Lists every user, the newest first, with their counts. Filters: `q` (name or email), `filter` (`SUSPENDED` or `ADMINS`). Paging: `page`, `limit` (max 50). |
+| `GET` | `/api/admin/listings` | Admin | Lists every job in every status, the newest first. Filters: `q` (title), `status`. Paging: `page`, `limit` (max 50). |
+| `PATCH` | `/api/admin/listings/:id/status` | Admin | Closes or reopens any job. Returns 204. |
 | `GET` | `/api/admin/reports` | Admin | Lists the reports, newest first. Filter: `status`. Paging: `page`, `limit` (max 50). |
 | `PATCH` | `/api/admin/reports/:id` | Admin | Marks an open report `RESOLVED` or `DISMISSED`. |
 | `DELETE` | `/api/admin/listings/:id` | Admin | Deletes a job and resolves its open reports. Returns 204. |
@@ -318,7 +322,8 @@ admin, or the route returns 403.
 - Suspending an account signs it out everywhere, closes its open jobs and
   resolves the open reports about it. A suspended user cannot sign in or
   confirm the email: both return 403 with the code `ACCOUNT_SUSPENDED`.
-  Admins cannot be suspended.
+  Admins cannot be suspended. Reopening a suspended client's job returns
+  409 with the code `CLIENT_SUSPENDED`.
 - `isAdmin` on the user is set with `npm run admin -- <email>`. It is part
   of the signed-in user, so the frontend shows the admin page.
 

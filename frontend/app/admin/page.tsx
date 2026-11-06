@@ -1,12 +1,8 @@
 import type { Metadata } from 'next';
-import { AdminReportsView } from '@/features/moderation/components/admin-reports-view';
-import { PRIVATE_PAGE } from '@/lib/site';
+import { AdminOverview } from '@/features/moderation/components/admin-overview';
 
-export const metadata: Metadata = {
-  title: 'Prijave',
-  robots: PRIVATE_PAGE,
-};
+export const metadata: Metadata = { title: 'Administracija' };
 
 export default function AdminPage() {
-  return <AdminReportsView />;
+  return <AdminOverview />;
 }

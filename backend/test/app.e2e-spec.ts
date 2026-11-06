@@ -855,6 +855,102 @@ describe('App (e2e)', () => {
         .expect(204);
       await login(client.user.email);
     });
+
+    it('gives admins the totals and every user and job', async () => {
+      const client = await signedInUser('Amra Hodžić');
+      const reporter = await signedInUser('Kenan Mehić');
+      const admin = await signedInAdmin();
+      const { id: lawnId } = await postListing(client.auth);
+      const { id: fenceId } = await postListing(client.auth, {
+        ...listingInput,
+        title: 'Farbanje drvene ograde',
+      });
+      await report(reporter.auth, {
+        listingId: fenceId,
+        reason: 'SPAM',
+      }).expect(204);
+      const get = (path: string) =>
+        http().get(`/api/admin/${path}`).set('Authorization', admin.auth);
+      const setStatus = (id: string, status: string) =>
+        http()
+          .patch(`/api/admin/listings/${id}/status`)
+          .set('Authorization', admin.auth)
+          .send({ status });
+
+      await http()
+        .get('/api/admin/stats')
+        .set('Authorization', client.auth)
+        .expect(403);
+      expect((await get('stats').expect(200)).body).toEqual({
+        users: 3,
+        newUsers: 3,
+        suspendedUsers: 0,
+        openListings: 2,
+        closedListings: 0,
+        newListings: 2,
+        applications: 0,
+        newApplications: 0,
+        openReports: 1,
+      });
+
+      const found = await get('users?q=amra').expect(200);
+      expect(found.body).toMatchObject({ total: 1, page: 1, limit: 20 });
+      expect(found.body.items).toEqual([
+        {
+          id: client.user.id,
+          fullName: 'Amra Hodžić',
+          email: client.user.email,
+          role: 'BOTH',
+          avatarUrl: null,
+          isAdmin: false,
+          suspendedAt: null,
+          emailVerified: true,
+          createdAt: expect.any(String),
+          listings: 2,
+          applications: 0,
+          openReports: 1,
+        },
+      ]);
+      const admins = await get('users?filter=ADMINS').expect(200);
+      expect(admins.body.items).toMatchObject([{ id: admin.user.id }]);
+      await get('users?filter=EVERYONE').expect(400);
+
+      const jobs = await get('listings?q=ograde').expect(200);
+      expect(jobs.body.items).toEqual([
+        {
+          id: fenceId,
+          title: 'Farbanje drvene ograde',
+          status: 'OPEN',
+          category: 'LAWN_MOWING',
+          location: 'ILIDZA',
+          createdAt: expect.any(String),
+          client: {
+            id: client.user.id,
+            fullName: 'Amra Hodžić',
+            suspended: false,
+          },
+          applications: 0,
+          openReports: 1,
+        },
+      ]);
+
+      await setStatus(lawnId, 'CLOSED').expect(204);
+      const closed = await get('listings?status=CLOSED').expect(200);
+      expect(closed.body.items).toMatchObject([{ id: lawnId }]);
+      await setStatus('missing', 'CLOSED').expect(404);
+      await setStatus(lawnId, 'DONE').expect(400);
+
+      await http()
+        .post(`/api/admin/users/${client.user.id}/suspend`)
+        .set('Authorization', admin.auth)
+        .expect(204);
+      const reopen = await setStatus(lawnId, 'OPEN').expect(409);
+      expect(reopen.body).toMatchObject({ code: 'CLIENT_SUSPENDED' });
+      const suspended = await get('users?filter=SUSPENDED').expect(200);
+      expect(suspended.body.items).toMatchObject([
+        { id: client.user.id, suspendedAt: expect.any(String) },
+      ]);
+    });
   });
 
   describe('applications', () => {

@@ -97,8 +97,9 @@ be both.
 **Moderation**
 - Report a job or a user with a reason and an optional description. Only
   admins see who sent the report.
-- Admins handle the reports on their own page: mark them resolved or
-  dismissed, delete the job, or suspend the account. A suspended account is
+- Admins have their own pages: an overview with totals, the reports, and
+  every user and job with search and filters. They mark reports resolved
+  or dismissed, close, reopen or delete jobs, and suspend accounts. A suspended account is
   signed out, its open jobs close, and it cannot sign in until an admin
   lifts the suspension.
 

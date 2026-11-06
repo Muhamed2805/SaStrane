@@ -20,7 +20,18 @@ import {
   COMMON_ERRORS,
   SIGNED_IN_ERRORS,
 } from '../openapi/api-errors.decorator.js';
+import { UpdateListingStatusDto } from '../listings/dto/update-listing-status.dto.js';
 import { AdminGuard } from './admin.guard.js';
+import { AdminService } from './admin.service.js';
+import {
+  AdminListingsPageDto,
+  AdminListingsQueryDto,
+} from './dto/admin-listings.dto.js';
+import { AdminStatsDto } from './dto/admin-stats.dto.js';
+import {
+  AdminUsersPageDto,
+  AdminUsersQueryDto,
+} from './dto/admin-users.dto.js';
 import { HandleReportDto } from './dto/handle-report.dto.js';
 import { ReportDto, ReportsPageDto } from './dto/report-response.dto.js';
 import { ReportsQueryDto } from './dto/reports-query.dto.js';
@@ -36,7 +47,47 @@ import { ModerationService } from './moderation.service.js';
 @UseGuards(JwtAuthGuard, AdminGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly moderation: ModerationService) {}
+  constructor(
+    private readonly moderation: ModerationService,
+    private readonly admin: AdminService,
+  ) {}
+
+  /** Returns the totals for the admin overview. */
+  @Get('stats')
+  getStats(): Promise<AdminStatsDto> {
+    return this.admin.getStats();
+  }
+
+  /** Lists every user, the newest first, with their counts. */
+  @ApiErrors({ 400: 'A query parameter is invalid.' })
+  @Get('users')
+  getUsers(@Query() query: AdminUsersQueryDto): Promise<AdminUsersPageDto> {
+    return this.admin.getUsers(query);
+  }
+
+  /** Lists every job in every status, the newest first. */
+  @ApiErrors({ 400: 'A query parameter is invalid.' })
+  @Get('listings')
+  getListings(
+    @Query() query: AdminListingsQueryDto,
+  ): Promise<AdminListingsPageDto> {
+    return this.admin.getListings(query);
+  }
+
+  /** Closes or reopens any job. */
+  @ApiErrors({
+    400: 'The status is not OPEN or CLOSED.',
+    404: 'The job does not exist.',
+    409: 'Reopening the job of a suspended client (CLIENT_SUSPENDED).',
+  })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Patch('listings/:id/status')
+  async setListingStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateListingStatusDto,
+  ): Promise<void> {
+    await this.admin.setListingStatus(id, dto.status);
+  }
 
   /** Lists the reports, newest first. */
   @ApiErrors({ 400: 'A query parameter is invalid.' })
