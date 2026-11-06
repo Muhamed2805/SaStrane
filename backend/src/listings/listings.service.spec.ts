@@ -42,6 +42,14 @@ describe('ListingsService', () => {
     height: 1200,
   };
 
+  // The client as the database returns it, and as the API sends it.
+  const client = { id: 'user-1', fullName: 'Test User', avatarId: 'avatar-1' };
+  const clientDto = {
+    id: 'user-1',
+    fullName: 'Test User',
+    avatarUrl: 'https://photos.example/avatars/user-1/avatar-1.webp',
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -86,16 +94,31 @@ describe('ListingsService', () => {
 
     it('turns the first photo into the cover with public URLs', async () => {
       listingRepository.findMany.mockResolvedValue([
-        { id: 'listing-1', title: 'Košenje', photos: [photo] },
-        { id: 'listing-2', title: 'Selidba', photos: [] },
+        { id: 'listing-1', title: 'Košenje', client, photos: [photo] },
+        {
+          id: 'listing-2',
+          title: 'Selidba',
+          client: { ...client, avatarId: null },
+          photos: [],
+        },
       ]);
       listingRepository.count.mockResolvedValue(2);
 
       const page = await service.getAll({});
 
       expect(page.items).toEqual([
-        { id: 'listing-1', title: 'Košenje', coverPhoto: photoDto },
-        { id: 'listing-2', title: 'Selidba', coverPhoto: null },
+        {
+          id: 'listing-1',
+          title: 'Košenje',
+          client: clientDto,
+          coverPhoto: photoDto,
+        },
+        {
+          id: 'listing-2',
+          title: 'Selidba',
+          client: { ...clientDto, avatarUrl: null },
+          coverPhoto: null,
+        },
       ]);
       expect(listingRepository.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -112,12 +135,14 @@ describe('ListingsService', () => {
       listingRepository.findUnique.mockResolvedValue({
         id: 'listing-1',
         description: null,
+        client,
         photos: [photo],
       });
 
       await expect(service.getById('listing-1')).resolves.toEqual({
         id: 'listing-1',
         description: null,
+        client: clientDto,
         coverPhoto: photoDto,
         photos: [photoDto],
       });
@@ -135,18 +160,23 @@ describe('ListingsService', () => {
         budget: null,
         description: null,
         createdAt: new Date(),
-        client: { id: 'user-1', fullName: 'Test User' },
       };
 
       listingRepository.findUnique.mockResolvedValue({ clientId: 'user-1' });
       listingRepository.update.mockResolvedValue({
         ...updatedListing,
+        client,
         photos: [],
       });
 
       await expect(
         service.update('listing-1', { title: 'Updated title' }, 'user-1'),
-      ).resolves.toEqual({ ...updatedListing, coverPhoto: null, photos: [] });
+      ).resolves.toEqual({
+        ...updatedListing,
+        client: clientDto,
+        coverPhoto: null,
+        photos: [],
+      });
 
       expect(listingRepository.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -189,6 +219,7 @@ describe('ListingsService', () => {
         id: 'listing-1',
         status: 'CLOSED',
         description: null,
+        client,
         photos: [],
       });
 
@@ -198,6 +229,7 @@ describe('ListingsService', () => {
         id: 'listing-1',
         status: 'CLOSED',
         description: null,
+        client: clientDto,
         coverPhoto: null,
         photos: [],
       });

@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
+import { avatarUrl } from '../auth/avatar.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { CreateListingDto } from './dto/create-listing.dto.js';
@@ -26,7 +27,7 @@ const LISTING_SUMMARY_SELECT = {
   status: true,
   budget: true,
   createdAt: true,
-  client: { select: { id: true, fullName: true } },
+  client: { select: { id: true, fullName: true, avatarId: true } },
   photos: { select: PHOTO_FIELDS, orderBy: PHOTO_ORDER, take: 1 },
 } satisfies Prisma.ListingSelect;
 
@@ -48,10 +49,15 @@ export class ListingsService {
     private readonly storage: StorageService,
   ) {}
 
-  private toSummary({ photos, ...listing }: SummaryRow) {
+  private toSummary({ photos, client, ...listing }: SummaryRow) {
     const cover = photos.at(0);
     return {
       ...listing,
+      client: {
+        id: client.id,
+        fullName: client.fullName,
+        avatarUrl: avatarUrl(this.storage, client),
+      },
       coverPhoto: cover ? toPhotoDto(this.storage, listing.id, cover) : null,
     };
   }

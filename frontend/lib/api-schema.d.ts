@@ -787,6 +787,8 @@ export interface components {
         ListingClientDto: {
             id: string;
             fullName: string;
+            /** @description A square WebP image of 256 pixels. Null without a profile photo. */
+            avatarUrl: string | null;
         };
         ListingSummaryDto: {
             category: components["schemas"]["ListingCategory"];

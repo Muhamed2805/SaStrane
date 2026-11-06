@@ -11,6 +11,7 @@ import {
   Tag,
   UserRound,
 } from 'lucide-react';
+import { UserAvatar } from '@/components/user-avatar';
 import { listingsApi } from '@/features/listings/api';
 import { ClosedBadge } from '@/features/listings/components/closed-badge';
 import { ListingActions } from '@/features/listings/components/listing-actions';
@@ -233,9 +234,11 @@ export default async function ListingDetailsPage({ params }: PageProps) {
                 O klijentu
               </p>
               <div className="mt-4 flex items-center gap-3">
-                <span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-base font-bold text-primary">
-                  {listing.client.fullName.charAt(0).toUpperCase()}
-                </span>
+                <UserAvatar
+                  name={listing.client.fullName}
+                  url={listing.client.avatarUrl}
+                  className="size-12 rounded-full bg-primary/10 text-base font-bold text-primary"
+                />
                 <div className="min-w-0">
                   <p className="truncate font-semibold">
                     {listing.client.fullName}

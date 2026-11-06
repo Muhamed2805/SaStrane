@@ -3774,11 +3774,17 @@
           },
           "fullName": {
             "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "A square WebP image of 256 pixels. Null without a profile photo."
           }
         },
         "required": [
           "id",
-          "fullName"
+          "fullName",
+          "avatarUrl"
         ]
       },
       "ListingSummaryDto": {

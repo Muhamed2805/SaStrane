@@ -1650,6 +1650,23 @@ describe('App (e2e)', () => {
           otherUser: { id: executor.user.id, avatarUrl },
         });
       });
+
+      it('shows the client photo on their jobs', async () => {
+        const client = await signedInUser('Amra Hodžić');
+        const { id: listingId } = await postListing(client.auth);
+        const job = () => http().get(`/api/listings/${listingId}`).expect(200);
+
+        expect((await job()).body).toMatchObject({
+          client: { id: client.user.id, avatarUrl: null },
+        });
+        const { avatarUrl } = (await setAvatar(client.auth).expect(200))
+          .body as { avatarUrl: string };
+        expect((await job()).body).toMatchObject({
+          client: { id: client.user.id, avatarUrl },
+        });
+        const list = await http().get('/api/listings').expect(200);
+        expect(list.body).toMatchObject({ items: [{ client: { avatarUrl } }] });
+      });
     });
 
     it('changes the password and signs out the other devices', async () => {

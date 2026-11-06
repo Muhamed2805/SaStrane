@@ -12,6 +12,9 @@ export class ListingClientDto {
   id!: string;
 
   fullName!: string;
+
+  /** A square WebP image of 256 pixels. Null without a profile photo. */
+  avatarUrl!: string | null;
 }
 
 // A job as lists show it, without the description.
