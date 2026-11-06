@@ -5,8 +5,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
-import { ApplicationStatus, ListingStatus } from '../generated/prisma/enums.js';
+import {
+  ApplicationStatus,
+  ListingStatus,
+  NotificationType,
+} from '../generated/prisma/enums.js';
 import { avatarUrl } from '../auth/avatar.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { CreateRatingDto } from './dto/create-rating.dto.js';
@@ -61,6 +66,7 @@ export class RatingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // The client rates the executor they accepted, once the job is closed.
@@ -73,7 +79,13 @@ export class RatingsService {
         executorId: true,
         rating: { select: { id: true } },
         listing: {
-          select: { id: true, title: true, clientId: true, status: true },
+          select: {
+            id: true,
+            title: true,
+            clientId: true,
+            status: true,
+            client: { select: { fullName: true } },
+          },
         },
       },
     });
@@ -101,8 +113,9 @@ export class RatingsService {
     });
     if (application.rating) throw alreadyRated;
 
+    let rating;
     try {
-      return await this.prisma.rating.create({
+      rating = await this.prisma.rating.create({
         data: {
           applicationId: application.id,
           listingId: application.listing.id,
@@ -119,6 +132,15 @@ export class RatingsService {
       if (isUniqueViolation(error)) throw alreadyRated;
       throw error;
     }
+
+    await this.notifications.notify({
+      userId: application.executorId,
+      type: NotificationType.NEW_RATING,
+      listingId: application.listing.id,
+      listingTitle: application.listing.title,
+      actorName: application.listing.client.fullName,
+    });
+    return rating;
   }
 
   // Rating summaries for several executors at once, for lists.

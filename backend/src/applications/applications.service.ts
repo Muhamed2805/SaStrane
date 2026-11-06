@@ -6,9 +6,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
-import { ApplicationStatus, ListingStatus } from '../generated/prisma/enums.js';
+import {
+  ApplicationStatus,
+  ListingStatus,
+  NotificationType,
+} from '../generated/prisma/enums.js';
 import { avatarUrl } from '../auth/avatar.js';
 import { EmailService } from '../email/email.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import {
   RatingsService,
   type RatingSummary,
@@ -103,6 +108,7 @@ export class ApplicationsService {
     private readonly email: EmailService,
     private readonly ratings: RatingsService,
     private readonly storage: StorageService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   private summariesFor(applications: { executor: { id: string } }[]) {
@@ -161,6 +167,13 @@ export class ApplicationsService {
     }
 
     const { executor, ...application } = created;
+    await this.notifications.notify({
+      userId: listing.clientId,
+      type: NotificationType.NEW_APPLICATION,
+      listingId: listing.id,
+      listingTitle: listing.title,
+      actorName: executor.fullName,
+    });
     if (listing.client.emailNotifications) {
       // Like the decision email: sent after the response, and a failure
       // does not undo the application.
@@ -302,6 +315,17 @@ export class ApplicationsService {
     const decided = await this.prisma.application.findUniqueOrThrow({
       where: { id },
       select: LISTING_APPLICATION_SELECT,
+    });
+
+    await this.notifications.notify({
+      userId: decided.executor.id,
+      type:
+        decided.status === ApplicationStatus.ACCEPTED
+          ? NotificationType.APPLICATION_ACCEPTED
+          : NotificationType.APPLICATION_REJECTED,
+      listingId: decided.listingId,
+      listingTitle: application.listing.title,
+      actorName: application.listing.client.fullName,
     });
 
     // The decision is already saved, so a failed email must not fail the

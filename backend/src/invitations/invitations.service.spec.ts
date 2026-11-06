@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { EmailService } from '../email/email.service.js';
 import { Prisma } from '../generated/prisma/client.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import {
@@ -25,6 +26,7 @@ describe('InvitationsService', () => {
     deleteMany: vi.fn(),
   };
   const email = { sendInvitation: vi.fn() };
+  const notifications = { notify: vi.fn() };
 
   const service = new InvitationsService(
     {
@@ -37,6 +39,7 @@ describe('InvitationsService', () => {
     {
       url: (key: string) => `https://files.test/${key}`,
     } as unknown as StorageService,
+    notifications as unknown as NotificationsService,
   );
 
   beforeEach(() => {
@@ -84,6 +87,13 @@ describe('InvitationsService', () => {
       expect(invitationRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: dto }),
       );
+      expect(notifications.notify).toHaveBeenCalledWith({
+        userId: 'executor-1',
+        type: 'INVITATION',
+        listingId: 'listing-1',
+        listingTitle: 'Selidba',
+        actorName: 'Amra',
+      });
       expect(email.sendInvitation).toHaveBeenCalledWith({
         email: 'kenan@example.com',
         fullName: 'Kenan',

@@ -86,7 +86,7 @@ test('restores the session from the refresh cookie on page load', async ({
 
   await expect(emptyApplications(page)).toBeVisible();
   await expect(
-    page.getByText(user.fullName, { exact: true }).first(),
+    page.getByRole('button', { name: `Nalog: ${user.fullName}` }),
   ).toBeVisible();
   expect(calls.refresh).toBe(1);
   // The access token is kept in memory only.

@@ -144,7 +144,7 @@ test('registers, handles an invalid code, resends, and verifies the account', as
 
   await expect(page.getByRole('dialog')).toBeHidden();
   await expect(
-    page.getByText(verifiedUser.fullName, { exact: true }),
+    page.getByRole('button', { name: `Nalog: ${verifiedUser.fullName}` }),
   ).toBeVisible();
   await expect(
     page

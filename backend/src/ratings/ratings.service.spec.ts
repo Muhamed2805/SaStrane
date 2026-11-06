@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { RatingsService } from './ratings.service.js';
@@ -18,6 +19,7 @@ describe('RatingsService', () => {
   const queryRaw = vi.fn();
 
   const storage = { url: (key: string) => `https://files.test/${key}` };
+  const notifications = { notify: vi.fn() };
 
   const service = new RatingsService(
     {
@@ -27,6 +29,7 @@ describe('RatingsService', () => {
       $queryRaw: queryRaw,
     } as unknown as PrismaService,
     storage as unknown as StorageService,
+    notifications as unknown as NotificationsService,
   );
 
   beforeEach(() => {
@@ -51,6 +54,7 @@ describe('RatingsService', () => {
           title: 'Košenje trave',
           clientId: 'client-1',
           status: 'CLOSED',
+          client: { fullName: 'Amra' },
         },
         ...overrides,
       };
@@ -76,6 +80,13 @@ describe('RatingsService', () => {
           },
         }),
       );
+      expect(notifications.notify).toHaveBeenCalledWith({
+        userId: 'executor-1',
+        type: 'NEW_RATING',
+        listingId: 'listing-1',
+        listingTitle: 'Košenje trave',
+        actorName: 'Amra',
+      });
     });
 
     it('stores an empty comment as null', async () => {

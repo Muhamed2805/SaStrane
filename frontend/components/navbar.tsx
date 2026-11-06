@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/store';
 import { useUnreadCount } from '@/features/messages/hooks';
+import { NotificationBell } from '@/features/notifications/components/notification-bell';
 import { BrandLogo } from './brand-logo';
 import { UserAvatar } from './user-avatar';
 
@@ -33,7 +34,7 @@ const NavLink = ({
     <Link
       href={href}
       onClick={onClick}
-      className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+      className="whitespace-nowrap text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
     >
       {label}
     </Link>
@@ -54,7 +55,7 @@ const MessagesLink = ({
     <Link
       href="/messages"
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+      className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
     >
       Poruke
       {count > 0 ? (
@@ -120,7 +121,7 @@ export function Navbar() {
       <div className="site-container flex h-16 items-center justify-between">
         <BrandLogo />
 
-        <nav className="hidden items-center gap-7 xl:flex">
+        <nav className="hidden items-center gap-6 xl:flex">
           <NavLink href="/" label="Početna" />
           <NavLink href="/listings" label="Pronađi posao" />
           <NavLink href="/executors" label="Pronađi izvođača" />
@@ -131,12 +132,14 @@ export function Navbar() {
           {user ? <MessagesLink unread={unread} /> : null}
 
           {user ? (
-            <div className="flex items-center gap-3 border-l pl-6">
+            <div className="flex items-center gap-2 border-l pl-5">
+              <NotificationBell userId={user.id} />
               <div ref={userMenuRef} className="relative">
                 <button
                   type="button"
                   onClick={() => setIsUserMenuOpen((open) => !open)}
                   className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                  aria-label={`Nalog: ${user.fullName}`}
                   aria-expanded={isUserMenuOpen}
                   aria-controls="user-navigation"
                 >
@@ -145,7 +148,9 @@ export function Navbar() {
                     url={user.avatarUrl}
                     className="size-8 rounded-full bg-primary/10 text-xs font-bold text-primary"
                   />
-                  <span className="max-w-28 truncate">{user.fullName}</span>
+                  <span className="hidden max-w-28 truncate 2xl:inline">
+                    {user.fullName}
+                  </span>
                   <ChevronDown
                     className={`size-4 text-muted-foreground transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`}
                   />
@@ -199,7 +204,7 @@ export function Navbar() {
               </div>
               <Link
                 href="/listings/create"
-                className="rounded-lg bg-brand-orange px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-orange-dark"
+                className="whitespace-nowrap rounded-lg bg-brand-orange px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-orange-dark"
               >
                 Objavi oglas
               </Link>
@@ -219,7 +224,7 @@ export function Navbar() {
                 Prijava
               </button>
               <button
-                className="rounded-lg bg-brand-orange px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-orange-dark"
+                className="whitespace-nowrap rounded-lg bg-brand-orange px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-orange-dark"
                 onClick={openRegistrationModal}
               >
                 Registruj se
@@ -228,25 +233,28 @@ export function Navbar() {
           )}
         </nav>
 
-        <button
-          className="relative flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted xl:hidden"
-          onClick={() => setIsMenuOpen((open) => !open)}
-          aria-label={isMenuOpen ? 'Zatvori meni' : 'Otvori meni'}
-          aria-expanded={isMenuOpen}
-          aria-controls="mobile-navigation"
-        >
-          {isMenuOpen ? (
-            <X className="h-5 w-5" />
-          ) : (
-            <Menu className="h-5 w-5" />
-          )}
-          {!isMenuOpen && unread ? (
-            <span
-              className="absolute right-1.5 top-1.5 size-2 rounded-full bg-brand-orange"
-              aria-hidden="true"
-            />
-          ) : null}
-        </button>
+        <div className="flex items-center gap-1 xl:hidden">
+          {user ? <NotificationBell userId={user.id} /> : null}
+          <button
+            className="relative flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+            onClick={() => setIsMenuOpen((open) => !open)}
+            aria-label={isMenuOpen ? 'Zatvori meni' : 'Otvori meni'}
+            aria-expanded={isMenuOpen}
+            aria-controls="mobile-navigation"
+          >
+            {isMenuOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
+            {!isMenuOpen && unread ? (
+              <span
+                className="absolute right-1.5 top-1.5 size-2 rounded-full bg-brand-orange"
+                aria-hidden="true"
+              />
+            ) : null}
+          </button>
+        </div>
       </div>
 
       {isMenuOpen && (

@@ -6,9 +6,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
-import { ListingStatus, UserRole } from '../generated/prisma/enums.js';
+import {
+  ListingStatus,
+  NotificationType,
+  UserRole,
+} from '../generated/prisma/enums.js';
 import { avatarUrl } from '../auth/avatar.js';
 import { EmailService } from '../email/email.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { CreateInvitationDto } from './dto/create-invitation.dto.js';
@@ -52,6 +57,7 @@ export class InvitationsService {
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
     private readonly storage: StorageService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async create(dto: CreateInvitationDto, clientId: string) {
@@ -142,6 +148,13 @@ export class InvitationsService {
       throw error;
     }
 
+    await this.notifications.notify({
+      userId: dto.executorId,
+      type: NotificationType.INVITATION,
+      listingId: listing.id,
+      listingTitle: listing.title,
+      actorName: listing.client.fullName,
+    });
     if (executor.emailNotifications) {
       const invitationId = invitation.id;
       // Sent after the response. A failure does not undo the invitation.

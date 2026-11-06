@@ -100,8 +100,8 @@ after every install and every schema change.
 
 The seed in `prisma/seed.ts` adds four users, two of them with an
 introduction and skills, an admin (`admin@example.com`), ten jobs, seven
-photos, seven applications, two ratings, three conversations and one open
-report. The photos come from
+photos, seven applications, two ratings, three conversations, one open
+report, two invitations and five notifications for Amra. The photos come from
 `prisma/seed-photos` and need the storage container and
 `npm run storage:init`. When the storage is not reachable, as in CI, the
 seed skips them with a warning. Every demo user signs in with
@@ -187,6 +187,10 @@ admin, or the route returns 403.
 | `GET` | `/api/invitations` | Bearer | Lists your invitations to open jobs, newest first, with the job, the client and whether you applied. Paging: `page`, `limit` (max 50). |
 | `GET` | `/api/invitations/options` | Bearer | Lists your newest 50 open jobs and whether the user in `executorId` can be invited to each: `AVAILABLE`, `INVITED` or `APPLIED`. |
 | `DELETE` | `/api/invitations/:id` | Bearer | Declines your invitation. The client is not told. Returns 204. |
+| `GET` | `/api/notifications` | Bearer | Lists your notifications, newest first: `INVITATION`, `NEW_APPLICATION`, `APPLICATION_ACCEPTED`, `APPLICATION_REJECTED` or `NEW_RATING`, with the job title and the other user's name. Paging: `page`, `limit` (max 50). |
+| `GET` | `/api/notifications/unread-count` | Bearer | Counts your unread notifications. |
+| `POST` | `/api/notifications/:id/read` | Bearer | Marks one notification as read. Returns 204. |
+| `POST` | `/api/notifications/read-all` | Bearer | Marks all your notifications as read. Returns 204. |
 | `POST` | `/api/conversations` | Bearer | Returns the conversation about a job, and creates it the first time. |
 | `GET` | `/api/conversations` | Bearer | Lists your conversations, the latest message first. |
 | `GET` | `/api/conversations/unread-count` | Bearer | Counts your unread messages. |

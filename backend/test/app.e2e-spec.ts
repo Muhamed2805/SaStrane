@@ -2053,6 +2053,186 @@ describe('App (e2e)', () => {
     });
   });
 
+  describe('notifications', () => {
+    type NotificationsPage = {
+      items: {
+        id: string;
+        type: string;
+        listingId: string | null;
+        listingTitle: string;
+        actorName: string;
+        readAt: string | null;
+      }[];
+      total: number;
+    };
+
+    async function notificationsOf(auth: string) {
+      const response = await http()
+        .get('/api/notifications')
+        .set('Authorization', auth)
+        .expect(200);
+      return response.body as NotificationsPage;
+    }
+
+    async function unreadOf(auth: string) {
+      const response = await http()
+        .get('/api/notifications/unread-count')
+        .set('Authorization', auth)
+        .expect(200);
+      return (response.body as { count: number }).count;
+    }
+
+    it('needs a signed-in user', async () => {
+      await http().get('/api/notifications').expect(401);
+      await http().get('/api/notifications/unread-count').expect(401);
+      await http().post('/api/notifications/read-all').expect(401);
+      await http().post('/api/notifications/x/read').expect(401);
+    });
+
+    it('tells both sides what happened to a job', async () => {
+      const client = await signedInUser('Amra Hodžić');
+      const executor = await signedInUser('Kenan Mehić');
+      await prisma.user.update({
+        where: { id: executor.user.id },
+        data: { skills: ['LAWN_MOWING'] },
+      });
+      const { id: listingId } = await postListing(client.auth);
+
+      await http()
+        .post('/api/invitations')
+        .set('Authorization', client.auth)
+        .send({ listingId, executorId: executor.user.id })
+        .expect(201);
+      const application = await http()
+        .post('/api/applications')
+        .set('Authorization', executor.auth)
+        .send({ listingId, message: 'Mogu doći u subotu ujutro.' })
+        .expect(201);
+      const applicationId = (application.body as { id: string }).id;
+      await http()
+        .patch(`/api/applications/${applicationId}/status`)
+        .set('Authorization', client.auth)
+        .send({ status: 'ACCEPTED' })
+        .expect(200);
+      await http()
+        .patch(`/api/listings/${listingId}/status`)
+        .set('Authorization', client.auth)
+        .send({ status: 'CLOSED' })
+        .expect(200);
+      await http()
+        .post('/api/ratings')
+        .set('Authorization', client.auth)
+        .send({ applicationId, score: 5 })
+        .expect(201);
+
+      const job = { listingId, listingTitle: listingInput.title };
+      const forClient = await notificationsOf(client.auth);
+      expect(forClient).toMatchObject({
+        items: [{ ...job, type: 'NEW_APPLICATION', actorName: 'Kenan Mehić' }],
+        total: 1,
+      });
+      const forExecutor = await notificationsOf(executor.auth);
+      expect(forExecutor).toMatchObject({
+        items: [
+          { ...job, type: 'NEW_RATING', actorName: 'Amra Hodžić' },
+          { ...job, type: 'APPLICATION_ACCEPTED', actorName: 'Amra Hodžić' },
+          { ...job, type: 'INVITATION', actorName: 'Amra Hodžić' },
+        ],
+        total: 3,
+      });
+      expect(forExecutor.items.every((item) => item.readAt === null)).toBe(
+        true,
+      );
+      expect(await unreadOf(executor.auth)).toBe(3);
+
+      // Another user cannot read them, the owner can, twice.
+      const [newest] = forExecutor.items;
+      await http()
+        .post(`/api/notifications/${newest.id}/read`)
+        .set('Authorization', client.auth)
+        .expect(404);
+      await http()
+        .post(`/api/notifications/${newest.id}/read`)
+        .set('Authorization', executor.auth)
+        .expect(204);
+      await http()
+        .post(`/api/notifications/${newest.id}/read`)
+        .set('Authorization', executor.auth)
+        .expect(204);
+      expect(await unreadOf(executor.auth)).toBe(2);
+      expect((await notificationsOf(executor.auth)).items[0].readAt).toEqual(
+        expect.any(String),
+      );
+
+      await http()
+        .post('/api/notifications/read-all')
+        .set('Authorization', executor.auth)
+        .expect(204);
+      expect(await unreadOf(executor.auth)).toBe(0);
+      // The client's stay unread.
+      expect(await unreadOf(client.auth)).toBe(1);
+    });
+
+    it('keeps the text once the job is deleted', async () => {
+      const client = await signedInUser('Amra Hodžić');
+      const executor = await signedInUser('Kenan Mehić');
+      await prisma.user.update({
+        where: { id: executor.user.id },
+        data: { skills: ['LAWN_MOWING'] },
+      });
+      const { id: listingId } = await postListing(client.auth);
+      await http()
+        .post('/api/invitations')
+        .set('Authorization', client.auth)
+        .send({ listingId, executorId: executor.user.id })
+        .expect(201);
+
+      await http()
+        .delete(`/api/listings/${listingId}`)
+        .set('Authorization', client.auth)
+        .expect(204);
+
+      expect(await notificationsOf(executor.auth)).toMatchObject({
+        items: [
+          {
+            type: 'INVITATION',
+            listingId: null,
+            listingTitle: listingInput.title,
+          },
+        ],
+      });
+    });
+
+    it('pages the list and checks the query', async () => {
+      const user = await signedInUser();
+      await prisma.notification.createMany({
+        data: Array.from({ length: 3 }, (_, index) => ({
+          userId: user.user.id,
+          type: 'NEW_APPLICATION' as const,
+          listingTitle: `Posao ${index}`,
+          actorName: 'Kenan',
+          createdAt: new Date(Date.UTC(2026, 0, index + 1)),
+        })),
+      });
+
+      const page = await http()
+        .get('/api/notifications?page=2&limit=2')
+        .set('Authorization', user.auth)
+        .expect(200);
+      expect(page.body).toMatchObject({
+        items: [{ listingTitle: 'Posao 0' }],
+        total: 3,
+        page: 2,
+        limit: 2,
+        totalPages: 2,
+      });
+      await http()
+        .get('/api/notifications?limit=51')
+        .set('Authorization', user.auth)
+        .expect(400);
+    });
+  });
+
   describe('executors', () => {
     it('lists the users who do jobs, the best rated first', async () => {
       const tarik = await createUser(prisma, { fullName: 'Tarik Selimović' });

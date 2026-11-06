@@ -8,6 +8,7 @@ import {
 import { EmailService } from '../email/email.service.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { RatingsService } from '../ratings/ratings.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { ApplicationsService } from './applications.service.js';
@@ -30,6 +31,7 @@ describe('ApplicationsService', () => {
     sendNewApplication: vi.fn(),
   };
   const ratings = { summaries: vi.fn() };
+  const notifications = { notify: vi.fn() };
   const noRatings = { average: null, count: 0 };
 
   const service = new ApplicationsService(
@@ -42,6 +44,7 @@ describe('ApplicationsService', () => {
     {
       url: (key: string) => `https://files.test/${key}`,
     } as unknown as StorageService,
+    notifications as unknown as NotificationsService,
   );
 
   beforeEach(() => {
@@ -87,6 +90,13 @@ describe('ApplicationsService', () => {
           data: { ...dto, executorId: 'executor-1' },
         }),
       );
+      expect(notifications.notify).toHaveBeenCalledWith({
+        userId: 'client-1',
+        type: 'NEW_APPLICATION',
+        listingId: 'listing-1',
+        listingTitle: 'Košenje trave',
+        actorName: 'Kenan',
+      });
     });
 
     it('emails the client about the application', async () => {
@@ -380,6 +390,13 @@ describe('ApplicationsService', () => {
         listingTitle: 'Košenje trave',
         clientName: 'Amra',
         accepted: false,
+      });
+      expect(notifications.notify).toHaveBeenCalledWith({
+        userId: executor.id,
+        type: 'APPLICATION_REJECTED',
+        listingId: 'listing-1',
+        listingTitle: 'Košenje trave',
+        actorName: 'Amra',
       });
     });
 

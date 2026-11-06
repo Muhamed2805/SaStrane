@@ -21,6 +21,7 @@ import {
   ListingCategory,
   ListingLocation,
   ListingStatus,
+  NotificationType,
   ReportReason,
 } from '../src/generated/prisma/enums.js';
 import { processPhoto } from '../src/listings/photos/photo-image.js';
@@ -618,8 +619,67 @@ async function main() {
       });
     }
 
+    // What Amra finds under the bell: news on her jobs and her applications.
+    // The two oldest are read.
+    const notifications = [
+      {
+        id: 'seed-notification-move-kenan',
+        type: NotificationType.NEW_APPLICATION,
+        listingId: 'seed-listing-move',
+        listingTitle: 'Pomoć pri selidbi dvosobnog stana',
+        actorName: 'Kenan Mehić',
+        hoursAgo: 2,
+      },
+      {
+        id: 'seed-notification-tv',
+        type: NotificationType.INVITATION,
+        listingId: 'seed-listing-tv',
+        listingTitle: 'Montaža TV-a na zid i sređivanje kablova',
+        actorName: 'Tarik Selimović',
+        hoursAgo: 3,
+      },
+      {
+        id: 'seed-notification-move-tarik',
+        type: NotificationType.NEW_APPLICATION,
+        listingId: 'seed-listing-move',
+        listingTitle: 'Pomoć pri selidbi dvosobnog stana',
+        actorName: 'Tarik Selimović',
+        hoursAgo: 4,
+      },
+      {
+        id: 'seed-notification-wardrobe-rating',
+        type: NotificationType.NEW_RATING,
+        listingId: 'seed-listing-wardrobe',
+        listingTitle: 'Montaža IKEA ormara i dvije police',
+        actorName: 'Tarik Selimović',
+        hoursAgo: 4,
+        read: true,
+      },
+      {
+        id: 'seed-notification-wardrobe-accepted',
+        type: NotificationType.APPLICATION_ACCEPTED,
+        listingId: 'seed-listing-wardrobe',
+        listingTitle: 'Montaža IKEA ormara i dvije police',
+        actorName: 'Tarik Selimović',
+        hoursAgo: 19,
+        read: true,
+      },
+    ];
+    for (const { hoursAgo: age, read, ...notification } of notifications) {
+      await prisma.notification.upsert({
+        where: { id: notification.id },
+        update: {},
+        create: {
+          ...notification,
+          userId: 'seed-user-amra',
+          readAt: read ? hoursAgo(age - 1) : null,
+          createdAt: hoursAgo(age),
+        },
+      });
+    }
+
     console.log(
-      `Seeded ${users.length} users, ${listings.length} jobs, ${addedPhotos === null ? 0 : photos.length} photos, ${applications.length} applications, ${ratings.length} ratings, ${conversations.length} conversations, 1 report and ${invitations.length} invitations.`,
+      `Seeded ${users.length} users, ${listings.length} jobs, ${addedPhotos === null ? 0 : photos.length} photos, ${applications.length} applications, ${ratings.length} ratings, ${conversations.length} conversations, 1 report, ${invitations.length} invitations and ${notifications.length} notifications.`,
     );
     console.log(`Sign in as amra@example.com with ${DEMO_PASSWORD}.`);
     console.log('Sign in as admin@example.com to handle reports.');

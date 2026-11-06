@@ -63,6 +63,15 @@ enum SessionRevocationReason {
   SUSPENDED
 }
 
+// What a notification is about. Messages have their own unread count.
+enum NotificationType {
+  INVITATION
+  NEW_APPLICATION
+  APPLICATION_ACCEPTED
+  APPLICATION_REJECTED
+  NEW_RATING
+}
+
 enum ReportReason {
   SPAM
   SCAM
@@ -123,6 +132,7 @@ model User {
   givenRatings          Rating[]       @relation("GivenRatings")
   savedListings         SavedListing[]
   invitations           Invitation[]
+  notifications         Notification[]
   reportsSent           Report[]       @relation("ReportsSent")
   reportsReceived       Report[]       @relation("ReportsReceived")
   reportsHandled        Report[]       @relation("ReportsHandled")
@@ -184,6 +194,7 @@ model Listing {
   photos        ListingPhoto[]
   savedBy       SavedListing[]
   invitations   Invitation[]
+  notifications Notification[]
   reports       Report[]
 
   @@index([status, createdAt])
@@ -204,6 +215,30 @@ model Invitation {
 
   @@unique([listingId, executorId])
   @@index([executorId, createdAt])
+}
+
+// Something that happened to the user, shown under the bell in the navbar.
+// The job title and the other person's name are copied, so the text stays
+// when the job is deleted or the name changes.
+model Notification {
+  id           String           @id @default(cuid())
+  userId       String
+  type         NotificationType
+  // Null once the job is deleted.
+  listingId    String?
+  listingTitle String
+  // The user who caused it: the client, the executor or the rater.
+  actorName    String
+  // Null until the user opens it or marks all as read.
+  readAt       DateTime?
+  createdAt    DateTime         @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+  @@index([listingId])
 }
 
 // A job the user marked to come back to later.
