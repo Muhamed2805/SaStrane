@@ -1607,6 +1607,49 @@ describe('App (e2e)', () => {
           .expect(401);
         expect(storage.files.size).toBe(0);
       });
+
+      it('shows the photo on applications and in conversations', async () => {
+        const client = await signedInUser('Amra Hodžić');
+        const executor = await signedInUser('Kenan Mehić');
+        const { avatarUrl } = (await setAvatar(executor.auth).expect(200))
+          .body as { avatarUrl: string };
+        const { id: listingId } = await postListing(client.auth);
+        await http()
+          .post('/api/applications')
+          .set('Authorization', executor.auth)
+          .send({ listingId, message: 'Mogu sutra ujutro.' })
+          .expect(201);
+
+        const received = await http()
+          .get('/api/applications/received')
+          .set('Authorization', client.auth)
+          .expect(200);
+        expect(received.body).toMatchObject({
+          items: [{ executor: { id: executor.user.id, avatarUrl } }],
+        });
+        const forListing = await http()
+          .get(`/api/applications/listing/${listingId}`)
+          .set('Authorization', client.auth)
+          .expect(200);
+        expect(forListing.body).toMatchObject([{ executor: { avatarUrl } }]);
+
+        // Each side sees the other one's photo, or null without one.
+        const asExecutor = await http()
+          .post('/api/conversations')
+          .set('Authorization', executor.auth)
+          .send({ listingId })
+          .expect(200);
+        expect(asExecutor.body).toMatchObject({
+          otherUser: { id: client.user.id, avatarUrl: null },
+        });
+        const asClient = await http()
+          .get(`/api/conversations/${(asExecutor.body as { id: string }).id}`)
+          .set('Authorization', client.auth)
+          .expect(200);
+        expect(asClient.body).toMatchObject({
+          otherUser: { id: executor.user.id, avatarUrl },
+        });
+      });
     });
 
     it('changes the password and signs out the other devices', async () => {

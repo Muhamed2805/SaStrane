@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { StorageService } from '../storage/storage.service.js';
 import { ConversationsService } from './conversations.service.js';
 
 describe('ConversationsService', () => {
@@ -34,7 +35,12 @@ describe('ConversationsService', () => {
     $transaction: vi.fn(),
   };
 
-  const service = new ConversationsService(prisma as unknown as PrismaService);
+  const storage = { url: (key: string) => `https://files.test/${key}` };
+
+  const service = new ConversationsService(
+    prisma as unknown as PrismaService,
+    storage as unknown as StorageService,
+  );
 
   const row = {
     id: 'conversation-1',
@@ -44,8 +50,8 @@ describe('ConversationsService', () => {
     executorUnread: 0,
     createdAt: new Date('2026-11-01T10:00:00Z'),
     listing: { id: 'listing-1', title: 'Selidba', status: 'OPEN' },
-    client: { id: 'client-1', fullName: 'Amra Hodžić' },
-    executor: { id: 'executor-1', fullName: 'Kenan Mehić' },
+    client: { id: 'client-1', fullName: 'Amra Hodžić', avatarId: 'avatar-1' },
+    executor: { id: 'executor-1', fullName: 'Kenan Mehić', avatarId: null },
     lastMessage: null,
   };
 
@@ -69,7 +75,11 @@ describe('ConversationsService', () => {
       ).resolves.toMatchObject({
         id: 'conversation-1',
         role: 'EXECUTOR',
-        otherUser: { id: 'client-1' },
+        otherUser: {
+          id: 'client-1',
+          fullName: 'Amra Hodžić',
+          avatarUrl: 'https://files.test/avatars/client-1/avatar-1.webp',
+        },
         unreadCount: 0,
       });
       expect(conversationRepository.create).not.toHaveBeenCalled();
@@ -154,7 +164,15 @@ describe('ConversationsService', () => {
           { listingId: 'listing-1', executorId: 'executor-1' },
           'client-1',
         ),
-      ).resolves.toMatchObject({ role: 'CLIENT', unreadCount: 2 });
+      ).resolves.toMatchObject({
+        role: 'CLIENT',
+        otherUser: {
+          id: 'executor-1',
+          fullName: 'Kenan Mehić',
+          avatarUrl: null,
+        },
+        unreadCount: 2,
+      });
     });
 
     it('starts no new conversation about a closed job', async () => {

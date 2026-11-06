@@ -10,6 +10,7 @@ import {
   Star,
   X,
 } from 'lucide-react';
+import { UserAvatar } from '@/components/user-avatar';
 import { useAuthStore } from '@/features/auth/store';
 import { ClosedBadge } from '@/features/listings/components/closed-badge';
 import {
@@ -51,7 +52,6 @@ export function ReceivedApplicationCard({
   const userId = useAuthStore((state) => state.user?.id);
   const [isRating, setIsRating] = useState(false);
   const profileHref = `/users/${application.executor.id}`;
-  const executorInitial = application.executor.fullName.charAt(0).toUpperCase();
   const messageButton = (
     <button
       className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border px-4 text-xs font-semibold hover:border-primary/30 hover:bg-primary/5 hover:text-primary disabled:opacity-50"
@@ -100,9 +100,11 @@ export function ReceivedApplicationCard({
       )}
 
       <div className="flex items-center gap-3">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 font-bold text-primary">
-          {executorInitial}
-        </span>
+        <UserAvatar
+          name={application.executor.fullName}
+          url={application.executor.avatarUrl}
+          className="size-11 rounded-full bg-primary/10 font-bold text-primary"
+        />
         <div className="min-w-0">
           <Link
             href={profileHref}

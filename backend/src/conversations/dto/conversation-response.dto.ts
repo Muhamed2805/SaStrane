@@ -31,6 +31,9 @@ export class ConversationUserDto {
   id!: string;
 
   fullName!: string;
+
+  /** A square WebP image of 256 pixels. Null without a profile photo. */
+  avatarUrl!: string | null;
 }
 
 export class ConversationDto {

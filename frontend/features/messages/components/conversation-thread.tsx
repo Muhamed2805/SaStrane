@@ -19,6 +19,7 @@ import {
 import { ArrowLeft, LoaderCircle, SendHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
+import { UserAvatar } from '@/components/user-avatar';
 import { ClosedBadge } from '@/features/listings/components/closed-badge';
 import {
   formatClockTime,
@@ -235,9 +236,11 @@ export function ConversationThread({
         </Link>
         {details ? (
           <>
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-              {details.otherUser.fullName.charAt(0).toUpperCase()}
-            </span>
+            <UserAvatar
+              name={details.otherUser.fullName}
+              url={details.otherUser.avatarUrl}
+              className="size-10 rounded-full bg-primary/10 text-sm font-bold text-primary"
+            />
             <div className="min-w-0 flex-1">
               <h2 className="truncate text-sm font-bold">
                 {details.otherUser.fullName}

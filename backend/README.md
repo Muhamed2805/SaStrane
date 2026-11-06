@@ -269,7 +269,9 @@ two sides of the conversation.
 - The profile photo follows the rules for job photos: JPG, PNG, WebP or
   AVIF, up to 5 MB, with the same 400 and 413 errors. The backend cuts a
   square of 256 pixels around the most detailed part, usually the face, and
-  drops the EXIF data. `avatarUrl` is `null` without a photo.
+  drops the EXIF data. `avatarUrl` is `null` without a photo. The public
+  profile, the executor on the client's applications and `otherUser` in
+  conversations carry it.
 - Each upload is a new file under `avatars/<user id>/<avatar id>.webp`, so
   it can be cached for a year. The previous file is deleted after the row
   points to the new one.

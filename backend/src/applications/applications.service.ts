@@ -7,12 +7,14 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { ApplicationStatus, ListingStatus } from '../generated/prisma/enums.js';
+import { avatarUrl } from '../auth/avatar.js';
 import { EmailService } from '../email/email.service.js';
 import {
   RatingsService,
   type RatingSummary,
 } from '../ratings/ratings.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { StorageService } from '../storage/storage.service.js';
 import { CreateApplicationDto } from './dto/create-application.dto.js';
 import { ApplicationsQueryDto } from './dto/applications-query.dto.js';
 import { UpdateApplicationStatusDto } from './dto/update-application-status.dto.js';
@@ -33,7 +35,7 @@ const LISTING_SELECT = {
 } satisfies Prisma.ListingDefaultArgs;
 
 const EXECUTOR_SELECT = {
-  select: { id: true, fullName: true, email: true },
+  select: { id: true, fullName: true, email: true, avatarId: true },
 } satisfies Prisma.UserDefaultArgs;
 
 const MY_APPLICATION_SELECT = {
@@ -58,20 +60,29 @@ function forClient<
   T extends {
     status: ApplicationStatus;
     rating: object | null;
-    executor: { id: string; email: string };
+    executor: {
+      id: string;
+      fullName: string;
+      email: string;
+      avatarId: string | null;
+    };
   },
 >(
   application: T,
   listingStatus: ListingStatus,
   summaries: Map<string, RatingSummary>,
+  storage: StorageService,
 ) {
   const accepted = application.status === ApplicationStatus.ACCEPTED;
+  const { executor } = application;
   return {
     ...application,
     executor: {
-      ...application.executor,
-      email: accepted ? application.executor.email : null,
-      rating: summaries.get(application.executor.id) ?? {
+      id: executor.id,
+      fullName: executor.fullName,
+      email: accepted ? executor.email : null,
+      avatarUrl: avatarUrl(storage, executor),
+      rating: summaries.get(executor.id) ?? {
         average: null,
         count: 0,
       },
@@ -91,6 +102,7 @@ export class ApplicationsService {
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
     private readonly ratings: RatingsService,
+    private readonly storage: StorageService,
   ) {}
 
   private summariesFor(applications: { executor: { id: string } }[]) {
@@ -217,7 +229,7 @@ export class ApplicationsService {
     const summaries = await this.summariesFor(items);
     return {
       items: items.map((item) =>
-        forClient(item, item.listing.status, summaries),
+        forClient(item, item.listing.status, summaries, this.storage),
       ),
       total,
       page,
@@ -245,7 +257,7 @@ export class ApplicationsService {
 
     const summaries = await this.summariesFor(applications);
     return applications.map((application) =>
-      forClient(application, listing.status, summaries),
+      forClient(application, listing.status, summaries, this.storage),
     );
   }
 
@@ -315,6 +327,7 @@ export class ApplicationsService {
       decided,
       application.listing.status,
       await this.summariesFor([decided]),
+      this.storage,
     );
   }
 }

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { LoaderCircle, MessageCircle, RefreshCw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { UserAvatar } from '@/components/user-avatar';
 import { formatMessageTime } from '@/lib/format-message-time';
 import { pageItems } from '@/lib/paging';
 import { cn } from '@/lib/utils';
@@ -31,9 +32,11 @@ function ConversationRow({
         isActive && 'bg-primary/5 hover:bg-primary/10',
       )}
     >
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-        {otherUser.fullName.charAt(0).toUpperCase()}
-      </span>
+      <UserAvatar
+        name={otherUser.fullName}
+        url={otherUser.avatarUrl}
+        className="size-10 rounded-full bg-primary/10 text-sm font-bold text-primary"
+      />
       <span className="min-w-0 flex-1">
         <span className="flex items-baseline justify-between gap-2">
           <span

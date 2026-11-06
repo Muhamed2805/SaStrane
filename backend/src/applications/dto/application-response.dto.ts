@@ -62,6 +62,9 @@ export class ApplicationExecutorDto {
   /** Null until the client accepts the application. */
   email!: string | null;
 
+  /** A square WebP image of 256 pixels. Null without a profile photo. */
+  avatarUrl!: string | null;
+
   /** Ratings the executor received for all jobs. */
   rating!: RatingSummaryDto;
 }

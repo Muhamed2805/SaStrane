@@ -6,7 +6,9 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { ListingStatus } from '../generated/prisma/enums.js';
+import { avatarUrl } from '../auth/avatar.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { StorageService } from '../storage/storage.service.js';
 import type { ConversationRole } from './dto/conversation-response.dto.js';
 import {
   ConversationsQueryDto,
@@ -24,7 +26,7 @@ const MESSAGE_SELECT = {
 } satisfies Prisma.MessageSelect;
 
 const USER_SELECT = {
-  select: { id: true, fullName: true },
+  select: { id: true, fullName: true, avatarId: true },
 } satisfies Prisma.UserDefaultArgs;
 
 const CONVERSATION_SELECT = {
@@ -74,13 +76,22 @@ function roleOf(
 }
 
 // The conversation as the signed-in user sees it.
-function toDto(conversation: ConversationRow, userId: string) {
+function toDto(
+  conversation: ConversationRow,
+  userId: string,
+  storage: StorageService,
+) {
   const role = roleOf(conversation, userId);
+  const other = role === 'CLIENT' ? conversation.executor : conversation.client;
   return {
     id: conversation.id,
     listing: conversation.listing,
     role,
-    otherUser: role === 'CLIENT' ? conversation.executor : conversation.client,
+    otherUser: {
+      id: other.id,
+      fullName: other.fullName,
+      avatarUrl: avatarUrl(storage, other),
+    },
     lastMessage: conversation.lastMessage,
     unreadCount:
       role === 'CLIENT'
@@ -99,7 +110,10 @@ function isUniqueViolation(error: unknown) {
 
 @Injectable()
 export class ConversationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
 
   // Returns the conversation about the job, and creates it the first time.
   async start(dto: StartConversationDto, userId: string) {
@@ -127,7 +141,7 @@ export class ConversationsService {
       where,
       select: CONVERSATION_SELECT,
     });
-    if (existing) return toDto(existing, userId);
+    if (existing) return toDto(existing, userId, this.storage);
 
     if (isClient) {
       // The client writes only to people who applied, never to anyone.
@@ -156,6 +170,7 @@ export class ConversationsService {
           select: CONVERSATION_SELECT,
         }),
         userId,
+        this.storage,
       );
     } catch (error) {
       // Both sides started it at the same moment: use the other one.
@@ -166,6 +181,7 @@ export class ConversationsService {
           select: CONVERSATION_SELECT,
         }),
         userId,
+        this.storage,
       );
     }
   }
@@ -190,7 +206,7 @@ export class ConversationsService {
     ]);
 
     return {
-      items: items.map((item) => toDto(item, userId)),
+      items: items.map((item) => toDto(item, userId, this.storage)),
       total,
       page,
       limit,
@@ -218,7 +234,7 @@ export class ConversationsService {
   }
 
   async getById(id: string, userId: string) {
-    return toDto(await this.findForUser(id, userId), userId);
+    return toDto(await this.findForUser(id, userId), userId, this.storage);
   }
 
   async getMessages(id: string, userId: string, query: MessagesQueryDto) {

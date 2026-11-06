@@ -12,6 +12,13 @@ const user = {
   createdAt: '2026-09-15T12:00:00.000Z',
 };
 
+const AVATAR_URL = 'https://photos.test/avatars/client-e2e-1/avatar-1.webp';
+// A 1x1 PNG.
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYPj/HwADAgH/mZtZ4wAAAABJRU5ErkJggg==',
+  'base64',
+);
+
 const firstMessage = {
   id: 'message-1',
   senderId: 'client-e2e-1',
@@ -23,7 +30,11 @@ const conversation = {
   id: 'conversation-e2e-1',
   listing: { id: 'listing-e2e-1', title: 'Košenje dvorišta', status: 'OPEN' },
   role: 'EXECUTOR',
-  otherUser: { id: 'client-e2e-1', fullName: 'Amra Hodžić' },
+  otherUser: {
+    id: 'client-e2e-1',
+    fullName: 'Amra Hodžić',
+    avatarUrl: AVATAR_URL,
+  },
   lastMessage: firstMessage,
   unreadCount: 1,
   createdAt: '2026-11-01T10:00:00.000Z',
@@ -58,6 +69,9 @@ async function mockMessagesApi(page: Page) {
   );
   await page.route(apiRoute('/conversations/unread-count$'), (route) =>
     route.fulfill(json({ count: state.unread })),
+  );
+  await page.route(AVATAR_URL, (route) =>
+    route.fulfill({ status: 200, contentType: 'image/png', body: PNG }),
   );
   await page.route(apiRoute('/conversations\\?'), (route) =>
     route.fulfill(
@@ -127,6 +141,7 @@ test('shows the unread count and marks a conversation as read when opened', asyn
     .getByRole('link', { name: /Amra Hodžić/ });
   await expect(row).toContainText('Košenje dvorišta');
   await expect(row).toContainText(firstMessage.body);
+  await expect(row.locator('img')).toHaveAttribute('src', AVATAR_URL);
 
   await row.click();
 
@@ -138,6 +153,8 @@ test('shows the unread count and marks a conversation as read when opened', asyn
     page.getByRole('heading', { name: 'Amra Hodžić' }),
   ).toBeVisible();
   await expect(page.getByText(firstMessage.body).last()).toBeVisible();
+  // The thread header shows the photo too, next to the list.
+  await expect(page.locator(`img[src="${AVATAR_URL}"]`)).toHaveCount(2);
   await expect.poll(() => state.reads).toBe(1);
   await expect(messagesLink).not.toContainText('1');
 });

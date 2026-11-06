@@ -9,6 +9,7 @@ import { EmailService } from '../email/email.service.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { RatingsService } from '../ratings/ratings.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { StorageService } from '../storage/storage.service.js';
 import { ApplicationsService } from './applications.service.js';
 
 describe('ApplicationsService', () => {
@@ -38,6 +39,9 @@ describe('ApplicationsService', () => {
     } as unknown as PrismaService,
     email as unknown as EmailService,
     ratings as unknown as RatingsService,
+    {
+      url: (key: string) => `https://files.test/${key}`,
+    } as unknown as StorageService,
   );
 
   beforeEach(() => {
@@ -199,7 +203,19 @@ describe('ApplicationsService', () => {
     });
   });
 
-  const executor = { id: 'executor-1', fullName: 'Kenan', email: 'k@x.ba' };
+  const executor = {
+    id: 'executor-1',
+    fullName: 'Kenan',
+    email: 'k@x.ba',
+    avatarId: 'avatar-1',
+  };
+  // The executor as the client gets it: the photo as a URL.
+  const executorDto = {
+    id: 'executor-1',
+    fullName: 'Kenan',
+    email: 'k@x.ba',
+    avatarUrl: 'https://files.test/avatars/executor-1/avatar-1.webp',
+  };
 
   describe('getReceivedApplications', () => {
     it('returns an owner-scoped page of applications', async () => {
@@ -264,7 +280,7 @@ describe('ApplicationsService', () => {
           id: 'pending',
           status: 'PENDING',
           rating: null,
-          executor: { ...executor, email: null, rating: noRatings },
+          executor: { ...executorDto, email: null, rating: noRatings },
           canRate: false,
         },
       ]);
@@ -338,7 +354,7 @@ describe('ApplicationsService', () => {
         listingId: 'listing-1',
         status: 'ACCEPTED',
         rating: null,
-        executor: { ...executor, rating: noRatings },
+        executor: { ...executorDto, rating: noRatings },
         canRate: false,
       });
       expect(applicationRepository.updateMany).toHaveBeenCalledWith({

@@ -4325,6 +4325,11 @@
             "nullable": true,
             "description": "Null until the client accepts the application."
           },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "A square WebP image of 256 pixels. Null without a profile photo."
+          },
           "rating": {
             "description": "Ratings the executor received for all jobs.",
             "allOf": [
@@ -4338,6 +4343,7 @@
           "id",
           "fullName",
           "email",
+          "avatarUrl",
           "rating"
         ]
       },
@@ -4757,11 +4763,17 @@
           },
           "fullName": {
             "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "A square WebP image of 256 pixels. Null without a profile photo."
           }
         },
         "required": [
           "id",
-          "fullName"
+          "fullName",
+          "avatarUrl"
         ]
       },
       "ConversationDto": {

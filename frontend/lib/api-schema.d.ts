@@ -927,6 +927,8 @@ export interface components {
             fullName: string;
             /** @description Null until the client accepts the application. */
             email: string | null;
+            /** @description A square WebP image of 256 pixels. Null without a profile photo. */
+            avatarUrl: string | null;
             /** @description Ratings the executor received for all jobs. */
             rating: components["schemas"]["RatingSummaryDto"];
         };
@@ -1065,6 +1067,8 @@ export interface components {
         ConversationUserDto: {
             id: string;
             fullName: string;
+            /** @description A square WebP image of 256 pixels. Null without a profile photo. */
+            avatarUrl: string | null;
         };
         ConversationDto: {
             /** @description CLIENT when the signed-in user posted the job, else EXECUTOR. */
