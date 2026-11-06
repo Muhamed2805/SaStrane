@@ -1,5 +1,12 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class InvitationsQueryDto {
   @IsOptional()
@@ -14,4 +21,10 @@ export class InvitationsQueryDto {
   @Min(1)
   @Max(50)
   limit?: number = 10;
+
+  /** Only the invitation to this job, for the job's page. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  listingId?: string;
 }

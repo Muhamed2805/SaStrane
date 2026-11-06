@@ -88,8 +88,8 @@ be both.
   or introduction, the best rated first. Users who do jobs and picked at
   least one kind of job are listed.
 - Invite an executor from their profile to apply to one of your open jobs.
-  They get an email and see the invitation in the workspace, where they
-  apply as usual or decline. A job takes at most 20 invitations.
+  They get an email and see the invitation in the workspace and on the
+  job's page, where they apply as usual or decline. A job takes at most 20 invitations.
 - A rating stays on the profile when the job is deleted.
 
 **Accounts**

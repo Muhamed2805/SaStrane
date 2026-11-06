@@ -8,6 +8,9 @@ export const invitationKeys = {
   all: (userId: string) => [USER_SCOPE, userId, 'invitations'] as const,
   received: (userId: string) =>
     [...invitationKeys.all(userId), 'received'] as const,
+  // Under received, so whatever reloads the list reloads this too.
+  forListing: (userId: string, listingId: string) =>
+    [...invitationKeys.received(userId), 'listing', listingId] as const,
   options: (userId: string, executorId: string) =>
     [...invitationKeys.all(userId), 'options', executorId] as const,
 };
@@ -19,6 +22,14 @@ export function receivedInvitationsQuery(userId: string) {
       invitationsApi.getReceived(pageParam, WORKSPACE_PAGE_SIZE),
     initialPageParam: 1,
     getNextPageParam: nextPageParam,
+  });
+}
+
+export function listingInvitationQuery(userId: string, listingId: string) {
+  return queryOptions({
+    queryKey: invitationKeys.forListing(userId, listingId),
+    queryFn: () => invitationsApi.getForListing(listingId),
+    select: (page) => page.items[0] ?? null,
   });
 }
 

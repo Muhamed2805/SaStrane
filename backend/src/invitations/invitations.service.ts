@@ -182,6 +182,7 @@ export class InvitationsService {
     const limit = query.limit ?? 10;
     const where = {
       executorId,
+      listingId: query.listingId,
       listing: { status: ListingStatus.OPEN },
     } satisfies Prisma.InvitationWhereInput;
 

@@ -2074,6 +2074,16 @@ describe('App (e2e)', () => {
         executorId: executor.user.id,
       }).expect(201);
 
+      // The job's page asks for its own invitation only.
+      const forJob = await http()
+        .get(`/api/invitations?listingId=${other.id}`)
+        .set('Authorization', executor.auth)
+        .expect(200);
+      expect(forJob.body).toMatchObject({
+        items: [{ applied: false, listing: { id: other.id } }],
+        total: 1,
+      });
+
       // Only the invited user declines, and the client is not told.
       const declined = (applied.body as { id: string }).id;
       await http()

@@ -23,6 +23,7 @@ import {
 } from '@/features/listings/constants';
 import { listingKeys } from '@/features/listings/queries';
 import { ListingApplications } from '@/features/applications/components/listing-applications';
+import { InvitationBanner } from '@/features/invitations/components/invitation-banner';
 import { formatDate } from '@/lib/format-date';
 import { formatPrice } from '@/lib/format-price';
 import { ApiError } from '@/lib/api-client';
@@ -212,6 +213,12 @@ export default async function ListingDetailsPage({ params }: PageProps) {
                 {formatPrice(listing.budget)}
               </p>
               <div className="my-6 border-t" />
+              {listing.status === 'OPEN' ? (
+                <InvitationBanner
+                  listingId={listing.id}
+                  clientId={listing.client.id}
+                />
+              ) : null}
               <ListingActions
                 listingId={listing.id}
                 clientId={listing.client.id}

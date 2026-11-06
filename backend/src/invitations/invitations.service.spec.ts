@@ -297,6 +297,24 @@ describe('InvitationsService', () => {
         totalPages: 2,
       });
     });
+
+    it("finds the invitation to one job, for the job's page", async () => {
+      invitationRepository.findMany.mockResolvedValue([]);
+      invitationRepository.count.mockResolvedValue(0);
+      applicationRepository.findMany.mockResolvedValue([]);
+
+      await service.getReceived('executor-1', { listingId: 'listing-1' });
+
+      expect(invitationRepository.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            executorId: 'executor-1',
+            listingId: 'listing-1',
+            listing: { status: 'OPEN' },
+          },
+        }),
+      );
+    });
   });
 
   describe('decline', () => {

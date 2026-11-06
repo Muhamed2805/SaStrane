@@ -5049,6 +5049,16 @@
               "default": 10,
               "type": "number"
             }
+          },
+          {
+            "name": "listingId",
+            "required": false,
+            "in": "query",
+            "description": "Only the invitation to this job, for the job's page.",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
           }
         ],
         "responses": {

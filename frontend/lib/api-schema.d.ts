@@ -5451,6 +5451,8 @@ export interface operations {
             query?: {
                 page?: number;
                 limit?: number;
+                /** @description Only the invitation to this job, for the job's page. */
+                listingId?: string;
             };
             header?: never;
             path?: never;

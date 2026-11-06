@@ -23,6 +23,12 @@ export const invitationsApi = {
       `/invitations?page=${page}&limit=${limit}`,
     ),
 
+  // The user's invitation to one job, if any, for the job's page.
+  getForListing: (listingId: string) =>
+    authRequest<ReceivedInvitationsPage>(
+      `/invitations?listingId=${encodeURIComponent(listingId)}&limit=1`,
+    ),
+
   getOptions: (executorId: string) =>
     authRequest<InvitationOption[]>(
       `/invitations/options?executorId=${encodeURIComponent(executorId)}`,

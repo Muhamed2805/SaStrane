@@ -184,7 +184,7 @@ admin, or the route returns 403.
 | `GET` | `/api/applications/listing/:listingId` | Owner | Lists the applications to one job. |
 | `PATCH` | `/api/applications/:id/status` | Owner | Accepts or rejects an application. |
 | `POST` | `/api/invitations` | Bearer | Invites a user who does jobs to apply to one of your open jobs, and emails them. At most 20 per job. Refuses with 409 `LISTING_CLOSED`, `EXECUTOR_UNAVAILABLE`, `ALREADY_APPLIED`, `ALREADY_INVITED` or `INVITATION_LIMIT`. |
-| `GET` | `/api/invitations` | Bearer | Lists your invitations to open jobs, newest first, with the job, the client and whether you applied. Paging: `page`, `limit` (max 50). |
+| `GET` | `/api/invitations` | Bearer | Lists your invitations to open jobs, newest first, with the job, the client and whether you applied. `listingId` returns only the invitation to that job. Paging: `page`, `limit` (max 50). |
 | `GET` | `/api/invitations/options` | Bearer | Lists your newest 50 open jobs and whether the user in `executorId` can be invited to each: `AVAILABLE`, `INVITED` or `APPLIED`. |
 | `DELETE` | `/api/invitations/:id` | Bearer | Declines your invitation. The client is not told. Returns 204. |
 | `GET` | `/api/notifications` | Bearer | Lists your notifications, newest first: `INVITATION`, `NEW_APPLICATION`, `APPLICATION_ACCEPTED`, `APPLICATION_REJECTED` or `NEW_RATING`, with the job title and the other user's name. Paging: `page`, `limit` (max 50). |
