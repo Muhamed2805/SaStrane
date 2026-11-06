@@ -30,8 +30,8 @@ import { pageTotal } from '@/lib/paging';
 
 const ROLE_LABEL: Record<string, string> = {
   CLIENT: 'Klijent',
-  EXECUTOR: 'Izvršilac',
-  BOTH: 'Klijent i izvršilac',
+  EXECUTOR: 'Izvođač',
+  BOTH: 'Klijent i izvođač',
 };
 
 export default function ProfilePage() {
