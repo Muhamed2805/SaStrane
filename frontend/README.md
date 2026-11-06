@@ -90,6 +90,7 @@ of date.
 | `features/ratings/` | The rating dialogs for executors and clients, stars and the public profile's reviews |
 | `features/executors/` | The executor list with its search and filters |
 | `features/invitations/` | The invite dialog on a profile and the invitations in the workspace |
+| `features/job-alerts/` | The alert button on the job list and the alerts in the settings |
 | `features/notifications/` | The bell in the navbar with the unread count and the notifications |
 | `features/moderation/` | The report button and dialog, and the admin pages: overview, reports, users and jobs |
 | `features/landing/` | Home page sections |

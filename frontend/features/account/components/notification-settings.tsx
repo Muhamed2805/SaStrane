@@ -46,9 +46,10 @@ export function NotificationSettings({ user }: { user: AuthUser }) {
             id="email-notifications-description"
             className="mt-1 text-sm text-muted-foreground"
           >
-            Email za novu prijavu na tvoj oglas, odgovor na tvoju prijavu i
-            poruke koje nisu pročitane 10 minuta. Sigurnosni emailovi, kao
-            obavijest o promjeni lozinke, uvijek se šalju.
+            Email za novu prijavu na tvoj oglas, odgovor na tvoju prijavu, poziv
+            na posao, nov oglas po tvom upozorenju i poruke koje nisu pročitane
+            10 minuta. Sigurnosni emailovi, kao obavijest o promjeni lozinke,
+            uvijek se šalju.
           </p>
         </div>
         <button

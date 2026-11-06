@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { avatarUrl } from '../auth/avatar.js';
+import { JobAlertsService } from '../job-alerts/job-alerts.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { CreateListingDto } from './dto/create-listing.dto.js';
@@ -48,6 +49,7 @@ export class ListingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly jobAlerts: JobAlertsService,
   ) {}
 
   private toSummary({ photos, client, ...listing }: SummaryRow) {
@@ -129,6 +131,7 @@ export class ListingsService {
       },
       select: LISTING_SELECT,
     });
+    await this.jobAlerts.listingPosted(listing);
     return this.toListing(listing);
   }
 

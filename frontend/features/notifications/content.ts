@@ -42,6 +42,11 @@ export function notificationContent(
         title: 'Nova ocjena za tvoj rad',
         href: `/users/${encodeURIComponent(userId)}`,
       };
+    case 'NEW_LISTING_MATCH':
+      return {
+        title: 'Nov oglas po tvom upozorenju',
+        href: listingHref(notification, '/listings'),
+      };
     case 'NEW_CLIENT_RATING':
       return {
         title: 'Nova ocjena za tebe kao klijenta',

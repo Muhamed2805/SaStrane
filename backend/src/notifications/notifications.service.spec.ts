@@ -6,6 +6,7 @@ import { NotificationsService } from './notifications.service.js';
 describe('NotificationsService', () => {
   const notificationRepository = {
     create: vi.fn(),
+    createMany: vi.fn(),
     findMany: vi.fn(),
     findFirst: vi.fn(),
     count: vi.fn(),
@@ -43,6 +44,36 @@ describe('NotificationsService', () => {
       notificationRepository.create.mockRejectedValue(new Error('db down'));
 
       await expect(service.notify(notification)).resolves.toBeUndefined();
+    });
+  });
+
+  describe('notifyMany', () => {
+    const shared = {
+      type: notification.type,
+      listingId: notification.listingId,
+      listingTitle: notification.listingTitle,
+      actorName: notification.actorName,
+    };
+
+    it('saves one notice per user in one insert', async () => {
+      notificationRepository.createMany.mockResolvedValue({ count: 2 });
+
+      await service.notifyMany(['a', 'b'], shared);
+
+      expect(notificationRepository.createMany).toHaveBeenCalledWith({
+        data: [
+          { ...shared, userId: 'a' },
+          { ...shared, userId: 'b' },
+        ],
+      });
+    });
+
+    it('asks nothing for no users and never throws', async () => {
+      await service.notifyMany([], shared);
+      expect(notificationRepository.createMany).not.toHaveBeenCalled();
+
+      notificationRepository.createMany.mockRejectedValue(new Error('db'));
+      await expect(service.notifyMany(['a'], shared)).resolves.toBeUndefined();
     });
   });
 

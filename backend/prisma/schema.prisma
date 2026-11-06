@@ -71,6 +71,7 @@ enum NotificationType {
   APPLICATION_REJECTED
   NEW_RATING
   NEW_CLIENT_RATING
+  NEW_LISTING_MATCH
 }
 
 enum ReportReason {
@@ -136,6 +137,7 @@ model User {
   savedListings         SavedListing[]
   invitations           Invitation[]
   notifications         Notification[]
+  jobAlerts             JobAlert[]
   reportsSent           Report[]       @relation("ReportsSent")
   reportsReceived       Report[]       @relation("ReportsReceived")
   reportsHandled        Report[]       @relation("ReportsHandled")
@@ -383,6 +385,22 @@ model ClientRating {
 
   @@index([clientId, createdAt])
   @@index([listingId])
+}
+
+// A saved search: new open jobs of this kind, in this place, are announced
+// to the user. A null field matches any value, but not both are null.
+model JobAlert {
+  id       String           @id @default(cuid())
+  userId   String
+  category ListingCategory?
+  location ListingLocation?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([category, location])
 }
 
 // A report about a job or a user. reportedUserId is the user, or the job's

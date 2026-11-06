@@ -2274,6 +2274,139 @@ describe('App (e2e)', () => {
     });
   });
 
+  describe('job alerts', () => {
+    function addAlert(auth: string, body: object) {
+      return http()
+        .post('/api/job-alerts')
+        .set('Authorization', auth)
+        .send(body);
+    }
+
+    async function noticesOf(auth: string) {
+      const response = await http()
+        .get('/api/notifications')
+        .set('Authorization', auth)
+        .expect(200);
+      return (
+        response.body as {
+          items: { type: string; listingId: string | null }[];
+        }
+      ).items;
+    }
+
+    it('keeps a list of alerts and refuses empty or repeated ones', async () => {
+      const executor = await signedInUser();
+      const other = await signedInUser();
+
+      const created = await addAlert(executor.auth, {
+        category: 'MOVING',
+      }).expect(201);
+      expect(created.body).toEqual({
+        id: expect.any(String) as unknown,
+        category: 'MOVING',
+        location: null,
+        createdAt: expect.any(String) as unknown,
+      });
+      await addAlert(executor.auth, {
+        category: 'MOVING',
+        location: 'TUZLA',
+      }).expect(201);
+
+      const repeated = await addAlert(executor.auth, { category: 'MOVING' });
+      expect(repeated.status).toBe(409);
+      expect(repeated.body).toMatchObject({ code: 'JOB_ALERT_EXISTS' });
+      const empty = await addAlert(executor.auth, {});
+      expect(empty.status).toBe(400);
+      expect(empty.body).toMatchObject({ code: 'JOB_ALERT_EMPTY' });
+      await addAlert(executor.auth, { category: 'NOPE' }).expect(400);
+
+      const list = await http()
+        .get('/api/job-alerts')
+        .set('Authorization', executor.auth)
+        .expect(200);
+      expect(list.body).toMatchObject([
+        { category: 'MOVING', location: 'TUZLA' },
+        { category: 'MOVING', location: null },
+      ]);
+
+      // Only the owner deletes an alert.
+      const id = (created.body as { id: string }).id;
+      await http()
+        .delete(`/api/job-alerts/${id}`)
+        .set('Authorization', other.auth)
+        .expect(404);
+      await http()
+        .delete(`/api/job-alerts/${id}`)
+        .set('Authorization', executor.auth)
+        .expect(204);
+      const after = await http()
+        .get('/api/job-alerts')
+        .set('Authorization', executor.auth)
+        .expect(200);
+      expect(after.body).toHaveLength(1);
+      await http().get('/api/job-alerts').expect(401);
+    });
+
+    it('announces a new job to the users whose alerts match', async () => {
+      const client = await signedInUser('Amra Hodžić');
+      const mower = await signedInUser();
+      const anywhere = await signedInUser();
+      const elsewhere = await signedInUser();
+      const quiet = await signedInUser();
+      await prisma.user.update({
+        where: { id: quiet.user.id },
+        data: { emailNotifications: false },
+      });
+
+      await addAlert(mower.auth, { category: 'LAWN_MOWING' }).expect(201);
+      // Two alerts that both match bring one notice.
+      await addAlert(anywhere.auth, { location: 'ILIDZA' }).expect(201);
+      await addAlert(anywhere.auth, {
+        category: 'LAWN_MOWING',
+        location: 'ILIDZA',
+      }).expect(201);
+      await addAlert(elsewhere.auth, {
+        category: 'LAWN_MOWING',
+        location: 'TUZLA',
+      }).expect(201);
+      await addAlert(quiet.auth, { category: 'LAWN_MOWING' }).expect(201);
+      // The client's own alert does not fire for their own job.
+      await addAlert(client.auth, { category: 'LAWN_MOWING' }).expect(201);
+
+      const { id: listingId } = await postListing(client.auth);
+
+      for (const user of [mower, anywhere, quiet]) {
+        expect(await noticesOf(user.auth)).toEqual([
+          expect.objectContaining({ type: 'NEW_LISTING_MATCH', listingId }),
+        ]);
+      }
+      expect(await noticesOf(elsewhere.auth)).toEqual([]);
+      expect(await noticesOf(client.auth)).toEqual([]);
+      expect(emails.listingMatches.map((match) => match.email).sort()).toEqual(
+        [mower.user.email, anywhere.user.email].sort(),
+      );
+    });
+
+    it('skips suspended users', async () => {
+      const client = await signedInUser();
+      const suspended = await signedInUser();
+      await addAlert(suspended.auth, { category: 'LAWN_MOWING' }).expect(201);
+      await prisma.user.update({
+        where: { id: suspended.user.id },
+        data: { suspendedAt: new Date() },
+      });
+
+      await postListing(client.auth);
+
+      expect(
+        await prisma.notification.count({
+          where: { userId: suspended.user.id },
+        }),
+      ).toBe(0);
+      expect(emails.listingMatches).toEqual([]);
+    });
+  });
+
   describe('notifications', () => {
     type NotificationsPage = {
       items: {

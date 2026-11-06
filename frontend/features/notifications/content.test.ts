@@ -65,6 +65,12 @@ describe('notificationContent', () => {
     });
     expect(
       notificationContent(
+        notification({ type: 'NEW_LISTING_MATCH', listingId: null }),
+        'user 1',
+      ),
+    ).toEqual({ title: 'Nov oglas po tvom upozorenju', href: '/listings' });
+    expect(
+      notificationContent(
         notification({ type: 'NEW_CLIENT_RATING' }),
         'user 1',
       ),

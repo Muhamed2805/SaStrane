@@ -195,6 +195,35 @@ describe('EmailService', () => {
     expect(body.tags).toEqual([{ name: 'category', value: 'invitation' }]);
   });
 
+  it('announces a job that matches an alert, with a link to it', async () => {
+    fetchMock.mockResolvedValue(new Response('{}', { status: 200 }));
+    const service = createService({
+      RESEND_API_KEY: 'key',
+      APP_URL: 'https://sastrane.example',
+    });
+
+    await service.sendNewListingMatch({
+      email: 'kenan@example.com',
+      fullName: 'Kenan',
+      listingId: 'listing/1',
+      listingTitle: 'Selidba <b>',
+      budget: 80,
+    });
+
+    const body = sentBody(fetchMock);
+    expect(body.to).toEqual(['kenan@example.com']);
+    expect(body.subject).toBe('Nov oglas: „Selidba <b>“');
+    expect(body.html).toContain('odgovara tvom upozorenju');
+    expect(body.html).toContain('Selidba &lt;b&gt;');
+    expect(body.html).toContain('80 KM');
+    expect(body.html).toContain(
+      'href="https://sastrane.example/listings/listing%2F1"',
+    );
+    expect(body.tags).toEqual([
+      { name: 'category', value: 'new_listing_match' },
+    ]);
+  });
+
   it('tells a user about unread messages with a link to the conversation', async () => {
     fetchMock.mockResolvedValue(new Response('{}', { status: 200 }));
     const service = createService({

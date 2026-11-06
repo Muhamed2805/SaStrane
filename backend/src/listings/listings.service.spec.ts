@@ -4,12 +4,14 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { JobAlertsService } from '../job-alerts/job-alerts.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { ListingsService } from './listings.service.js';
 
 describe('ListingsService', () => {
   const listingRepository = {
+    create: vi.fn(),
     findMany: vi.fn(),
     count: vi.fn(),
     findUnique: vi.fn(),
@@ -34,9 +36,12 @@ describe('ListingsService', () => {
     delete: vi.fn(),
   };
 
+  const jobAlerts = { listingPosted: vi.fn() };
+
   const service = new ListingsService(
     prisma as unknown as PrismaService,
     storage as unknown as StorageService,
+    jobAlerts as unknown as JobAlertsService,
   );
 
   const photo = { id: 'photo-1', width: 1600, height: 1200 };
@@ -134,6 +139,30 @@ describe('ListingsService', () => {
           }) as unknown,
         }),
       );
+    });
+  });
+
+  describe('create', () => {
+    it('posts the job and announces it to matching alerts', async () => {
+      const row = {
+        id: 'listing-1',
+        title: 'Selidba',
+        category: 'MOVING',
+        location: 'TUZLA',
+        budget: 80,
+        description: null,
+        client,
+        photos: [],
+      };
+      listingRepository.create.mockResolvedValue(row);
+
+      const listing = await service.create(
+        { title: 'Selidba', category: 'MOVING', location: 'TUZLA' },
+        'client-1',
+      );
+
+      expect(jobAlerts.listingPosted).toHaveBeenCalledWith(row);
+      expect(listing).toMatchObject({ id: 'listing-1', client: clientDto });
     });
   });
 

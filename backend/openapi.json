@@ -2125,6 +2125,486 @@
         ]
       }
     },
+    "/api/job-alerts": {
+      "get": {
+        "operationId": "jobAlerts_getAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JobAlertDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lists the user's job alerts, newest first. There are at most 10.",
+        "tags": [
+          "job-alerts"
+        ]
+      },
+      "post": {
+        "description": "Each new job that matches is announced under the bell, and by\nemail when the user gets email notifications.",
+        "operationId": "jobAlerts_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateJobAlertDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAlertDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Neither a category nor a location is given (JOB_ALERT_EMPTY), or a field is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The user has this alert already (JOB_ALERT_EXISTS) or has 10 alerts (TOO_MANY_JOB_ALERTS).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Adds a job alert for a kind of job, a location or both.",
+        "tags": [
+          "job-alerts"
+        ]
+      }
+    },
+    "/api/job-alerts/{id}": {
+      "delete": {
+        "operationId": "jobAlerts_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The alert does not exist or is another user's.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Deletes one of the user's job alerts.",
+        "tags": [
+          "job-alerts"
+        ]
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "operationId": "notifications_getAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationsPageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A query parameter is invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lists the user's notifications, newest first.",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/notifications/unread-count": {
+      "get": {
+        "operationId": "notifications_getUnreadCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadNotificationsDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Counts the user's unread notifications.",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/notifications/read-all": {
+      "post": {
+        "operationId": "notifications_markAllRead",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Marks all of the user's notifications as read.",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/notifications/{id}/read": {
+      "post": {
+        "operationId": "notifications_markRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The notification does not exist or is not the user's.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Marks one notification as read. Marking it again changes nothing.",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
     "/api/applications": {
       "post": {
         "operationId": "applications_create",
@@ -2675,271 +3155,6 @@
         "summary": "Accepts or rejects an application to one of the user's jobs.",
         "tags": [
           "applications"
-        ]
-      }
-    },
-    "/api/notifications": {
-      "get": {
-        "operationId": "notifications_getAll",
-        "parameters": [
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "default": 1,
-              "type": "number"
-            }
-          },
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "maximum": 50,
-              "default": 20,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotificationsPageDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "A query parameter is invalid.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The access token is missing or expired, or its session has ended.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests from this IP address. Try again in a minute.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "A service the route needs is unavailable: the database, email or photo storage.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Lists the user's notifications, newest first.",
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
-    "/api/notifications/unread-count": {
-      "get": {
-        "operationId": "notifications_getUnreadCount",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnreadNotificationsDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The access token is missing or expired, or its session has ended.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests from this IP address. Try again in a minute.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "A service the route needs is unavailable: the database, email or photo storage.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Counts the user's unread notifications.",
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
-    "/api/notifications/read-all": {
-      "post": {
-        "operationId": "notifications_markAllRead",
-        "parameters": [],
-        "responses": {
-          "204": {
-            "description": ""
-          },
-          "401": {
-            "description": "The access token is missing or expired, or its session has ended.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests from this IP address. Try again in a minute.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "A service the route needs is unavailable: the database, email or photo storage.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Marks all of the user's notifications as read.",
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
-    "/api/notifications/{id}/read": {
-      "post": {
-        "operationId": "notifications_markRead",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          },
-          "401": {
-            "description": "The access token is missing or expired, or its session has ended.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "The notification does not exist or is not the user's.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests from this IP address. Try again in a minute.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "A service the route needs is unavailable: the database, email or photo storage.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Marks one notification as read. Marking it again changes nothing.",
-        "tags": [
-          "notifications"
         ]
       }
     },
@@ -6280,6 +6495,167 @@
           "photoIds"
         ]
       },
+      "JobAlertDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "nullable": true,
+            "description": "Null matches any kind of job.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingCategory"
+              }
+            ]
+          },
+          "location": {
+            "nullable": true,
+            "description": "Null matches any location.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingLocation"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "location",
+          "id",
+          "createdAt"
+        ]
+      },
+      "CreateJobAlertDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingCategory"
+              }
+            ]
+          },
+          "location": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingLocation"
+              }
+            ]
+          }
+        }
+      },
+      "NotificationType": {
+        "type": "string",
+        "enum": [
+          "INVITATION",
+          "NEW_APPLICATION",
+          "APPLICATION_ACCEPTED",
+          "APPLICATION_REJECTED",
+          "NEW_RATING",
+          "NEW_CLIENT_RATING",
+          "NEW_LISTING_MATCH"
+        ],
+        "description": "INVITATION: a client invites the user to a job. NEW_APPLICATION:\nsomeone applied to the user's job. APPLICATION_ACCEPTED and\nAPPLICATION_REJECTED: the client decided on the user's application.\nNEW_RATING: a client rated the user."
+      },
+      "NotificationDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "INVITATION: a client invites the user to a job. NEW_APPLICATION:\nsomeone applied to the user's job. APPLICATION_ACCEPTED and\nAPPLICATION_REJECTED: the client decided on the user's application.\nNEW_RATING: a client rated the user.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationType"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "listingId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Null once the job is deleted."
+          },
+          "listingTitle": {
+            "type": "string",
+            "description": "The job's title when it happened."
+          },
+          "actorName": {
+            "type": "string",
+            "description": "The other user's name when it happened."
+          },
+          "readAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "Null until the user reads it."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "listingId",
+          "listingTitle",
+          "actorName",
+          "readAt",
+          "createdAt"
+        ]
+      },
+      "NotificationsPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationDto"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "The number of items on all pages together."
+          },
+          "page": {
+            "type": "number",
+            "description": "The current page, starting at 1."
+          },
+          "limit": {
+            "type": "number",
+            "description": "The maximum number of items per page."
+          },
+          "totalPages": {
+            "type": "number",
+            "description": "The number of pages, 0 when there are no items."
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "totalPages"
+        ]
+      },
+      "UnreadNotificationsDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "count"
+        ]
+      },
       "CreateApplicationDto": {
         "type": "object",
         "properties": {
@@ -6746,111 +7122,6 @@
         },
         "required": [
           "status"
-        ]
-      },
-      "NotificationType": {
-        "type": "string",
-        "enum": [
-          "INVITATION",
-          "NEW_APPLICATION",
-          "APPLICATION_ACCEPTED",
-          "APPLICATION_REJECTED",
-          "NEW_RATING",
-          "NEW_CLIENT_RATING"
-        ],
-        "description": "INVITATION: a client invites the user to a job. NEW_APPLICATION:\nsomeone applied to the user's job. APPLICATION_ACCEPTED and\nAPPLICATION_REJECTED: the client decided on the user's application.\nNEW_RATING: a client rated the user."
-      },
-      "NotificationDto": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "description": "INVITATION: a client invites the user to a job. NEW_APPLICATION:\nsomeone applied to the user's job. APPLICATION_ACCEPTED and\nAPPLICATION_REJECTED: the client decided on the user's application.\nNEW_RATING: a client rated the user.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/NotificationType"
-              }
-            ]
-          },
-          "id": {
-            "type": "string"
-          },
-          "listingId": {
-            "type": "string",
-            "nullable": true,
-            "description": "Null once the job is deleted."
-          },
-          "listingTitle": {
-            "type": "string",
-            "description": "The job's title when it happened."
-          },
-          "actorName": {
-            "type": "string",
-            "description": "The other user's name when it happened."
-          },
-          "readAt": {
-            "format": "date-time",
-            "type": "string",
-            "nullable": true,
-            "description": "Null until the user reads it."
-          },
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          }
-        },
-        "required": [
-          "type",
-          "id",
-          "listingId",
-          "listingTitle",
-          "actorName",
-          "readAt",
-          "createdAt"
-        ]
-      },
-      "NotificationsPageDto": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/NotificationDto"
-            }
-          },
-          "total": {
-            "type": "number",
-            "description": "The number of items on all pages together."
-          },
-          "page": {
-            "type": "number",
-            "description": "The current page, starting at 1."
-          },
-          "limit": {
-            "type": "number",
-            "description": "The maximum number of items per page."
-          },
-          "totalPages": {
-            "type": "number",
-            "description": "The number of pages, 0 when there are no items."
-          }
-        },
-        "required": [
-          "items",
-          "total",
-          "page",
-          "limit",
-          "totalPages"
-        ]
-      },
-      "UnreadNotificationsDto": {
-        "type": "object",
-        "properties": {
-          "count": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "count"
         ]
       },
       "CreateRatingDto": {

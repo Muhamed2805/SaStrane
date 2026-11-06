@@ -1,7 +1,7 @@
 // Demo data for local development: four users and an admin, ten jobs,
 // seven photos, seven applications, two ratings, one rating of a client,
-// four conversations, one open report, two invitations and five
-// notifications, with Bosnian text as in real use. Every demo user signs
+// four conversations, one open report, two invitations, two job alerts and
+// five notifications, with Bosnian text as in real use. Every demo user signs
 // in with the password below.
 //
 // Run it with `npx prisma db seed`. It upserts fixed IDs, so a second run
@@ -684,6 +684,31 @@ async function main() {
       });
     }
 
+    // Amra hears about new assembly jobs anywhere and any job in Sarajevo.
+    const jobAlerts = [
+      {
+        id: 'seed-job-alert-assembly',
+        userId: 'seed-user-amra',
+        category: ListingCategory.ASSEMBLY,
+        location: null,
+        createdAt: hoursAgo(48),
+      },
+      {
+        id: 'seed-job-alert-sarajevo',
+        userId: 'seed-user-amra',
+        category: null,
+        location: ListingLocation.SARAJEVO,
+        createdAt: hoursAgo(47),
+      },
+    ];
+    for (const alert of jobAlerts) {
+      await prisma.jobAlert.upsert({
+        where: { id: alert.id },
+        update: {},
+        create: alert,
+      });
+    }
+
     // What Amra finds under the bell: news on her jobs and her applications.
     // The two oldest are read.
     const notifications = [
@@ -744,7 +769,7 @@ async function main() {
     }
 
     console.log(
-      `Seeded ${users.length} users, ${listings.length} jobs, ${addedPhotos === null ? 0 : photos.length} photos, ${applications.length} applications, ${ratings.length} ratings of executors, ${clientRatings.length} of clients, ${conversations.length} conversations, 1 report, ${invitations.length} invitations and ${notifications.length} notifications.`,
+      `Seeded ${users.length} users, ${listings.length} jobs, ${addedPhotos === null ? 0 : photos.length} photos, ${applications.length} applications, ${ratings.length} ratings of executors, ${clientRatings.length} of clients, ${conversations.length} conversations, 1 report, ${invitations.length} invitations, ${jobAlerts.length} job alerts and ${notifications.length} notifications.`,
     );
     console.log(`Sign in as amra@example.com with ${DEMO_PASSWORD}.`);
     console.log('Sign in as admin@example.com to handle reports.');

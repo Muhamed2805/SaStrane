@@ -186,6 +186,30 @@ export function invitationEmailHtml(input: InvitationEmail) {
   );
 }
 
+export type NewListingMatchEmail = {
+  fullName: string;
+  listingTitle: string;
+  budget: number | null;
+  // Absolute links into the web app.
+  listingUrl: string;
+  settingsUrl: string;
+};
+
+export function newListingMatchSubject(input: { listingTitle: string }) {
+  return `Nov oglas: „${input.listingTitle}“`;
+}
+
+export function newListingMatchEmailHtml(input: NewListingMatchEmail) {
+  return layout(
+    'Nov oglas za tebe',
+    `<p style="${TEXT_STYLE}">Zdravo ${escapeHtml(input.fullName)}, objavljen je oglas koji odgovara tvom upozorenju: „${escapeHtml(input.listingTitle)}“.</p>
+              <p style="${TEXT_STYLE};margin-top:12px"><strong>Budžet:</strong> ${formatPrice(input.budget)}</p>
+              ${button(input.listingUrl, 'Pogledaj oglas')}
+              <p style="${NOTE_STYLE}">Upozorenja za nove oglase možeš obrisati u postavkama.</p>
+              ${settingsNote(input.settingsUrl)}`,
+  );
+}
+
 // "1 nepročitana poruka", "3 nepročitane poruke", "5 nepročitanih poruka".
 export function unreadMessagesText(count: number) {
   const lastTwo = count % 100;

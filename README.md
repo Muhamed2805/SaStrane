@@ -64,6 +64,9 @@ be both.
   invitation, an application to your job, a decision on your application or
   a new rating, as an executor or as a client. Each notice leads to its page
   and is then marked read.
+- Job alerts: pick a kind of job, a location or both on the job list and
+  turn on "Obavijesti me o novim oglasima". Each new job that matches brings
+  a notice and an email. The alerts are listed in the settings, at most 10.
 
 **Messages**
 - An executor can message the client of an open job, before or after

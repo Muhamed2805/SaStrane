@@ -11,6 +11,8 @@ import {
   invitationSubject,
   newApplicationEmailHtml,
   newApplicationSubject,
+  newListingMatchEmailHtml,
+  newListingMatchSubject,
   passwordChangedEmailHtml,
   passwordResetEmailHtml,
   unreadMessagesEmailHtml,
@@ -138,6 +140,29 @@ export class EmailService {
       }),
       tag: 'invitation',
       developmentMessage: `Invitation email for ${input.email}: "${input.listingTitle}"`,
+    });
+  }
+
+  // Tells a user about a new job that matches one of their job alerts.
+  async sendNewListingMatch(input: {
+    email: string;
+    fullName: string;
+    listingId: string;
+    listingTitle: string;
+    budget: number | null;
+  }) {
+    await this.sendTransactionalEmail({
+      to: input.email,
+      subject: newListingMatchSubject(input),
+      html: newListingMatchEmailHtml({
+        ...input,
+        listingUrl: this.appUrl(
+          `/listings/${encodeURIComponent(input.listingId)}`,
+        ),
+        settingsUrl: this.appUrl('/settings'),
+      }),
+      tag: 'new_listing_match',
+      developmentMessage: `Job alert email for ${input.email}: "${input.listingTitle}"`,
     });
   }
 

@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { Pagination } from '@/components/pagination';
+import { JobAlertButton } from '@/features/job-alerts/components/job-alert-button';
 import {
   CATEGORY_LABELS,
   isListingCategory,
@@ -234,15 +235,18 @@ export function ListingsFeed() {
         </div>
       </section>
 
-      <div className="flex min-h-6 items-center justify-between gap-4">
-        <p className="text-sm font-semibold" aria-live="polite">
-          {isLoading ? 'Učitavanje oglasa...' : resultsLabel(total)}
-        </p>
-        {isRefreshing && !isLoading ? (
-          <p className="text-xs text-muted-foreground" aria-live="polite">
-            Ažuriranje rezultata...
+      <div className="flex min-h-9 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="flex items-center gap-4">
+          <p className="text-sm font-semibold" aria-live="polite">
+            {isLoading ? 'Učitavanje oglasa...' : resultsLabel(total)}
           </p>
-        ) : null}
+          {isRefreshing && !isLoading ? (
+            <p className="text-xs text-muted-foreground" aria-live="polite">
+              Ažuriranje rezultata...
+            </p>
+          ) : null}
+        </div>
+        <JobAlertButton category={category} location={location} />
       </div>
 
       {isLoading ? (

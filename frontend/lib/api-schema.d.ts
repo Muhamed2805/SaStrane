@@ -433,6 +433,113 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/job-alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists the user's job alerts, newest first. There are at most 10. */
+        get: operations["jobAlerts_getAll"];
+        put?: never;
+        /**
+         * Adds a job alert for a kind of job, a location or both.
+         * @description Each new job that matches is announced under the bell, and by
+         *     email when the user gets email notifications.
+         */
+        post: operations["jobAlerts_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/job-alerts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Deletes one of the user's job alerts. */
+        delete: operations["jobAlerts_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists the user's notifications, newest first. */
+        get: operations["notifications_getAll"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Counts the user's unread notifications. */
+        get: operations["notifications_getUnreadCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Marks all of the user's notifications as read. */
+        post: operations["notifications_markAllRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Marks one notification as read. Marking it again changes nothing. */
+        post: operations["notifications_markRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/applications": {
         parameters: {
             query?: never;
@@ -545,74 +652,6 @@ export interface paths {
          *     executor's email.
          */
         patch: operations["applications_updateStatus"];
-        trace?: never;
-    };
-    "/api/notifications": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lists the user's notifications, newest first. */
-        get: operations["notifications_getAll"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/notifications/unread-count": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Counts the user's unread notifications. */
-        get: operations["notifications_getUnreadCount"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/notifications/read-all": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Marks all of the user's notifications as read. */
-        post: operations["notifications_markAllRead"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/notifications/{id}/read": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Marks one notification as read. Marking it again changes nothing. */
-        post: operations["notifications_markRead"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/api/ratings": {
@@ -1290,6 +1329,64 @@ export interface components {
             /** @description Every photo of the job, in the new order. The first is the cover. */
             photoIds: string[];
         };
+        JobAlertDto: {
+            /** @description Null matches any kind of job. */
+            category: components["schemas"]["ListingCategory"] | null;
+            /** @description Null matches any location. */
+            location: components["schemas"]["ListingLocation"] | null;
+            id: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CreateJobAlertDto: {
+            category?: components["schemas"]["ListingCategory"];
+            location?: components["schemas"]["ListingLocation"];
+        };
+        /**
+         * @description INVITATION: a client invites the user to a job. NEW_APPLICATION:
+         *     someone applied to the user's job. APPLICATION_ACCEPTED and
+         *     APPLICATION_REJECTED: the client decided on the user's application.
+         *     NEW_RATING: a client rated the user.
+         * @enum {string}
+         */
+        NotificationType: "INVITATION" | "NEW_APPLICATION" | "APPLICATION_ACCEPTED" | "APPLICATION_REJECTED" | "NEW_RATING" | "NEW_CLIENT_RATING" | "NEW_LISTING_MATCH";
+        NotificationDto: {
+            /**
+             * @description INVITATION: a client invites the user to a job. NEW_APPLICATION:
+             *     someone applied to the user's job. APPLICATION_ACCEPTED and
+             *     APPLICATION_REJECTED: the client decided on the user's application.
+             *     NEW_RATING: a client rated the user.
+             */
+            type: components["schemas"]["NotificationType"];
+            id: string;
+            /** @description Null once the job is deleted. */
+            listingId: string | null;
+            /** @description The job's title when it happened. */
+            listingTitle: string;
+            /** @description The other user's name when it happened. */
+            actorName: string;
+            /**
+             * Format: date-time
+             * @description Null until the user reads it.
+             */
+            readAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        NotificationsPageDto: {
+            items: components["schemas"]["NotificationDto"][];
+            /** @description The number of items on all pages together. */
+            total: number;
+            /** @description The current page, starting at 1. */
+            page: number;
+            /** @description The maximum number of items per page. */
+            limit: number;
+            /** @description The number of pages, 0 when there are no items. */
+            totalPages: number;
+        };
+        UnreadNotificationsDto: {
+            count: number;
+        };
         CreateApplicationDto: {
             listingId: string;
             message: string;
@@ -1427,51 +1524,6 @@ export interface components {
         UpdateApplicationStatusDto: {
             /** @enum {string} */
             status: "ACCEPTED" | "REJECTED";
-        };
-        /**
-         * @description INVITATION: a client invites the user to a job. NEW_APPLICATION:
-         *     someone applied to the user's job. APPLICATION_ACCEPTED and
-         *     APPLICATION_REJECTED: the client decided on the user's application.
-         *     NEW_RATING: a client rated the user.
-         * @enum {string}
-         */
-        NotificationType: "INVITATION" | "NEW_APPLICATION" | "APPLICATION_ACCEPTED" | "APPLICATION_REJECTED" | "NEW_RATING" | "NEW_CLIENT_RATING";
-        NotificationDto: {
-            /**
-             * @description INVITATION: a client invites the user to a job. NEW_APPLICATION:
-             *     someone applied to the user's job. APPLICATION_ACCEPTED and
-             *     APPLICATION_REJECTED: the client decided on the user's application.
-             *     NEW_RATING: a client rated the user.
-             */
-            type: components["schemas"]["NotificationType"];
-            id: string;
-            /** @description Null once the job is deleted. */
-            listingId: string | null;
-            /** @description The job's title when it happened. */
-            listingTitle: string;
-            /** @description The other user's name when it happened. */
-            actorName: string;
-            /**
-             * Format: date-time
-             * @description Null until the user reads it.
-             */
-            readAt: string | null;
-            /** Format: date-time */
-            createdAt: string;
-        };
-        NotificationsPageDto: {
-            items: components["schemas"]["NotificationDto"][];
-            /** @description The number of items on all pages together. */
-            total: number;
-            /** @description The current page, starting at 1. */
-            page: number;
-            /** @description The maximum number of items per page. */
-            limit: number;
-            /** @description The number of pages, 0 when there are no items. */
-            totalPages: number;
-        };
-        UnreadNotificationsDto: {
-            count: number;
         };
         CreateRatingDto: {
             /** @description The accepted application whose executor is rated. */
@@ -3483,6 +3535,378 @@ export interface operations {
             };
         };
     };
+    jobAlerts_getAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobAlertDto"][];
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    jobAlerts_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateJobAlertDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobAlertDto"];
+                };
+            };
+            /** @description Neither a category nor a location is given (JOB_ALERT_EMPTY), or a field is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The user has this alert already (JOB_ALERT_EXISTS) or has 10 alerts (TOO_MANY_JOB_ALERTS). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    jobAlerts_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The alert does not exist or is another user's. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    notifications_getAll: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationsPageDto"];
+                };
+            };
+            /** @description A query parameter is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    notifications_getUnreadCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadNotificationsDto"];
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    notifications_markAllRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    notifications_markRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The notification does not exist or is not the user's. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
     applications_create: {
         parameters: {
             query?: never;
@@ -3858,209 +4282,6 @@ export interface operations {
             };
             /** @description The application has been accepted or rejected already (APPLICATION_ALREADY_DECIDED). */
             409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponseDto"];
-                };
-            };
-            /** @description Too many requests from this IP address. Try again in a minute. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponseDto"];
-                };
-            };
-            /** @description A service the route needs is unavailable: the database, email or photo storage. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponseDto"];
-                };
-            };
-        };
-    };
-    notifications_getAll: {
-        parameters: {
-            query?: {
-                page?: number;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationsPageDto"];
-                };
-            };
-            /** @description A query parameter is invalid. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponseDto"];
-                };
-            };
-            /** @description The access token is missing or expired, or its session has ended. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponseDto"];
-                };
-            };
-            /** @description Too many requests from this IP address. Try again in a minute. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponseDto"];
-                };
-            };
-            /** @description A service the route needs is unavailable: the database, email or photo storage. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponseDto"];
-                };
-            };
-        };
-    };
-    notifications_getUnreadCount: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnreadNotificationsDto"];
-                };
-            };
-            /** @description The access token is missing or expired, or its session has ended. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponseDto"];
-                };
-            };
-            /** @description Too many requests from this IP address. Try again in a minute. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponseDto"];
-                };
-            };
-            /** @description A service the route needs is unavailable: the database, email or photo storage. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponseDto"];
-                };
-            };
-        };
-    };
-    notifications_markAllRead: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The access token is missing or expired, or its session has ended. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponseDto"];
-                };
-            };
-            /** @description Too many requests from this IP address. Try again in a minute. */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponseDto"];
-                };
-            };
-            /** @description A service the route needs is unavailable: the database, email or photo storage. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponseDto"];
-                };
-            };
-        };
-    };
-    notifications_markRead: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The access token is missing or expired, or its session has ended. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponseDto"];
-                };
-            };
-            /** @description The notification does not exist or is not the user's. */
-            404: {
                 headers: {
                     [name: string]: unknown;
                 };

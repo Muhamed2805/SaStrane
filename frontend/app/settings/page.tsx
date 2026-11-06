@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowLeft, LockKeyhole } from 'lucide-react';
 import { AvatarSettings } from '@/features/account/components/avatar-settings';
 import { DeleteAccount } from '@/features/account/components/delete-account';
+import { JobAlertSettings } from '@/features/job-alerts/components/job-alert-settings';
 import { NotificationSettings } from '@/features/account/components/notification-settings';
 import { PasswordSettings } from '@/features/account/components/password-settings';
 import { ProfileSettings } from '@/features/account/components/profile-settings';
@@ -72,6 +73,7 @@ export default function SettingsPage() {
         user={user}
       />
       <NotificationSettings user={user} />
+      <JobAlertSettings userId={user.id} />
       <PasswordSettings />
       <DeleteAccount />
     </div>

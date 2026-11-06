@@ -39,6 +39,24 @@ export class NotificationsService {
     }
   }
 
+  // The same notice for several users, as one insert. Never throws, like
+  // notify.
+  async notifyMany(
+    userIds: string[],
+    notification: Omit<NewNotification, 'userId'>,
+  ) {
+    if (userIds.length === 0) return;
+    try {
+      await this.prisma.notification.createMany({
+        data: userIds.map((userId) => ({ ...notification, userId })),
+      });
+    } catch (error) {
+      this.logger.error(
+        `${notification.type} notifications for ${userIds.length} users failed: ${(error as Error).message}`,
+      );
+    }
+  }
+
   // Newest first.
   async getAll(userId: string, query: NotificationsQueryDto) {
     const page = query.page ?? 1;
