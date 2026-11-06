@@ -6,7 +6,9 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { ApplicationStatus, ListingStatus } from '../generated/prisma/enums.js';
+import { avatarUrl } from '../auth/avatar.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { StorageService } from '../storage/storage.service.js';
 import { CreateRatingDto } from './dto/create-rating.dto.js';
 import { RatingsQueryDto } from './dto/ratings-query.dto.js';
 
@@ -39,7 +41,10 @@ function isUniqueViolation(error: unknown) {
 
 @Injectable()
 export class RatingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
 
   // The client rates the executor they accepted, once the job is closed.
   async create(dto: CreateRatingDto, clientId: string) {
@@ -127,7 +132,14 @@ export class RatingsService {
     const [user, aggregate] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true, fullName: true, createdAt: true },
+        select: {
+          id: true,
+          fullName: true,
+          avatarId: true,
+          bio: true,
+          skills: true,
+          createdAt: true,
+        },
       }),
       this.prisma.rating.aggregate({
         where: { executorId: userId },
@@ -138,7 +150,12 @@ export class RatingsService {
 
     if (!user) throw new NotFoundException('User not found');
     return {
-      ...user,
+      id: user.id,
+      fullName: user.fullName,
+      avatarUrl: avatarUrl(this.storage, user),
+      bio: user.bio,
+      skills: user.skills,
+      createdAt: user.createdAt,
       rating: toSummary(aggregate._avg.score, aggregate._count._all),
     };
   }

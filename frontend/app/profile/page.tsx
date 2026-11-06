@@ -25,6 +25,7 @@ import {
 import { RatingSummary } from '@/features/ratings/components/rating-stars';
 import { userProfileQuery } from '@/features/ratings/queries';
 import { Skeleton } from '@/components/ui/skeleton';
+import { UserAvatar } from '@/components/user-avatar';
 import { formatDate } from '@/lib/format-date';
 import { pageTotal } from '@/lib/paging';
 
@@ -129,9 +130,11 @@ export default function ProfilePage() {
         <div className="px-5 pb-7 sm:px-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-              <div className="-mt-9 flex size-20 shrink-0 items-center justify-center rounded-2xl border-4 border-card bg-primary text-2xl font-bold text-primary-foreground shadow-sm sm:-mt-10 sm:size-24">
-                {user.fullName.charAt(0).toUpperCase()}
-              </div>
+              <UserAvatar
+                name={user.fullName}
+                url={user.avatarUrl}
+                className="-mt-9 size-20 rounded-2xl border-4 border-card bg-primary text-2xl font-bold text-primary-foreground shadow-sm sm:-mt-10 sm:size-24"
+              />
               <div className="sm:pb-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">

@@ -94,8 +94,8 @@ after every install and every schema change.
 | Browse the data | `npx prisma studio` |
 | Start over with an empty database | `docker compose down -v`, then `docker compose up -d`, migrate again and run `npm run storage:init` |
 
-The seed in `prisma/seed.ts` adds four users, ten jobs, seven photos, seven
-applications, two ratings and three conversations. The photos come from
+The seed in `prisma/seed.ts` adds four users, two of them with an
+introduction and skills, ten jobs, seven photos, seven applications, two ratings and three conversations. The photos come from
 `prisma/seed-photos` and need the storage container and
 `npm run storage:init`. When the storage is not reachable, as in CI, the
 seed skips them with a warning. Every demo user signs in with
@@ -150,7 +150,9 @@ two sides of the conversation.
 | `POST` | `/api/auth/refresh` | Cookie | Rotates the refresh token and returns a new access token. |
 | `POST` | `/api/auth/logout` | Cookie | Revokes the session. |
 | `GET` | `/api/auth/me` | Bearer | Returns the signed-in user. |
-| `PATCH` | `/api/auth/me` | Bearer | Changes the user's name, role or `emailNotifications`. |
+| `PATCH` | `/api/auth/me` | Bearer | Changes the user's name, role, `bio`, `skills` or `emailNotifications`. |
+| `PUT` | `/api/auth/me/avatar` | Bearer | Sets the profile photo: `multipart/form-data` with the file in `photo`. |
+| `DELETE` | `/api/auth/me/avatar` | Bearer | Removes the profile photo. |
 | `POST` | `/api/auth/change-password` | Bearer | Checks the current password, sets a new one and revokes the other sessions. Returns 204. |
 | `DELETE` | `/api/auth/me` | Bearer | Checks the password and deletes the account with its jobs, photos, applications, conversations and ratings. Returns 204. |
 | `POST` | `/api/auth/forgot-password` | | Emails a password reset code. |
@@ -178,7 +180,7 @@ two sides of the conversation.
 | `POST` | `/api/conversations/:id/messages` | Member | Sends a message. |
 | `POST` | `/api/conversations/:id/read` | Member | Marks the conversation as read. Returns 204. |
 | `POST` | `/api/ratings` | Owner | Rates the executor of an accepted application to a closed job. |
-| `GET` | `/api/users/:id` | | Returns a user's public profile with their rating. |
+| `GET` | `/api/users/:id` | | Returns a user's public profile: photo, introduction, skills and rating. |
 | `GET` | `/api/users/:id/ratings` | | Lists the ratings a user received, newest first. Paging: `page`, `limit` (max 50). |
 
 **Lists.** Paged lists return
@@ -250,16 +252,27 @@ two sides of the conversation.
   `listingTitle` keeps the job's title.
 - Application lists show the executor's average and count. The client's
   lists also have `canRate`, which is true when the executor can be rated.
-- Profiles under `/api/users` are public. They show the name, the sign-up
-  date and the ratings, never the email.
+- Profiles under `/api/users` are public. They show the name, the profile
+  photo, the introduction, the skills, the sign-up date and the ratings,
+  never the email.
 
 **Account.**
 - The email address cannot be changed. `PATCH /api/auth/me` changes only
-  `fullName`, `role` and `emailNotifications`.
+  `fullName`, `role`, `bio`, `skills` and `emailNotifications`. Access
+  tokens issued earlier keep the old role until they expire, but no route
+  reads it from the token.
+- `bio` is a short introduction of up to 500 characters. An empty one
+  removes it. `skills` lists the job categories the user does, each once.
 - `emailNotifications` turns off the emails about new applications,
   decisions and unread messages. Security emails, such as codes and the
-  password change notice, are always sent. Access tokens issued earlier keep the old role
-  until they expire, but no route reads it from the token.
+  password change notice, are always sent.
+- The profile photo follows the rules for job photos: JPG, PNG, WebP or
+  AVIF, up to 5 MB, with the same 400 and 413 errors. The backend cuts a
+  square of 256 pixels around the most detailed part, usually the face, and
+  drops the EXIF data. `avatarUrl` is `null` without a photo.
+- Each upload is a new file under `avatars/<user id>/<avatar id>.webp`, so
+  it can be cached for a year. The previous file is deleted after the row
+  points to the new one.
 - Changing the password and deleting the account need the current
   password. A wrong one returns 400 with the code `WRONG_PASSWORD`, not
   401, so the client stays signed in. Both routes allow 5 requests per
@@ -268,8 +281,9 @@ two sides of the conversation.
   The user gets an email notice after the response. A failed email is
   logged, and the change stays.
 - Deleting the account clears the refresh cookie. It also deletes the
-  user's jobs with their photos, the applications on both sides, every
-  conversation the user is part of and the ratings given or received.
+  user's jobs with their photos, the profile photo, the applications on
+  both sides, every conversation the user is part of and the ratings given
+  or received.
   Other users lose those conversations and ratings too.
 
 **Errors.** Errors use the standard NestJS shape,

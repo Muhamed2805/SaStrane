@@ -32,6 +32,8 @@ const users = [
     id: 'seed-user-kenan',
     email: 'kenan@example.com',
     fullName: 'Kenan Mehić',
+    bio: 'Student informatike. Popravljam računare, postavljam mreže i pomažem oko selidbi vikendom.',
+    skills: [ListingCategory.IT_HELP, ListingCategory.MOVING],
   },
   {
     id: 'seed-user-lejla',
@@ -42,6 +44,12 @@ const users = [
     id: 'seed-user-tarik',
     email: 'tarik@example.com',
     fullName: 'Tarik Selimović',
+    bio: 'Imam svoj alat i kombi. Montiram namještaj, kosim travu i vozim manje terete po Sarajevu.',
+    skills: [
+      ListingCategory.ASSEMBLY,
+      ListingCategory.LAWN_MOWING,
+      ListingCategory.DELIVERY,
+    ],
   },
 ];
 

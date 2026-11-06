@@ -1,4 +1,6 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { PageDto } from '../../common/dto/page.dto.js';
+import { ListingCategory } from '../../generated/prisma/enums.js';
 
 // How an executor was rated so far.
 export class RatingSummaryDto {
@@ -44,6 +46,20 @@ export class UserProfileDto {
   id!: string;
 
   fullName!: string;
+
+  /** A square WebP image of 256 pixels. Null without a profile photo. */
+  avatarUrl!: string | null;
+
+  /** A short introduction written by the user. */
+  bio!: string | null;
+
+  /** The kinds of jobs the user does. */
+  @ApiProperty({
+    enum: ListingCategory,
+    enumName: 'ListingCategory',
+    isArray: true,
+  })
+  skills!: ListingCategory[];
 
   /** When the user signed up. */
   createdAt!: Date;

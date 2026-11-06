@@ -72,8 +72,8 @@ be both.
 - After closing a job, the client rates the accepted executor with 1 to 5
   stars and an optional comment. Each job's executor is rated once, and
   the rating is final.
-- Every user has a public profile with their average rating and the
-  reviews. Application cards show the executor's rating and link to it.
+- Every user has a public profile with a photo, a short introduction, the
+  kinds of jobs they do, their average rating and the reviews. Application cards show the executor's rating and link to it.
 - A rating stays on the profile when the job is deleted.
 
 **Accounts**
@@ -85,7 +85,8 @@ be both.
   others.
 - Email notices for a new application, a decision on an application and
   unread messages. They can be turned off in the account settings.
-- Account settings: change the name and the role, or change the password
+- Account settings: add a profile photo, change the name, the role, the
+  introduction and the kinds of jobs, or change the password
   with the current one. A password change signs out the other devices and
   sends a notice by email.
 - Delete the account with the password. This also deletes the user's jobs

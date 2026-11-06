@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { StorageService } from '../storage/storage.service.js';
 import { RatingsService } from './ratings.service.js';
 
 describe('RatingsService', () => {
@@ -15,11 +16,16 @@ describe('RatingsService', () => {
   };
   const userRepository = { findUnique: vi.fn() };
 
-  const service = new RatingsService({
-    application: applicationRepository,
-    rating: ratingRepository,
-    user: userRepository,
-  } as unknown as PrismaService);
+  const storage = { url: (key: string) => `https://files.test/${key}` };
+
+  const service = new RatingsService(
+    {
+      application: applicationRepository,
+      rating: ratingRepository,
+      user: userRepository,
+    } as unknown as PrismaService,
+    storage as unknown as StorageService,
+  );
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -170,6 +176,9 @@ describe('RatingsService', () => {
       userRepository.findUnique.mockResolvedValue({
         id: 'user-1',
         fullName: 'Kenan',
+        avatarId: 'avatar-1',
+        bio: 'Montiram namještaj.',
+        skills: ['ASSEMBLY'],
         createdAt,
       });
       ratingRepository.aggregate.mockResolvedValue({
@@ -180,14 +189,43 @@ describe('RatingsService', () => {
       await expect(service.getProfile('user-1')).resolves.toEqual({
         id: 'user-1',
         fullName: 'Kenan',
+        avatarUrl: 'https://files.test/avatars/user-1/avatar-1.webp',
+        bio: 'Montiram namještaj.',
+        skills: ['ASSEMBLY'],
         createdAt,
         rating: { average: null, count: 0 },
       });
       expect(userRepository.findUnique).toHaveBeenCalledWith(
         expect.objectContaining({
-          select: { id: true, fullName: true, createdAt: true },
+          select: {
+            id: true,
+            fullName: true,
+            avatarId: true,
+            bio: true,
+            skills: true,
+            createdAt: true,
+          },
         }),
       );
+    });
+
+    it('has no photo URL for a user without one', async () => {
+      userRepository.findUnique.mockResolvedValue({
+        id: 'user-1',
+        fullName: 'Kenan',
+        avatarId: null,
+        bio: null,
+        skills: [],
+        createdAt: new Date(),
+      });
+      ratingRepository.aggregate.mockResolvedValue({
+        _avg: { score: null },
+        _count: { _all: 0 },
+      });
+
+      await expect(service.getProfile('user-1')).resolves.toMatchObject({
+        avatarUrl: null,
+      });
     });
 
     it('returns 404 for an unknown user', async () => {

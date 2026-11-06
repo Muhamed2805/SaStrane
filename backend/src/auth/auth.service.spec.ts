@@ -16,6 +16,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import {
+  ListingCategory,
   SessionRevocationReason,
   UserRole,
 } from '../generated/prisma/enums.js';
@@ -24,6 +25,7 @@ import { createHmac } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuthService } from './auth.service.js';
 import { EmailService } from '../email/email.service.js';
+import { StorageService } from '../storage/storage.service.js';
 import { SessionsService, type SessionGrant } from './sessions.service.js';
 
 // The service imports bcrypt's default export.
@@ -88,6 +90,7 @@ describe('AuthService', () => {
         ) => Promise<void>
       >(),
   };
+  const storage = { url: (key: string) => `https://files.test/${key}` };
   type TransactionCallback = (tx: unknown) => Promise<unknown>;
   const prisma = {
     user: userRepository,
@@ -103,6 +106,7 @@ describe('AuthService', () => {
     configService as unknown as ConfigService,
     emailService as unknown as EmailService,
     sessionsService as unknown as SessionsService,
+    storage as unknown as StorageService,
   );
 
   const issuedRefreshToken = {
@@ -116,6 +120,9 @@ describe('AuthService', () => {
     fullName: 'Test User',
     role: UserRole.BOTH,
     emailNotifications: true,
+    bio: 'Kosim travu vikendom.',
+    skills: [ListingCategory.LAWN_MOWING],
+    avatarId: 'avatar-1',
     emailVerifiedAt: new Date('2026-09-15T12:00:00.000Z'),
     passwordHash: 'stored-password-hash',
     emailVerificationCodeHash: null,
@@ -126,12 +133,27 @@ describe('AuthService', () => {
     updatedAt: new Date('2026-09-15T12:00:00.000Z'),
   };
 
+  // The row as the database returns it, and the user as the API sends it.
+  const publicUserRow = {
+    id: user.id,
+    email: user.email,
+    fullName: user.fullName,
+    role: user.role,
+    emailNotifications: user.emailNotifications,
+    bio: user.bio,
+    skills: user.skills,
+    avatarId: user.avatarId,
+    createdAt: user.createdAt,
+  };
   const publicUser = {
     id: user.id,
     email: user.email,
     fullName: user.fullName,
     role: user.role,
     emailNotifications: user.emailNotifications,
+    bio: user.bio,
+    skills: user.skills,
+    avatarUrl: 'https://files.test/avatars/user-1/avatar-1.webp',
     createdAt: user.createdAt,
   };
 
@@ -281,14 +303,7 @@ describe('AuthService', () => {
         'secure-password',
         user.passwordHash,
       );
-      expect(result.user).toEqual({
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName,
-        role: user.role,
-        emailNotifications: true,
-        createdAt: user.createdAt,
-      });
+      expect(result.user).toEqual(publicUser);
       expect(result.user).not.toHaveProperty('passwordHash');
       expect(sessionsService.create).toHaveBeenCalledWith(
         user.id,
@@ -368,7 +383,7 @@ describe('AuthService', () => {
         emailVerificationSentAt: new Date(),
       };
       userRepository.findUnique.mockResolvedValue(pendingUser);
-      userRepository.update.mockResolvedValue(publicUser);
+      userRepository.update.mockResolvedValue(publicUserRow);
       jwtService.signAsync.mockResolvedValue('access-token');
 
       const result = await service.verifyEmail({ email: user.email, code });
@@ -632,7 +647,7 @@ describe('AuthService', () => {
   describe('refresh', () => {
     const grant: SessionGrant = {
       sessionId: 'session-1',
-      user: publicUser,
+      user: publicUserRow,
       refreshToken: issuedRefreshToken,
     };
 
@@ -693,7 +708,7 @@ describe('AuthService', () => {
 
   describe('getMe', () => {
     it('returns the public user profile', async () => {
-      userRepository.findUnique.mockResolvedValue(publicUser);
+      userRepository.findUnique.mockResolvedValue(publicUserRow);
 
       await expect(service.getMe(user.id)).resolves.toEqual(publicUser);
       expect(userRepository.findUnique).toHaveBeenCalledWith({
@@ -704,6 +719,9 @@ describe('AuthService', () => {
           fullName: true,
           role: true,
           emailNotifications: true,
+          bio: true,
+          skills: true,
+          avatarId: true,
           createdAt: true,
         },
       });

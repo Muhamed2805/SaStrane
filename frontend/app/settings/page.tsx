@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { ArrowLeft, LockKeyhole } from 'lucide-react';
+import { AvatarSettings } from '@/features/account/components/avatar-settings';
 import { DeleteAccount } from '@/features/account/components/delete-account';
 import { NotificationSettings } from '@/features/account/components/notification-settings';
 import { PasswordSettings } from '@/features/account/components/password-settings';
@@ -32,7 +33,7 @@ export default function SettingsPage() {
           Prijavi se za pristup postavkama
         </h1>
         <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
-          Ovdje se mijenjaju ime, uloga i lozinka naloga.
+          Ovdje se mijenjaju profil, obavijesti i lozinka naloga.
         </p>
         <button
           type="button"
@@ -64,8 +65,12 @@ export default function SettingsPage() {
         </p>
       </div>
 
+      <AvatarSettings user={user} />
       {/* A change from another tab resets the form to the saved values. */}
-      <ProfileSettings key={`${user.fullName}:${user.role}`} user={user} />
+      <ProfileSettings
+        key={JSON.stringify([user.fullName, user.role, user.bio, user.skills])}
+        user={user}
+      />
       <NotificationSettings user={user} />
       <PasswordSettings />
       <DeleteAccount />

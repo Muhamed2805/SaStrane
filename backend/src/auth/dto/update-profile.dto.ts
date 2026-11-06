@@ -1,6 +1,8 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsEnum,
   IsOptional,
@@ -9,7 +11,9 @@ import {
   MinLength,
 } from 'class-validator';
 import { trimString } from '../../common/transforms/trim-string.transform.js';
-import { UserRole } from '../../generated/prisma/enums.js';
+import { ListingCategory, UserRole } from '../../generated/prisma/enums.js';
+
+export const BIO_MAX_LENGTH = 500;
 
 // Only the fields that are sent change.
 export class UpdateProfileDto {
@@ -30,4 +34,23 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsBoolean()
   emailNotifications?: boolean;
+
+  /** A short introduction for the public profile. An empty one removes it. */
+  @IsOptional()
+  @Transform(trimString)
+  @IsString()
+  @MaxLength(BIO_MAX_LENGTH)
+  bio?: string;
+
+  /** The kinds of jobs the user does. Repeated values count once. */
+  @ApiPropertyOptional({
+    enum: ListingCategory,
+    enumName: 'ListingCategory',
+    isArray: true,
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(Object.keys(ListingCategory).length)
+  @IsEnum(ListingCategory, { each: true })
+  skills?: ListingCategory[];
 }

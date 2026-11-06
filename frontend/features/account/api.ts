@@ -21,6 +21,15 @@ export const accountApi = {
       body: JSON.stringify(payload),
     }),
 
+  setAvatar: (file: File) => {
+    const body = new FormData();
+    body.append('photo', file);
+    return authRequest<AuthUser>('/auth/me/avatar', { method: 'PUT', body });
+  },
+
+  removeAvatar: () =>
+    authRequest<AuthUser>('/auth/me/avatar', { method: 'DELETE' }),
+
   deleteAccount: (password: string) =>
     authRequest<null>('/auth/me', {
       method: 'DELETE',

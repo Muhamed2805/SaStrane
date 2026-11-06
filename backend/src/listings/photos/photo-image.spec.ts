@@ -1,6 +1,6 @@
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
-import { processPhoto } from './photo-image.js';
+import { processAvatar, processPhoto } from './photo-image.js';
 
 function image(
   width: number,
@@ -66,5 +66,40 @@ describe('processPhoto', () => {
     await expect(processPhoto(await input)).rejects.toMatchObject({
       response: { code: 'INVALID_IMAGE' },
     });
+  });
+});
+
+describe('processAvatar', () => {
+  it('cuts a square WebP from any shape', async () => {
+    for (const [width, height] of [
+      [1200, 800],
+      [100, 300],
+    ]) {
+      const avatar = await processAvatar(await image(width, height, 'jpeg'));
+
+      expect(await sharp(avatar).metadata()).toMatchObject({
+        format: 'webp',
+        width: 256,
+        height: 256,
+      });
+    }
+  });
+
+  it('drops the EXIF data', async () => {
+    const tagged = await sharp({
+      create: { width: 400, height: 400, channels: 3, background: '#fff' },
+    })
+      .jpeg()
+      .withMetadata({ orientation: 6 })
+      .toBuffer();
+
+    const metadata = await sharp(await processAvatar(tagged)).metadata();
+    expect(metadata.exif).toBeUndefined();
+  });
+
+  it('refuses a file that is not an accepted image', async () => {
+    await expect(
+      processAvatar(await image(40, 30, 'gif')),
+    ).rejects.toMatchObject({ response: { code: 'INVALID_IMAGE' } });
   });
 });

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -6,12 +7,22 @@ import {
   HttpStatus,
   Patch,
   Post,
+  Put,
   Req,
   Res,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApiBearerAuth, ApiNoContentResponse, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiNoContentResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import {
@@ -19,6 +30,7 @@ import {
   COMMON_ERRORS,
   SIGNED_IN_ERRORS,
 } from '../openapi/api-errors.decorator.js';
+import { MAX_PHOTO_BYTES } from '../listings/photos/photo-image.js';
 import { AccountService } from './account.service.js';
 import { PublicUserDto } from './dto/auth-response.dto.js';
 import { ChangePasswordDto } from './dto/change-password.dto.js';
@@ -48,7 +60,8 @@ export class AccountController {
   }
 
   /**
-   * Changes the name, the role or the email setting of the signed-in user.
+   * Changes the name, role, introduction, skills or email setting of the
+   * signed-in user.
    *
    * @remarks Fields that are left out stay as they are.
    */
@@ -60,6 +73,50 @@ export class AccountController {
   ): Promise<PublicUserDto> {
     const user = req.user as AuthenticatedUser;
     return this.account.updateProfile(user.id, dto);
+  }
+
+  /**
+   * Sets the signed-in user's profile photo.
+   *
+   * @remarks Send the file as `photo` in a multipart form, up to 5 MB, as
+   * JPG, PNG, WebP or AVIF. The API stores a square WebP of 256 pixels
+   * without the EXIF data, and deletes the previous photo.
+   */
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['photo'],
+      properties: { photo: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiErrors({
+    400: 'The file is missing, or it is not a JPG, PNG, WebP or AVIF image (INVALID_IMAGE).',
+    413: 'The file is larger than 5 MB.',
+    503: 'The database or the photo storage is unavailable.',
+  })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @UseInterceptors(
+    FileInterceptor('photo', {
+      limits: { fileSize: MAX_PHOTO_BYTES, files: 1, fields: 0 },
+    }),
+  )
+  @Put('me/avatar')
+  setAvatar(
+    @Req() req: Request,
+    @UploadedFile() file: { buffer: Buffer } | undefined,
+  ): Promise<PublicUserDto> {
+    if (!file) throw new BadRequestException('Dodaj sliku.');
+    const user = req.user as AuthenticatedUser;
+    return this.account.setAvatar(user.id, file.buffer);
+  }
+
+  /** Removes the signed-in user's profile photo. */
+  @ApiErrors({ 503: 'The database or the photo storage is unavailable.' })
+  @Delete('me/avatar')
+  removeAvatar(@Req() req: Request): Promise<PublicUserDto> {
+    const user = req.user as AuthenticatedUser;
+    return this.account.removeAvatar(user.id);
   }
 
   /**

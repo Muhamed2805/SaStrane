@@ -10,6 +10,9 @@ const user: AuthUser = {
   fullName: 'Test User',
   role: 'BOTH',
   emailNotifications: true,
+  bio: null,
+  skills: [],
+  avatarUrl: null,
   createdAt: '2026-09-15T12:00:00.000Z',
 };
 

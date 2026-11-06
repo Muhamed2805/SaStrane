@@ -2,25 +2,39 @@
 
 import { FormEvent, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { LoaderCircle, Mail, UserRound } from 'lucide-react';
+import { Check, LoaderCircle, Mail, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import type { AuthUser } from '@/features/auth/api';
 import { ROLE_OPTIONS, type UserRole } from '@/features/auth/roles';
 import { updateSessionUser } from '@/features/auth/session';
+import type { ListingCategory } from '@/features/listings/api';
+import {
+  CATEGORY_LABELS,
+  LISTING_CATEGORIES,
+} from '@/features/listings/constants';
 import { accountApi } from '../api';
 import { fieldClassName } from './password-input';
 
 const NAME_MIN_LENGTH = 2;
 const NAME_MAX_LENGTH = 100;
+const BIO_MAX_LENGTH = 500;
 
-// The name and the role. The email address cannot be changed.
+// The name, the role, the introduction and the kinds of jobs the user does.
+// The email address cannot be changed.
 export function ProfileSettings({ user }: { user: AuthUser }) {
   const [fullName, setFullName] = useState(user.fullName);
   const [role, setRole] = useState<UserRole>(user.role);
+  const [bio, setBio] = useState(user.bio ?? '');
+  const [skills, setSkills] = useState<ListingCategory[]>(user.skills);
 
   const save = useMutation({
     mutationFn: () =>
-      accountApi.updateProfile({ fullName: fullName.trim(), role }),
+      accountApi.updateProfile({
+        fullName: fullName.trim(),
+        role,
+        bio: bio.trim(),
+        skills,
+      }),
     onSuccess: (updated) => {
       updateSessionUser(updated);
       setFullName(updated.fullName);
@@ -29,8 +43,25 @@ export function ProfileSettings({ user }: { user: AuthUser }) {
   });
 
   const trimmedName = fullName.trim();
-  const changed = trimmedName !== user.fullName || role !== user.role;
+  const changed =
+    trimmedName !== user.fullName ||
+    role !== user.role ||
+    bio.trim() !== (user.bio ?? '') ||
+    skills.join() !== user.skills.join();
   const nameTooShort = trimmedName.length < NAME_MIN_LENGTH;
+
+  // Kept in the order of the list, so picking the same skills again counts
+  // as no change.
+  const toggleSkill = (skill: ListingCategory) => {
+    setSkills((current) =>
+      LISTING_CATEGORIES.filter((category) =>
+        category === skill
+          ? !current.includes(skill)
+          : current.includes(category),
+      ),
+    );
+    save.reset();
+  };
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -47,7 +78,8 @@ export function ProfileSettings({ user }: { user: AuthUser }) {
         Podaci o profilu
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Ime vide klijenti i izvođači na oglasima, prijavama i porukama.
+        Ime vide klijenti i izvođači na oglasima, prijavama i porukama. Opis i
+        poslove koje radiš vide svi na tvom javnom profilu.
       </p>
 
       <form onSubmit={submit} className="mt-6 space-y-5" noValidate>
@@ -156,6 +188,68 @@ export function ProfileSettings({ user }: { user: AuthUser }) {
                 </span>
               </label>
             ))}
+          </div>
+        </fieldset>
+
+        <div>
+          <div className="flex items-center justify-between gap-3">
+            <label htmlFor="settings-bio" className="text-sm font-semibold">
+              O meni
+            </label>
+            <span className="text-xs text-muted-foreground">
+              {bio.trim().length}/{BIO_MAX_LENGTH}
+            </span>
+          </div>
+          <textarea
+            id="settings-bio"
+            className="mt-2 min-h-28 w-full resize-y rounded-lg border bg-background px-4 py-3 text-sm leading-6 outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary focus:ring-3 focus:ring-primary/10"
+            value={bio}
+            maxLength={BIO_MAX_LENGTH}
+            placeholder="Npr. Imam pet godina iskustva u selidbama i vlastiti kombi. Radim vikendom."
+            aria-describedby="settings-bio-hint"
+            onChange={(event) => {
+              setBio(event.target.value);
+              save.reset();
+            }}
+          />
+          <p
+            id="settings-bio-hint"
+            className="mt-2 text-xs text-muted-foreground"
+          >
+            Neobavezno. Napiši ukratko šta radiš i koliko iskustva imaš.
+          </p>
+        </div>
+
+        <fieldset>
+          <legend className="text-sm font-semibold">Poslovi koje radiš</legend>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Neobavezno. Klijentima pokazuje u čemu možeš pomoći.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {LISTING_CATEGORIES.map((category) => {
+              const selected = skills.includes(category);
+              return (
+                <label
+                  key={category}
+                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition-colors has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-primary/20 ${
+                    selected
+                      ? 'border-primary bg-primary/[0.08] text-primary'
+                      : 'hover:border-primary/30 hover:bg-muted/50'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected}
+                    onChange={() => toggleSkill(category)}
+                    className="sr-only"
+                  />
+                  {selected ? (
+                    <Check className="size-3.5" aria-hidden="true" />
+                  ) : null}
+                  {CATEGORY_LABELS[category]}
+                </label>
+              );
+            })}
           </div>
         </fieldset>
 

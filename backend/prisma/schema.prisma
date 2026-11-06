@@ -63,15 +63,22 @@ enum SessionRevocationReason {
 }
 
 model User {
-  id                 String    @id @default(cuid())
-  email              String    @unique
+  id                 String            @id @default(cuid())
+  email              String            @unique
   emailVerifiedAt    DateTime?
   passwordHash       String
   fullName           String
-  role               UserRole  @default(BOTH)
+  role               UserRole          @default(BOTH)
   // Emails about new applications, decisions and unread messages. Account
   // security emails are always sent.
-  emailNotifications Boolean   @default(true)
+  emailNotifications Boolean           @default(true)
+  // A short introduction and the kinds of jobs the user does, both shown
+  // on the public profile.
+  bio                String?
+  skills             ListingCategory[] @default([])
+  // The current profile photo. Its file lives in S3 storage under a key
+  // made from the user and avatar IDs (see src/auth/avatar.ts).
+  avatarId           String?
 
   emailVerificationCodeHash  String?
   emailVerificationExpiresAt DateTime?

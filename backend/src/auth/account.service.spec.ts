@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { BadRequestException, Logger } from '@nestjs/common';
 import bcrypt from 'bcrypt';
+import sharp from 'sharp';
 import {
+  ListingCategory,
   SessionRevocationReason,
   UserRole,
 } from '../generated/prisma/enums.js';
@@ -33,6 +35,18 @@ describe('AccountService', () => {
     email: 'amra@example.com',
     fullName: 'Amra Hodžić',
     passwordHash: 'old-hash',
+    avatarId: null as string | null,
+  };
+  const row = {
+    id: 'user-1',
+    email: stored.email,
+    fullName: stored.fullName,
+    role: UserRole.BOTH,
+    emailNotifications: true,
+    bio: null,
+    skills: [],
+    avatarId: 'avatar-new',
+    createdAt: new Date('2026-11-01T12:00:00Z'),
   };
 
   const userRepository = {
@@ -49,6 +63,8 @@ describe('AccountService', () => {
     user: userRepository,
     listingPhoto: listingPhotoRepository,
     $transaction: vi.fn<(callback: TransactionCallback) => Promise<unknown>>(),
+    $queryRaw:
+      vi.fn<(...args: unknown[]) => Promise<{ avatarId: string | null }[]>>(),
   };
   const sessions = {
     revokeOthers:
@@ -65,7 +81,11 @@ describe('AccountService', () => {
     sendPasswordChanged:
       vi.fn<(input: { email: string; fullName: string }) => Promise<void>>(),
   };
-  const storage = { delete: vi.fn<(keys: string[]) => Promise<void>>() };
+  const storage = {
+    put: vi.fn<(key: string, data: Buffer, type: string) => Promise<void>>(),
+    delete: vi.fn<(keys: string[]) => Promise<void>>(),
+    url: (key: string) => `https://files.test/${key}`,
+  };
 
   const service = new AccountService(
     prisma as unknown as PrismaService,
@@ -82,14 +102,15 @@ describe('AccountService', () => {
     compareMock.mockResolvedValue(true);
     hashMock.mockResolvedValue('new-hash');
     email.sendPasswordChanged.mockResolvedValue();
+    storage.put.mockResolvedValue();
     storage.delete.mockResolvedValue();
+    userRepository.update.mockResolvedValue(row);
+    prisma.$queryRaw.mockResolvedValue([{ avatarId: null }]);
     vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
   });
 
   describe('updateProfile', () => {
     it('changes only the fields that were sent', async () => {
-      userRepository.update.mockResolvedValue({ id: 'user-1' });
-
       await service.updateProfile('user-1', { role: UserRole.EXECUTOR });
 
       expect(userRepository.update).toHaveBeenCalledWith({
@@ -98,9 +119,112 @@ describe('AccountService', () => {
           fullName: undefined,
           role: UserRole.EXECUTOR,
           emailNotifications: undefined,
+          bio: undefined,
+          skills: undefined,
         },
         select: PUBLIC_USER_SELECT,
       });
+    });
+
+    it('removes an empty introduction and repeated skills', async () => {
+      await service.updateProfile('user-1', {
+        bio: '',
+        skills: [
+          ListingCategory.MOVING,
+          ListingCategory.CLEANING,
+          ListingCategory.MOVING,
+        ],
+      });
+
+      expect(userRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            bio: null,
+            skills: [ListingCategory.MOVING, ListingCategory.CLEANING],
+          }) as unknown,
+        }),
+      );
+    });
+
+    it('returns the photo as a URL', async () => {
+      const user = await service.updateProfile('user-1', {});
+
+      expect(user.avatarUrl).toBe(
+        'https://files.test/avatars/user-1/avatar-new.webp',
+      );
+      expect(user).not.toHaveProperty('avatarId');
+    });
+  });
+
+  describe('setAvatar', () => {
+    const photo = () =>
+      sharp({
+        create: { width: 300, height: 200, channels: 3, background: '#fff' },
+      })
+        .jpeg()
+        .toBuffer();
+
+    it('stores a square WebP and deletes the previous photo', async () => {
+      prisma.$queryRaw.mockResolvedValue([{ avatarId: 'avatar-old' }]);
+
+      await service.setAvatar('user-1', await photo());
+
+      const [key, data, type] = storage.put.mock.calls[0];
+      expect(key).toMatch(/^avatars\/user-1\/[0-9a-f-]{36}\.webp$/);
+      expect(type).toBe('image/webp');
+      expect(await sharp(data).metadata()).toMatchObject({
+        width: 256,
+        height: 256,
+      });
+      expect(userRepository.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { avatarId: key.slice('avatars/user-1/'.length, -5) },
+        select: PUBLIC_USER_SELECT,
+      });
+      expect(storage.delete).toHaveBeenCalledWith([
+        'avatars/user-1/avatar-old.webp',
+      ]);
+    });
+
+    it('deletes the new file when saving fails', async () => {
+      userRepository.update.mockRejectedValue(new Error('db down'));
+
+      await expect(service.setAvatar('user-1', await photo())).rejects.toThrow(
+        'db down',
+      );
+
+      const [key] = storage.put.mock.calls[0];
+      expect(storage.delete).toHaveBeenCalledWith([key]);
+    });
+
+    it('stores nothing for a file that is not an image', async () => {
+      await expect(
+        service.setAvatar('user-1', Buffer.from('not an image')),
+      ).rejects.toMatchObject({ response: { code: 'INVALID_IMAGE' } });
+      expect(storage.put).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('removeAvatar', () => {
+    it('clears the photo and deletes its file', async () => {
+      prisma.$queryRaw.mockResolvedValue([{ avatarId: 'avatar-old' }]);
+      userRepository.update.mockResolvedValue({ ...row, avatarId: null });
+
+      const user = await service.removeAvatar('user-1');
+
+      expect(user.avatarUrl).toBeNull();
+      expect(userRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { avatarId: null } }),
+      );
+      expect(storage.delete).toHaveBeenCalledWith([
+        'avatars/user-1/avatar-old.webp',
+      ]);
+    });
+
+    it('deletes no file when there was no photo', async () => {
+      await service.removeAvatar('user-1');
+
+      expect(storage.delete).not.toHaveBeenCalled();
     });
   });
 
@@ -170,6 +294,10 @@ describe('AccountService', () => {
 
   describe('deleteAccount', () => {
     it('deletes the user and then the photo files of their jobs', async () => {
+      userRepository.findUnique.mockResolvedValue({
+        ...stored,
+        avatarId: 'avatar-1',
+      });
       listingPhotoRepository.findMany.mockResolvedValue([
         { id: 'photo-1', listingId: 'listing-1' },
         { id: 'photo-2', listingId: 'listing-2' },
@@ -189,6 +317,7 @@ describe('AccountService', () => {
         'listings/listing-1/photo-1-thumb.webp',
         'listings/listing-2/photo-2.webp',
         'listings/listing-2/photo-2-thumb.webp',
+        'avatars/user-1/avatar-1.webp',
       ]);
     });
 

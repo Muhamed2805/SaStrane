@@ -208,10 +208,34 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Changes the name, the role or the email setting of the signed-in user.
+         * Changes the name, role, introduction, skills or email setting of the
+         *     signed-in user.
          * @description Fields that are left out stay as they are.
          */
         patch: operations["account_updateProfile"];
+        trace?: never;
+    };
+    "/api/auth/me/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Sets the signed-in user's profile photo.
+         * @description Send the file as `photo` in a multipart form, up to 5 MB, as
+         *     JPG, PNG, WebP or AVIF. The API stores a square WebP of 256 pixels
+         *     without the EXIF data, and deletes the previous photo.
+         */
+        put: operations["account_setAvatar"];
+        post?: never;
+        /** Removes the signed-in user's profile photo. */
+        delete: operations["account_removeAvatar"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/auth/change-password": {
@@ -676,14 +700,25 @@ export interface components {
             email: string;
             code: string;
         };
+        /**
+         * @description The kinds of jobs the user does.
+         * @enum {string}
+         */
+        ListingCategory: "LAWN_MOWING" | "CAR_WASH" | "MOVING" | "IT_HELP" | "CLEANING" | "ASSEMBLY" | "DELIVERY" | "OTHER";
         PublicUserDto: {
             /** @description Whether the user posts jobs, applies to them, or both. */
             role: components["schemas"]["UserRole"];
+            /** @description The kinds of jobs the user does. */
+            skills: components["schemas"]["ListingCategory"][];
             id: string;
             email: string;
             fullName: string;
             /** @description Whether the user gets emails about applications and messages. */
             emailNotifications: boolean;
+            /** @description A short introduction for the public profile. */
+            bio: string | null;
+            /** @description A square WebP image of 256 pixels. Null without a profile photo. */
+            avatarUrl: string | null;
             /** Format: date-time */
             createdAt: string;
         };
@@ -718,9 +753,13 @@ export interface components {
         UpdateProfileDto: {
             /** @description Whether the user posts jobs, applies to them, or both. */
             role?: components["schemas"]["UserRole"];
+            /** @description The kinds of jobs the user does. Repeated values count once. */
+            skills?: components["schemas"]["ListingCategory"][];
             fullName?: string;
             /** @description Whether to get emails about applications and messages. */
             emailNotifications?: boolean;
+            /** @description A short introduction for the public profile. An empty one removes it. */
+            bio?: string;
         };
         ChangePasswordDto: {
             currentPassword: string;
@@ -731,8 +770,6 @@ export interface components {
             /** @description The current password, to confirm that the owner deletes the account. */
             password: string;
         };
-        /** @enum {string} */
-        ListingCategory: "LAWN_MOWING" | "CAR_WASH" | "MOVING" | "IT_HELP" | "CLEANING" | "ASSEMBLY" | "DELIVERY" | "OTHER";
         /** @enum {string} */
         ListingLocation: "SARAJEVO" | "ILIDZA" | "STUP" | "VOGOSCA" | "MOSTAR" | "BANJA_LUKA" | "TUZLA" | "ZENICA";
         /** @enum {string} */
@@ -973,8 +1010,14 @@ export interface components {
             createdAt: string;
         };
         UserProfileDto: {
+            /** @description The kinds of jobs the user does. */
+            skills: components["schemas"]["ListingCategory"][];
             id: string;
             fullName: string;
+            /** @description A square WebP image of 256 pixels. Null without a profile photo. */
+            avatarUrl: string | null;
+            /** @description A short introduction written by the user. */
+            bio: string | null;
             /**
              * Format: date-time
              * @description When the user signed up.
@@ -1659,6 +1702,123 @@ export interface operations {
                 };
             };
             /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    account_setAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    photo: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicUserDto"];
+                };
+            };
+            /** @description The file is missing, or it is not a JPG, PNG, WebP or AVIF image (INVALID_IMAGE). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The file is larger than 5 MB. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The database or the photo storage is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    account_removeAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicUserDto"];
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The database or the photo storage is unavailable. */
             503: {
                 headers: {
                     [name: string]: unknown;

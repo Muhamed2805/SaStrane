@@ -16,6 +16,7 @@ import {
 import { useAuthStore } from '@/features/auth/store';
 import { useUnreadCount } from '@/features/messages/hooks';
 import { BrandLogo } from './brand-logo';
+import { UserAvatar } from './user-avatar';
 
 const NavLink = ({
   href,
@@ -126,9 +127,11 @@ export function Navbar() {
                   aria-expanded={isUserMenuOpen}
                   aria-controls="user-navigation"
                 >
-                  <span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                    {user.fullName.charAt(0).toUpperCase()}
-                  </span>
+                  <UserAvatar
+                    name={user.fullName}
+                    url={user.avatarUrl}
+                    className="size-8 rounded-full bg-primary/10 text-xs font-bold text-primary"
+                  />
                   <span className="max-w-28 truncate">{user.fullName}</span>
                   <ChevronDown
                     className={`size-4 text-muted-foreground transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`}

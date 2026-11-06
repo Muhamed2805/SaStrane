@@ -14,6 +14,7 @@ import bcrypt from 'bcrypt';
 import { createHmac, randomInt, timingSafeEqual } from 'crypto';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { StorageService } from '../storage/storage.service.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
@@ -23,6 +24,7 @@ import {
   PUBLIC_USER_SELECT,
   toPublicUser,
   type PublicUser,
+  type PublicUserRow,
 } from './public-user.js';
 import {
   SessionsService,
@@ -58,6 +60,7 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly emailService: EmailService,
     private readonly sessions: SessionsService,
+    private readonly storage: StorageService,
   ) {}
 
   private normalizeEmail(email: string) {
@@ -127,7 +130,10 @@ export class AuthService {
     );
   }
 
-  private signAccessToken(user: PublicUser, sessionId: string) {
+  private signAccessToken(
+    user: { id: string; email: string; role: string },
+    sessionId: string,
+  ) {
     const payload: AccessTokenPayload = {
       sub: user.id,
       sid: sessionId,
@@ -138,7 +144,7 @@ export class AuthService {
   }
 
   private async startSession(
-    user: PublicUser,
+    user: PublicUserRow,
     userAgent?: string,
   ): Promise<AuthSession> {
     const { sessionId, refreshToken } = await this.sessions.create(
@@ -147,7 +153,7 @@ export class AuthService {
     );
 
     return {
-      user: toPublicUser(user),
+      user: toPublicUser(user, this.storage),
       accessToken: await this.signAccessToken(user, sessionId),
       refreshToken,
     };
@@ -490,7 +496,7 @@ export class AuthService {
     }
 
     return {
-      user: grant.user,
+      user: toPublicUser(grant.user, this.storage),
       accessToken: await this.signAccessToken(grant.user, grant.sessionId),
       refreshToken: grant.refreshToken,
     };
@@ -510,6 +516,6 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
-    return user;
+    return toPublicUser(user, this.storage);
   }
 }

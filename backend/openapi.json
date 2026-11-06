@@ -667,7 +667,7 @@
             "bearer": []
           }
         ],
-        "summary": "Changes the name, the role or the email setting of the signed-in user.",
+        "summary": "Changes the name, role, introduction, skills or email setting of the\nsigned-in user.",
         "tags": [
           "auth"
         ]
@@ -737,6 +737,158 @@
           }
         ],
         "summary": "Deletes the signed-in user's account after checking the password.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/me/avatar": {
+      "put": {
+        "description": "Send the file as `photo` in a multipart form, up to 5 MB, as\nJPG, PNG, WebP or AVIF. The API stores a square WebP of 256 pixels\nwithout the EXIF data, and deletes the previous photo.",
+        "operationId": "account_setAvatar",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "photo"
+                ],
+                "properties": {
+                  "photo": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicUserDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The file is missing, or it is not a JPG, PNG, WebP or AVIF image (INVALID_IMAGE).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The file is larger than 5 MB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the photo storage is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sets the signed-in user's profile photo.",
+        "tags": [
+          "auth"
+        ]
+      },
+      "delete": {
+        "operationId": "account_removeAvatar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicUserDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the photo storage is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Removes the signed-in user's profile photo.",
         "tags": [
           "auth"
         ]
@@ -3328,6 +3480,20 @@
           "code"
         ]
       },
+      "ListingCategory": {
+        "type": "string",
+        "enum": [
+          "LAWN_MOWING",
+          "CAR_WASH",
+          "MOVING",
+          "IT_HELP",
+          "CLEANING",
+          "ASSEMBLY",
+          "DELIVERY",
+          "OTHER"
+        ],
+        "description": "The kinds of jobs the user does."
+      },
       "PublicUserDto": {
         "type": "object",
         "properties": {
@@ -3338,6 +3504,13 @@
                 "$ref": "#/components/schemas/UserRole"
               }
             ]
+          },
+          "skills": {
+            "type": "array",
+            "description": "The kinds of jobs the user does.",
+            "items": {
+              "$ref": "#/components/schemas/ListingCategory"
+            }
           },
           "id": {
             "type": "string"
@@ -3352,6 +3525,16 @@
             "type": "boolean",
             "description": "Whether the user gets emails about applications and messages."
           },
+          "bio": {
+            "type": "string",
+            "nullable": true,
+            "description": "A short introduction for the public profile."
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "A square WebP image of 256 pixels. Null without a profile photo."
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -3359,10 +3542,13 @@
         },
         "required": [
           "role",
+          "skills",
           "id",
           "email",
           "fullName",
           "emailNotifications",
+          "bio",
+          "avatarUrl",
           "createdAt"
         ]
       },
@@ -3475,6 +3661,14 @@
               }
             ]
           },
+          "skills": {
+            "type": "array",
+            "description": "The kinds of jobs the user does. Repeated values count once.",
+            "maxItems": 8,
+            "items": {
+              "$ref": "#/components/schemas/ListingCategory"
+            }
+          },
           "fullName": {
             "type": "string",
             "minLength": 2,
@@ -3483,6 +3677,11 @@
           "emailNotifications": {
             "type": "boolean",
             "description": "Whether to get emails about applications and messages."
+          },
+          "bio": {
+            "type": "string",
+            "description": "A short introduction for the public profile. An empty one removes it.",
+            "maxLength": 500
           }
         }
       },
@@ -3515,19 +3714,6 @@
         },
         "required": [
           "password"
-        ]
-      },
-      "ListingCategory": {
-        "type": "string",
-        "enum": [
-          "LAWN_MOWING",
-          "CAR_WASH",
-          "MOVING",
-          "IT_HELP",
-          "CLEANING",
-          "ASSEMBLY",
-          "DELIVERY",
-          "OTHER"
         ]
       },
       "ListingLocation": {
@@ -4410,11 +4596,28 @@
       "UserProfileDto": {
         "type": "object",
         "properties": {
+          "skills": {
+            "type": "array",
+            "description": "The kinds of jobs the user does.",
+            "items": {
+              "$ref": "#/components/schemas/ListingCategory"
+            }
+          },
           "id": {
             "type": "string"
           },
           "fullName": {
             "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "A square WebP image of 256 pixels. Null without a profile photo."
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true,
+            "description": "A short introduction written by the user."
           },
           "createdAt": {
             "format": "date-time",
@@ -4431,8 +4634,11 @@
           }
         },
         "required": [
+          "skills",
           "id",
           "fullName",
+          "avatarUrl",
+          "bio",
           "createdAt",
           "rating"
         ]

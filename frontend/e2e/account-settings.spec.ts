@@ -11,8 +11,19 @@ const user = {
   fullName: 'Amra Hodžić',
   role: 'CLIENT',
   emailNotifications: true,
+  bio: null as string | null,
+  skills: [] as string[],
+  avatarUrl: null as string | null,
   createdAt: '2026-09-15T12:00:00.000Z',
 };
+
+const AVATAR_URL = 'https://photos.test/avatars/user-e2e-1/avatar-1.webp';
+
+// A 1x1 PNG.
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYPj/HwADAgH/mZtZ4wAAAABJRU5ErkJggg==',
+  'base64',
+);
 
 const emptyPage = { items: [], total: 0, page: 1, limit: 10, totalPages: 0 };
 
@@ -76,6 +87,24 @@ async function mockAccountApi(page: Page) {
     state.deleted = true;
     return route.fulfill({ status: 204 });
   });
+  await page.route(apiRoute('/auth/me/avatar$'), (route) => {
+    const request = route.request();
+    const method = request.method();
+    state.requests.push({
+      method,
+      path: '/auth/me/avatar',
+      // Only that a file was sent matters here.
+      body: method === 'PUT' ? request.postDataBuffer()?.length : undefined,
+    });
+    state.user = {
+      ...state.user,
+      avatarUrl: method === 'PUT' ? AVATAR_URL : null,
+    };
+    return route.fulfill(json(state.user));
+  });
+  await page.route(AVATAR_URL, (route) =>
+    route.fulfill({ status: 200, contentType: 'image/png', body: PNG }),
+  );
 
   return state;
 }
@@ -97,7 +126,7 @@ test('changes the name and the role', async ({ page }) => {
     {
       method: 'PATCH',
       path: '/auth/me',
-      body: { fullName: 'Amra H.', role: 'BOTH' },
+      body: { fullName: 'Amra H.', role: 'BOTH', bio: '', skills: [] },
     },
   ]);
   // The navbar shows the new name right away.
@@ -105,6 +134,64 @@ test('changes the name and the role', async ({ page }) => {
     page.getByRole('button', { name: /Amra H\./ }).first(),
   ).toBeVisible();
   await expect(save).toBeDisabled();
+});
+
+test('writes an introduction and picks the jobs', async ({ page }) => {
+  const state = await mockAccountApi(page);
+  await page.goto('/settings');
+
+  const save = page.getByRole('button', { name: 'Sačuvaj promjene' });
+  await page.getByLabel('O meni').fill('  Imam kombi i radim vikendom.  ');
+  await page.getByText('Selidbe').click();
+  await page.getByText('Montaža').click();
+  await page.getByText('Košenje trave').click();
+  // A second click takes a job off again.
+  await page.getByText('Montaža').click();
+  await expect(page.getByRole('checkbox', { name: 'Selidbe' })).toBeChecked();
+  await save.click();
+
+  await expect(page.getByText('Profil je sačuvan.')).toBeVisible();
+  expect(state.requests.at(-1)?.body).toEqual({
+    fullName: user.fullName,
+    role: user.role,
+    bio: 'Imam kombi i radim vikendom.',
+    // In the order of the list, not of the clicks.
+    skills: ['LAWN_MOWING', 'MOVING'],
+  });
+  await expect(save).toBeDisabled();
+});
+
+test('adds and removes the profile photo', async ({ page }) => {
+  const state = await mockAccountApi(page);
+  await page.goto('/settings');
+
+  const photoInput = page.getByLabel('Odaberi sliku profila');
+  await photoInput.setInputFiles({
+    name: 'dokument.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF'),
+  });
+  await expect(
+    page.getByText('dokument.pdf: slika mora biti JPG, PNG, WebP ili AVIF'),
+  ).toBeVisible();
+  expect(state.requests).toEqual([]);
+
+  await photoInput.setInputFiles({
+    name: 'ja.png',
+    mimeType: 'image/png',
+    buffer: PNG,
+  });
+  await expect(page.getByText('Slika profila je sačuvana.')).toBeVisible();
+  expect(state.requests).toEqual([
+    { method: 'PUT', path: '/auth/me/avatar', body: expect.any(Number) },
+  ]);
+  // The navbar shows the photo too.
+  await expect(page.locator(`img[src="${AVATAR_URL}"]`)).toHaveCount(2);
+
+  await page.getByRole('button', { name: 'Ukloni' }).click();
+  await expect(page.getByText('Slika profila je uklonjena.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Dodaj sliku' })).toBeVisible();
+  await expect(page.locator(`img[src="${AVATAR_URL}"]`)).toHaveCount(0);
 });
 
 test('turns the email notifications off and on', async ({ page }) => {

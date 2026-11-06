@@ -3,6 +3,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
 import { CalendarDays, Star } from 'lucide-react';
+import { UserAvatar } from '@/components/user-avatar';
+import { CATEGORY_LABELS } from '@/features/listings/constants';
 import { ratingsApi } from '@/features/ratings/api';
 import { RatingStars } from '@/features/ratings/components/rating-stars';
 import { UserRatings } from '@/features/ratings/components/user-ratings';
@@ -67,9 +69,11 @@ export default async function UserProfilePage({ params }: PageProps) {
       <div className="mx-auto max-w-3xl space-y-6">
         <section className="rounded-2xl border bg-white p-6 shadow-sm sm:p-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-            <span className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-primary text-2xl font-bold text-white">
-              {profile.fullName.charAt(0).toUpperCase()}
-            </span>
+            <UserAvatar
+              name={profile.fullName}
+              url={profile.avatarUrl}
+              className="size-16 rounded-2xl bg-primary text-2xl font-bold text-white"
+            />
             <div className="min-w-0 flex-1">
               <h1 className="truncate text-2xl font-bold tracking-tight">
                 {profile.fullName}
@@ -104,6 +108,34 @@ export default async function UserProfilePage({ params }: PageProps) {
               )}
             </div>
           </div>
+
+          {profile.bio || profile.skills.length > 0 ? (
+            <div className="mt-6 space-y-4 border-t pt-6">
+              {profile.bio ? (
+                <div>
+                  <h2 className="text-sm font-semibold">O meni</h2>
+                  <p className="mt-1.5 text-sm leading-6 whitespace-pre-line text-muted-foreground">
+                    {profile.bio}
+                  </p>
+                </div>
+              ) : null}
+              {profile.skills.length > 0 ? (
+                <div>
+                  <h2 className="text-sm font-semibold">Poslovi koje radi</h2>
+                  <ul className="mt-2 flex flex-wrap gap-2">
+                    {profile.skills.map((skill) => (
+                      <li
+                        key={skill}
+                        className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
+                      >
+                        {CATEGORY_LABELS[skill]}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </section>
 
         <section aria-labelledby="ratings-title" className="space-y-3">

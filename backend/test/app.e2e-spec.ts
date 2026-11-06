@@ -120,7 +120,7 @@ describe('App (e2e)', () => {
   async function signedInUser(fullName?: string) {
     const user = await createUser(prisma, { fullName });
     const { accessToken } = await login(user.email);
-    return { user, auth: `Bearer ${accessToken}` };
+    return { user, accessToken, auth: `Bearer ${accessToken}` };
   }
 
   function refresh(cookie?: string) {
@@ -268,6 +268,9 @@ describe('App (e2e)', () => {
           fullName: user.fullName,
           role: user.role,
           emailNotifications: true,
+          bio: null,
+          skills: [],
+          avatarUrl: null,
           createdAt: user.createdAt.toISOString(),
         },
         accessToken,
@@ -1162,6 +1165,9 @@ describe('App (e2e)', () => {
       expect(profile.body).toEqual({
         id: executor.user.id,
         fullName: 'Kenan Mehić',
+        avatarUrl: null,
+        bio: null,
+        skills: [],
         createdAt: expect.any(String) as unknown,
         rating: { average: 4, count: 1 },
       });
@@ -1500,6 +1506,109 @@ describe('App (e2e)', () => {
       await http().patch('/api/auth/me').send({ fullName: 'Amra' }).expect(401);
     });
 
+    it('shows the introduction and skills on the public profile', async () => {
+      const { auth, user } = await signedInUser();
+
+      const response = await updateProfile(auth, {
+        bio: '  Kosim travu i montiram namještaj.  ',
+        skills: ['LAWN_MOWING', 'ASSEMBLY', 'LAWN_MOWING'],
+      }).expect(200);
+
+      expect(response.body).toMatchObject({
+        bio: 'Kosim travu i montiram namještaj.',
+        skills: ['LAWN_MOWING', 'ASSEMBLY'],
+      });
+      const profile = await http().get(`/api/users/${user.id}`).expect(200);
+      expect(profile.body).toMatchObject({
+        bio: 'Kosim travu i montiram namještaj.',
+        skills: ['LAWN_MOWING', 'ASSEMBLY'],
+      });
+
+      // An empty introduction removes it; no skills clears them.
+      await updateProfile(auth, { bio: '  ', skills: [] }).expect(200);
+      const cleared = await http().get(`/api/users/${user.id}`).expect(200);
+      expect(cleared.body).toMatchObject({ bio: null, skills: [] });
+
+      await updateProfile(auth, { bio: 'a'.repeat(501) }).expect(400);
+      await updateProfile(auth, { skills: ['FLYING'] }).expect(400);
+      await updateProfile(auth, { skills: 'MOVING' }).expect(400);
+    });
+
+    describe('profile photo', () => {
+      let jpeg: Buffer;
+
+      beforeAll(async () => {
+        jpeg = await sharp({
+          create: { width: 900, height: 600, channels: 3, background: '#fff' },
+        })
+          .jpeg()
+          .toBuffer();
+      });
+
+      function setAvatar(auth: string, file: Buffer = jpeg) {
+        return http()
+          .put('/api/auth/me/avatar')
+          .set('Authorization', auth)
+          .attach('photo', file, {
+            filename: 'ja.jpg',
+            contentType: 'image/jpeg',
+          });
+      }
+
+      it('replaces and removes the photo with its file', async () => {
+        const { auth, user, accessToken } = await signedInUser();
+        const url = new RegExp(
+          String.raw`^https://photos\.test/avatars/${user.id}/[0-9a-f-]{36}\.webp$`,
+        );
+
+        type WithAvatar = { avatarUrl: string | null };
+        const avatarOf = (response: { body: unknown }) =>
+          (response.body as WithAvatar).avatarUrl;
+
+        const first = avatarOf(await setAvatar(auth).expect(200));
+        expect(first).toMatch(url);
+        const key = first!.slice('https://photos.test/'.length);
+        expect(storage.files.get(key)?.contentType).toBe('image/webp');
+        expect(
+          await sharp(storage.files.get(key)?.body).metadata(),
+        ).toMatchObject({ format: 'webp', width: 256, height: 256 });
+
+        const second = avatarOf(await setAvatar(auth).expect(200));
+        expect(second).toMatch(url);
+        expect(second).not.toBe(first);
+        expect(storage.files.size).toBe(1);
+        const profile = await http().get(`/api/users/${user.id}`).expect(200);
+        expect(avatarOf(profile)).toBe(second);
+        expect(avatarOf(await me(accessToken).expect(200))).toBe(second);
+
+        const removed = await http()
+          .delete('/api/auth/me/avatar')
+          .set('Authorization', auth)
+          .expect(200);
+        expect(avatarOf(removed)).toBeNull();
+        expect(storage.files.size).toBe(0);
+      });
+
+      it('refuses a missing file or one that is not an image', async () => {
+        const { auth } = await signedInUser();
+
+        const invalid = await setAvatar(
+          auth,
+          Buffer.from('not an image'),
+        ).expect(400);
+        expect(invalid.body).toMatchObject({ code: 'INVALID_IMAGE' });
+        await http()
+          .put('/api/auth/me/avatar')
+          .set('Authorization', auth)
+          .expect(400);
+        await http()
+          .put('/api/auth/me/avatar')
+          .attach('photo', jpeg, 'ja.jpg')
+          .expect(401);
+        expect(storage.files.size).toBe(0);
+      });
+    });
+
     it('changes the password and signs out the other devices', async () => {
       const user = await createUser(prisma);
       const current = await login(user.email);
@@ -1574,6 +1683,25 @@ describe('App (e2e)', () => {
           { filename: 'a.jpg', contentType: 'image/jpeg' },
         )
         .expect(201);
+      await http()
+        .put('/api/auth/me/avatar')
+        .set('Authorization', auth)
+        .attach(
+          'photo',
+          await sharp({
+            create: {
+              width: 300,
+              height: 300,
+              channels: 3,
+              background: '#fff',
+            },
+          })
+            .png()
+            .toBuffer(),
+          'ja.png',
+        )
+        .expect(200);
+      expect(storage.files.size).toBe(3);
       await http()
         .post('/api/conversations')
         .set('Authorization', executor.auth)

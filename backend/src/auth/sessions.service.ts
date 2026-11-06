@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Prisma, SessionRevocationReason } from '../generated/prisma/client.js';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { PUBLIC_USER_SELECT, type PublicUser } from './public-user.js';
+import { PUBLIC_USER_SELECT, type PublicUserRow } from './public-user.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -22,7 +22,7 @@ export type IssuedRefreshToken = { value: string; expiresAt: Date };
 
 export type SessionGrant = {
   sessionId: string;
-  user: PublicUser;
+  user: PublicUserRow;
   // null when another request already rotated the presented token: the
   // client keeps the cookie that request set.
   refreshToken: IssuedRefreshToken | null;
