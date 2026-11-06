@@ -11,6 +11,7 @@ import {
   Menu,
   Send,
   Settings,
+  ShieldCheck,
   UserRound,
   X,
 } from 'lucide-react';
@@ -75,10 +76,15 @@ const workspaceLinks = [
   { href: '/settings', label: 'Postavke naloga', icon: Settings },
 ];
 
+const adminLink = { href: '/admin', label: 'Prijave', icon: ShieldCheck };
+
 export function Navbar() {
   const { user, status, logout, openAuthModal, openRegistrationModal } =
     useAuthStore();
   const unread = useUnreadCount();
+  const menuLinks = user?.isAdmin
+    ? [...workspaceLinks, adminLink]
+    : workspaceLinks;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -154,7 +160,7 @@ export function Navbar() {
                       </p>
                     </div>
                     <div className="py-1.5">
-                      {workspaceLinks.map((item) => {
+                      {menuLinks.map((item) => {
                         const Icon = item.icon;
 
                         return (
@@ -262,7 +268,7 @@ export function Navbar() {
                 </p>
               </div>
               <MessagesLink unread={unread} onClick={closeMenu} />
-              {workspaceLinks.map((item) => (
+              {menuLinks.map((item) => (
                 <NavLink
                   key={item.href}
                   href={item.href}

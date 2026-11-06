@@ -14,5 +14,6 @@ import { SavedListingsController } from './saved-listings.controller.js';
     SavedListingsController,
   ],
   providers: [ListingsService, ListingPhotosService],
+  exports: [ListingsService],
 })
 export class ListingsModule {}

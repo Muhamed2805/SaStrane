@@ -81,13 +81,14 @@ of date.
 
 | Folder | Contents |
 | --- | --- |
-| `app/` | Routes: `/`, `/listings`, `/listings/[id]`, `/listings/create`, `/listings/[id]/edit`, `/inbox`, `/messages`, `/messages/[id]`, `/users/[id]`, `/profile`, `/settings`, `/login` |
+| `app/` | Routes: `/`, `/listings`, `/listings/[id]`, `/listings/create`, `/listings/[id]/edit`, `/inbox`, `/messages`, `/messages/[id]`, `/users/[id]`, `/profile`, `/settings`, `/admin`, `/login` |
 | `features/auth/` | The session: an in-memory access token, refresh on reload and on 401, and tab sync |
 | `features/account/` | Account settings: profile photo, name, role, introduction and skills, email notifications, password change and account deletion |
 | `features/listings/` | The job list, detail, form, photos and API calls, and the names for the category and location codes |
 | `features/applications/` | Applying and the workspace |
 | `features/messages/` | Conversations, the unread count and the message thread |
 | `features/ratings/` | The rating dialog, stars and the public profile's reviews |
+| `features/moderation/` | The report button and dialog, and the admin page with the reports |
 | `features/landing/` | Home page sections |
 | `components/` | Navbar, footer, auth provider and UI primitives |
 | `lib/` | API and query clients, paging helpers, site metadata, generated API types, API URL, and date and price formatting |

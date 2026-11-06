@@ -94,6 +94,14 @@ be both.
 - Delete the account with the password. This also deletes the user's jobs
   and their photos, applications, conversations and ratings.
 
+**Moderation**
+- Report a job or a user with a reason and an optional description. Only
+  admins see who sent the report.
+- Admins handle the reports on their own page: mark them resolved or
+  dismissed, delete the job, or suspend the account. A suspended account is
+  signed out, its open jobs close, and it cannot sign in until an admin
+  lifts the suspension.
+
 ## Screenshots
 
 <table>
@@ -250,6 +258,8 @@ erDiagram
   Listing ||--o{ ListingPhoto : shows
   User ||--o{ SavedListing : saves
   Listing ||--o{ SavedListing : "is saved in"
+  User ||--o{ Report : "sends or receives"
+  Listing |o--o{ Report : "is reported in"
 
   User {
     string id PK
@@ -257,6 +267,8 @@ erDiagram
     string fullName
     UserRole role "CLIENT, EXECUTOR or BOTH"
     datetime emailVerifiedAt
+    boolean isAdmin
+    datetime suspendedAt
   }
   Listing {
     string id PK
@@ -325,6 +337,16 @@ erDiagram
     string listingId PK
     datetime createdAt "orders the saved list"
   }
+  Report {
+    string id PK
+    string reporterId FK
+    string reportedUserId FK "the job's client for a job report"
+    string listingId FK "null for a user report or a deleted job"
+    string listingTitle "kept from the job"
+    ReportReason reason "SPAM, SCAM, INAPPROPRIATE or OTHER"
+    ReportStatus status "OPEN, RESOLVED or DISMISSED"
+    string handledById FK
+  }
 ```
 
 ## Tech stack
@@ -345,7 +367,7 @@ erDiagram
 SaStrane/
 ├── backend/                 NestJS API
 │   ├── prisma/              Schema, migrations and demo seed
-│   ├── scripts/             Creates the photo bucket
+│   ├── scripts/             Creates the photo bucket, sets admins
 │   ├── src/
 │   │   ├── auth/            Sign-up, email codes, sessions, JWT
 │   │   ├── email/           Transactional emails through Resend
@@ -354,6 +376,7 @@ SaStrane/
 │   │   ├── applications/    Applications to jobs
 │   │   ├── conversations/   Messages between clients and executors
 │   │   ├── ratings/         Ratings and public user profiles
+│   │   ├── moderation/      Reports and the admin routes
 │   │   ├── common/          Error filters and transforms
 │   │   ├── config/          Environment validation, CORS
 │   │   ├── openapi/         Generates the API contract
@@ -362,7 +385,7 @@ SaStrane/
 │   └── openapi.json         The API contract
 ├── frontend/                Next.js app
 │   ├── app/                 Routes
-│   ├── features/            Auth, listings, applications, messages, ratings, landing
+│   ├── features/            Auth, listings, applications, messages, ratings, moderation, landing
 │   ├── components/          Shared UI
 │   ├── lib/                 API and query clients, generated API types, formatting
 │   └── e2e/                 Playwright tests
@@ -403,8 +426,9 @@ npm run start:dev
 
 The example `.env` works with the Docker containers as it is.
 `npm run storage:init` creates the photo bucket. The seed adds
-demo users, jobs with photos, applications, ratings and messages. Sign in as `amra@example.com` with the
-password `demo-password-123`. Email codes for new accounts are printed in
+demo users, jobs with photos, applications, ratings, messages and a
+report. Sign in as `amra@example.com` with the password
+`demo-password-123`, or as `admin@example.com` to see the admin page. Email codes for new accounts are printed in
 the backend terminal while `RESEND_API_KEY` is empty.
 
 **3. Frontend.** It runs on <http://localhost:3000>.

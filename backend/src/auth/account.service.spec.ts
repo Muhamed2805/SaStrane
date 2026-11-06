@@ -46,6 +46,7 @@ describe('AccountService', () => {
     bio: null,
     skills: [],
     avatarId: 'avatar-new',
+    isAdmin: false,
     createdAt: new Date('2026-11-01T12:00:00Z'),
   };
 

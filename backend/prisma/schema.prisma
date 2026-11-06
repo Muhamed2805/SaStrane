@@ -60,6 +60,20 @@ enum SessionRevocationReason {
   PASSWORD_RESET
   PASSWORD_CHANGE
   TOKEN_REUSE
+  SUSPENDED
+}
+
+enum ReportReason {
+  SPAM
+  SCAM
+  INAPPROPRIATE
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
 }
 
 model User {
@@ -79,6 +93,10 @@ model User {
   // The current profile photo. Its file lives in S3 storage under a key
   // made from the user and avatar IDs (see src/auth/avatar.ts).
   avatarId           String?
+  // Admins handle reports. Set with `npm run admin`.
+  isAdmin            Boolean           @default(false)
+  // A suspended user cannot sign in. Suspending ends every session.
+  suspendedAt        DateTime?
 
   emailVerificationCodeHash  String?
   emailVerificationExpiresAt DateTime?
@@ -102,6 +120,9 @@ model User {
   receivedRatings       Rating[]       @relation("ReceivedRatings")
   givenRatings          Rating[]       @relation("GivenRatings")
   savedListings         SavedListing[]
+  reportsSent           Report[]       @relation("ReportsSent")
+  reportsReceived       Report[]       @relation("ReportsReceived")
+  reportsHandled        Report[]       @relation("ReportsHandled")
 }
 
 // One signed-in browser or device. It ends at expiresAt even when it stays
@@ -159,6 +180,7 @@ model Listing {
   ratings       Rating[]
   photos        ListingPhoto[]
   savedBy       SavedListing[]
+  reports       Report[]
 
   @@index([status, createdAt])
   @@index([clientId, createdAt])
@@ -278,6 +300,34 @@ model Rating {
 
   @@index([executorId, createdAt])
   @@index([listingId])
+}
+
+// A report about a job or a user. reportedUserId is the user, or the job's
+// client. Deleting the job clears listingId, and listingTitle keeps the name.
+model Report {
+  id             String       @id @default(cuid())
+  reporterId     String
+  reportedUserId String
+  listingId      String?
+  listingTitle   String?
+  reason         ReportReason
+  details        String?
+  status         ReportStatus @default(OPEN)
+  handledById    String?
+  handledAt      DateTime?
+
+  createdAt DateTime @default(now())
+
+  reporter     User     @relation("ReportsSent", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedUser User     @relation("ReportsReceived", fields: [reportedUserId], references: [id], onDelete: Cascade)
+  listing      Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  handledBy    User?    @relation("ReportsHandled", fields: [handledById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([reporterId])
+  @@index([reportedUserId])
+  @@index([listingId])
+  @@index([handledById])
 }
 
 // A photo of a job, at most five per job. The image files live in S3

@@ -1,6 +1,7 @@
-// Demo data for local development: four users, ten jobs, seven photos,
-// seven applications, two ratings and three conversations, with Bosnian
-// text as in real use. Every demo user signs in with the password below.
+// Demo data for local development: four users and an admin, ten jobs,
+// seven photos, seven applications, two ratings, three conversations and
+// one open report, with Bosnian text as in real use. Every demo user signs
+// in with the password below.
 //
 // Run it with `npx prisma db seed`. It upserts fixed IDs, so a second run
 // changes nothing, and it never deletes data. The photos need the storage
@@ -18,6 +19,7 @@ import {
   ListingCategory,
   ListingLocation,
   ListingStatus,
+  ReportReason,
 } from '../src/generated/prisma/enums.js';
 import { processPhoto } from '../src/listings/photos/photo-image.js';
 import { photoKeys } from '../src/listings/photos/photo-keys.js';
@@ -50,6 +52,13 @@ const users = [
       ListingCategory.LAWN_MOWING,
       ListingCategory.DELIVERY,
     ],
+  },
+  // Handles reports on /admin.
+  {
+    id: 'seed-user-admin',
+    email: 'admin@example.com',
+    fullName: 'Moderator SaStrane',
+    isAdmin: true,
   },
 ];
 
@@ -536,10 +545,27 @@ async function main() {
       });
     }
 
+    // Kenan reports a job, so the admin page has something to show.
+    await prisma.report.upsert({
+      where: { id: 'seed-report-tv' },
+      update: {},
+      create: {
+        id: 'seed-report-tv',
+        reporterId: 'seed-user-kenan',
+        reportedUserId: 'seed-user-tarik',
+        listingId: 'seed-listing-tv',
+        listingTitle: 'Montaža TV-a na zid i sređivanje kablova',
+        reason: ReportReason.SPAM,
+        details: 'Isti oglas je objavljen dva puta pod drugim naslovom.',
+        createdAt: hoursAgo(5),
+      },
+    });
+
     console.log(
-      `Seeded ${users.length} users, ${listings.length} jobs, ${addedPhotos === null ? 0 : photos.length} photos, ${applications.length} applications, ${ratings.length} ratings and ${conversations.length} conversations.`,
+      `Seeded ${users.length} users, ${listings.length} jobs, ${addedPhotos === null ? 0 : photos.length} photos, ${applications.length} applications, ${ratings.length} ratings and ${conversations.length} conversations and 1 report.`,
     );
     console.log(`Sign in as amra@example.com with ${DEMO_PASSWORD}.`);
+    console.log('Sign in as admin@example.com to handle reports.');
   } finally {
     await prisma.$disconnect();
   }

@@ -216,6 +216,7 @@ export default async function ListingDetailsPage({ params }: PageProps) {
                 listingId={listing.id}
                 clientId={listing.client.id}
                 status={listing.status}
+                title={listing.title}
               />
               <div className="mt-5 flex gap-3 rounded-xl bg-primary/[0.06] p-4">
                 <ShieldCheck

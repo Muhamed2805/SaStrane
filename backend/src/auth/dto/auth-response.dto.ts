@@ -30,6 +30,9 @@ export class PublicUserDto {
   /** A square WebP image of 256 pixels. Null without a profile photo. */
   avatarUrl!: string | null;
 
+  /** Whether the user can handle reports under /api/admin. */
+  isAdmin!: boolean;
+
   createdAt!: Date;
 }
 

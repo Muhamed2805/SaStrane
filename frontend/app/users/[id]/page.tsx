@@ -5,6 +5,7 @@ import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
 import { CalendarDays, Star } from 'lucide-react';
 import { UserAvatar } from '@/components/user-avatar';
 import { CATEGORY_LABELS } from '@/features/listings/constants';
+import { ReportButton } from '@/features/moderation/components/report-button';
 import { ratingsApi } from '@/features/ratings/api';
 import { RatingStars } from '@/features/ratings/components/rating-stars';
 import { UserRatings } from '@/features/ratings/components/user-ratings';
@@ -137,6 +138,13 @@ export default async function UserProfilePage({ params }: PageProps) {
             </div>
           ) : null}
         </section>
+        <div className="flex justify-end">
+          <ReportButton
+            target={{ userId: profile.id }}
+            ownerId={profile.id}
+            subject={profile.fullName}
+          />
+        </div>
 
         <section aria-labelledby="ratings-title" className="space-y-3">
           <h2 id="ratings-title" className="text-lg font-bold">

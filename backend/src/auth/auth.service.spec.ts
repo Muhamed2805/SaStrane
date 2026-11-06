@@ -123,6 +123,8 @@ describe('AuthService', () => {
     bio: 'Kosim travu vikendom.',
     skills: [ListingCategory.LAWN_MOWING],
     avatarId: 'avatar-1',
+    isAdmin: false,
+    suspendedAt: null as Date | null,
     emailVerifiedAt: new Date('2026-09-15T12:00:00.000Z'),
     passwordHash: 'stored-password-hash',
     emailVerificationCodeHash: null,
@@ -143,6 +145,7 @@ describe('AuthService', () => {
     bio: user.bio,
     skills: user.skills,
     avatarId: user.avatarId,
+    isAdmin: false,
     createdAt: user.createdAt,
   };
   const publicUser = {
@@ -154,6 +157,7 @@ describe('AuthService', () => {
     bio: user.bio,
     skills: user.skills,
     avatarUrl: 'https://files.test/avatars/user-1/avatar-1.webp',
+    isAdmin: false,
     createdAt: user.createdAt,
   };
 
@@ -346,6 +350,22 @@ describe('AuthService', () => {
       ).rejects.toThrow(UnauthorizedException);
 
       expect(jwtService.signAsync).not.toHaveBeenCalled();
+      expect(sessionsService.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a suspended account after checking the password', async () => {
+      userRepository.findUnique.mockResolvedValue({
+        ...user,
+        suspendedAt: new Date('2026-11-06T12:00:00.000Z'),
+      });
+      compareMock.mockResolvedValue(true);
+
+      await expect(
+        service.login({ email: user.email, password: 'secure-password' }),
+      ).rejects.toMatchObject({
+        response: { code: 'ACCOUNT_SUSPENDED' },
+      });
+
       expect(sessionsService.create).not.toHaveBeenCalled();
     });
 
@@ -722,6 +742,7 @@ describe('AuthService', () => {
           bio: true,
           skills: true,
           avatarId: true,
+          isAdmin: true,
           createdAt: true,
         },
       });

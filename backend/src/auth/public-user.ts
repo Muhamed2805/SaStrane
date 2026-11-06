@@ -12,6 +12,7 @@ export const PUBLIC_USER_SELECT = {
   bio: true,
   skills: true,
   avatarId: true,
+  isAdmin: true,
   createdAt: true,
 } satisfies Prisma.UserSelect;
 
@@ -38,6 +39,7 @@ export function toPublicUser(
     bio: user.bio,
     skills: user.skills,
     avatarUrl: avatarUrl(storage, user),
+    isAdmin: user.isAdmin,
     createdAt: user.createdAt,
   };
 }

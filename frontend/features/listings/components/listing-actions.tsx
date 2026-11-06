@@ -21,6 +21,7 @@ import { useApplicationsStore } from '@/features/applications/store';
 import { listingsApi, type ListingStatus } from '@/features/listings/api';
 import { listingKeys, listingSaved } from '@/features/listings/queries';
 import { useOpenConversation } from '@/features/messages/hooks';
+import { ReportButton } from '@/features/moderation/components/report-button';
 import { SaveListingButton } from '@/features/saved-listings/components/save-listing-button';
 import { cn } from '@/lib/utils';
 
@@ -28,12 +29,14 @@ type ListingActionsProps = {
   listingId: string;
   clientId: string;
   status: ListingStatus;
+  title: string;
 };
 
 export function ListingActions({
   listingId,
   clientId,
   status,
+  title,
 }: ListingActionsProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -190,6 +193,14 @@ export function ListingActions({
         clientId={clientId}
         variant="full"
       />
+
+      <div className="flex justify-center pt-1">
+        <ReportButton
+          target={{ listingId }}
+          ownerId={clientId}
+          subject={title}
+        />
+      </div>
     </div>
   );
 }

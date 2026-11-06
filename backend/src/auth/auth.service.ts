@@ -52,6 +52,14 @@ const PASSWORD_RESET_CODE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const PASSWORD_RESET_RESEND_COOLDOWN_MS = 60 * 1000; // 1 minute
 const MAX_PASSWORD_RESET_ATTEMPTS = 5;
 
+// An admin suspended the account (see ModerationService).
+function accountSuspended() {
+  return new ForbiddenException({
+    code: 'ACCOUNT_SUSPENDED',
+    message: 'Ovaj nalog je suspendovan.',
+  });
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -237,6 +245,8 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    if (user.suspendedAt) throw accountSuspended();
+
     if (!user.emailVerifiedAt) {
       throw new ForbiddenException({
         code: 'EMAIL_NOT_VERIFIED',
@@ -262,6 +272,8 @@ export class AuthService {
     ) {
       throw new BadRequestException('Kod nije ispravan ili je istekao.');
     }
+
+    if (user.suspendedAt) throw accountSuspended();
 
     if (user.emailVerificationExpiresAt <= new Date()) {
       throw new BadRequestException('Kod je istekao. Zatraži novi kod.');

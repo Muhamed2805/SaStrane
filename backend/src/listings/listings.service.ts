@@ -160,10 +160,15 @@ export class ListingsService {
     return this.toListing(listing);
   }
 
-  // The photo rows go with the job. Their files are deleted after it.
   async delete(id: string, userId: string) {
     await this.assertOwner(id, userId);
+    await this.remove(id);
+  }
 
+  // Deletes the job without checking the owner, for the owner and for
+  // moderation. The photo rows go with the job. Their files are deleted
+  // after it.
+  async remove(id: string) {
     const photos = await this.prisma.$transaction(async (tx) => {
       const rows = await tx.listingPhoto.findMany({
         where: { listingId: id },

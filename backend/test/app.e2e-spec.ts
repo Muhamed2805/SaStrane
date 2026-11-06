@@ -271,6 +271,7 @@ describe('App (e2e)', () => {
           bio: null,
           skills: [],
           avatarUrl: null,
+          isAdmin: false,
           createdAt: user.createdAt.toISOString(),
         },
         accessToken,
@@ -677,6 +678,182 @@ describe('App (e2e)', () => {
           .expect(204);
       }
       expect(await savedIds(executor.auth)).toEqual([]);
+    });
+  });
+
+  describe('moderation', () => {
+    type Report = {
+      id: string;
+      status: string;
+      listing: { id: string | null; title: string } | null;
+    };
+
+    async function signedInAdmin() {
+      const admin = await signedInUser('Admin SaStrane');
+      await prisma.user.update({
+        where: { id: admin.user.id },
+        data: { isAdmin: true },
+      });
+      return admin;
+    }
+
+    const report = (auth: string, body: object) =>
+      http().post('/api/reports').set('Authorization', auth).send(body);
+
+    const openReports = async (auth: string) =>
+      (
+        await http()
+          .get('/api/admin/reports?status=OPEN')
+          .set('Authorization', auth)
+          .expect(200)
+      ).body as { items: Report[]; total: number };
+
+    it('takes one open report per user and target', async () => {
+      const client = await signedInUser('Amra Hodžić');
+      const reporter = await signedInUser('Kenan Mehić');
+      const { id: listingId } = await postListing(client.auth);
+
+      await http().post('/api/reports').send({}).expect(401);
+      await report(reporter.auth, {
+        listingId,
+        reason: 'SCAM',
+        details: '  Traži uplatu unaprijed.  ',
+      }).expect(204);
+      const again = await report(reporter.auth, {
+        listingId,
+        reason: 'SPAM',
+      }).expect(409);
+      expect(again.body).toMatchObject({ code: 'ALREADY_REPORTED' });
+      // The client is a separate target from their job.
+      await report(reporter.auth, {
+        userId: client.user.id,
+        reason: 'OTHER',
+      }).expect(204);
+
+      await report(client.auth, { listingId, reason: 'SPAM' }).expect(403);
+      await report(reporter.auth, {
+        userId: reporter.user.id,
+        reason: 'SPAM',
+      }).expect(403);
+      await report(reporter.auth, { reason: 'SPAM' }).expect(400);
+      await report(reporter.auth, {
+        listingId,
+        userId: client.user.id,
+        reason: 'SPAM',
+      }).expect(400);
+      await report(reporter.auth, {
+        userId: 'missing',
+        reason: 'SPAM',
+      }).expect(404);
+    });
+
+    it('lets only admins see and handle reports', async () => {
+      const client = await signedInUser('Amra Hodžić');
+      const reporter = await signedInUser('Kenan Mehić');
+      const admin = await signedInAdmin();
+      const { id: listingId } = await postListing(client.auth);
+      await report(reporter.auth, {
+        listingId,
+        reason: 'SCAM',
+        details: 'Traži uplatu unaprijed.',
+      }).expect(204);
+
+      await http()
+        .get('/api/admin/reports')
+        .set('Authorization', reporter.auth)
+        .expect(403);
+      expect((await me(admin.accessToken)).body).toMatchObject({
+        isAdmin: true,
+      });
+
+      const { items } = await openReports(admin.auth);
+      expect(items).toMatchObject([
+        {
+          reason: 'SCAM',
+          details: 'Traži uplatu unaprijed.',
+          status: 'OPEN',
+          reporter: { id: reporter.user.id, fullName: 'Kenan Mehić' },
+          reportedUser: { id: client.user.id, suspended: false },
+          listing: { id: listingId, status: 'OPEN' },
+          handledBy: null,
+        },
+      ]);
+
+      const handle = (status: string) =>
+        http()
+          .patch(`/api/admin/reports/${items[0].id}`)
+          .set('Authorization', admin.auth)
+          .send({ status });
+      const dismissed = await handle('DISMISSED').expect(200);
+      expect(dismissed.body).toMatchObject({
+        status: 'DISMISSED',
+        handledBy: { id: admin.user.id },
+      });
+      const twice = await handle('RESOLVED').expect(409);
+      expect(twice.body).toMatchObject({ code: 'REPORT_ALREADY_HANDLED' });
+      await handle('OPEN').expect(400);
+      expect((await openReports(admin.auth)).total).toBe(0);
+    });
+
+    it('deletes a reported job and keeps its title on the report', async () => {
+      const client = await signedInUser();
+      const reporter = await signedInUser();
+      const admin = await signedInAdmin();
+      const { id: listingId } = await postListing(client.auth);
+      await report(reporter.auth, { listingId, reason: 'SPAM' }).expect(204);
+
+      await http()
+        .delete(`/api/admin/listings/${listingId}`)
+        .set('Authorization', admin.auth)
+        .expect(204);
+
+      await http().get(`/api/listings/${listingId}`).expect(404);
+      const all = await http()
+        .get('/api/admin/reports')
+        .set('Authorization', admin.auth)
+        .expect(200);
+      expect(all.body).toMatchObject({
+        items: [
+          {
+            status: 'RESOLVED',
+            listing: { id: null, title: listingInput.title, status: null },
+          },
+        ],
+      });
+    });
+
+    it('suspends a user until an admin lifts it', async () => {
+      const client = await signedInUser();
+      const reporter = await signedInUser();
+      const admin = await signedInAdmin();
+      const { id: listingId } = await postListing(client.auth);
+      await report(reporter.auth, {
+        userId: client.user.id,
+        reason: 'SCAM',
+      }).expect(204);
+      const suspend = (id: string) =>
+        http()
+          .post(`/api/admin/users/${id}/suspend`)
+          .set('Authorization', admin.auth);
+
+      await suspend(client.user.id).expect(204);
+
+      await me(client.accessToken).expect(401);
+      const denied = await http()
+        .post('/api/auth/login')
+        .send({ email: client.user.email, password: PASSWORD })
+        .expect(403);
+      expect(denied.body).toMatchObject({ code: 'ACCOUNT_SUSPENDED' });
+      const job = await http().get(`/api/listings/${listingId}`).expect(200);
+      expect(job.body).toMatchObject({ status: 'CLOSED' });
+      expect((await openReports(admin.auth)).total).toBe(0);
+
+      await suspend(admin.user.id).expect(403);
+      await http()
+        .post(`/api/admin/users/${client.user.id}/unsuspend`)
+        .set('Authorization', admin.auth)
+        .expect(204);
+      await login(client.user.email);
     });
   });
 

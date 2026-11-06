@@ -64,6 +64,7 @@ CLI. Variables already set in the environment win.
 | `npm run test:cov` | Runs the unit tests with coverage. |
 | `npm run openapi` | Builds the app and writes the API contract to `openapi.json`. |
 | `npm run storage:init` | Creates the photo bucket when it is missing. |
+| `npm run admin -- <email>` | Makes a user an admin. Add `--remove` to take it back. |
 
 ## ES modules
 
@@ -95,7 +96,9 @@ after every install and every schema change.
 | Start over with an empty database | `docker compose down -v`, then `docker compose up -d`, migrate again and run `npm run storage:init` |
 
 The seed in `prisma/seed.ts` adds four users, two of them with an
-introduction and skills, ten jobs, seven photos, seven applications, two ratings and three conversations. The photos come from
+introduction and skills, an admin (`admin@example.com`), ten jobs, seven
+photos, seven applications, two ratings, three conversations and one open
+report. The photos come from
 `prisma/seed-photos` and need the storage container and
 `npm run storage:init`. When the storage is not reachable, as in CI, the
 seed skips them with a warning. Every demo user signs in with
@@ -138,7 +141,8 @@ DTOs are in the `dto/*-response.dto.ts` files.
 
 **Auth** is a Bearer access token, from login or refresh. **Owner** means the
 token's user must own the job. **Member** means the user must be one of the
-two sides of the conversation.
+two sides of the conversation. **Admin** means the token's user must be an
+admin, or the route returns 403.
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
@@ -186,6 +190,12 @@ two sides of the conversation.
 | `POST` | `/api/ratings` | Owner | Rates the executor of an accepted application to a closed job. |
 | `GET` | `/api/users/:id` | | Returns a user's public profile: photo, introduction, skills and rating. |
 | `GET` | `/api/users/:id/ratings` | | Lists the ratings a user received, newest first. Paging: `page`, `limit` (max 50). |
+| `POST` | `/api/reports` | Bearer | Reports a job (`listingId`) or a user (`userId`) with a reason and optional details. Returns 204. |
+| `GET` | `/api/admin/reports` | Admin | Lists the reports, newest first. Filter: `status`. Paging: `page`, `limit` (max 50). |
+| `PATCH` | `/api/admin/reports/:id` | Admin | Marks an open report `RESOLVED` or `DISMISSED`. |
+| `DELETE` | `/api/admin/listings/:id` | Admin | Deletes a job and resolves its open reports. Returns 204. |
+| `POST` | `/api/admin/users/:id/suspend` | Admin | Suspends an account. Returns 204. |
+| `POST` | `/api/admin/users/:id/unsuspend` | Admin | Lifts a suspension. Returns 204. |
 
 **Lists.** Paged lists return
 `{ items, total, page, limit, totalPages }`.
@@ -293,6 +303,21 @@ two sides of the conversation.
   both sides, every conversation the user is part of and the ratings given
   or received.
   Other users lose those conversations and ratings too.
+
+**Reports and moderation.**
+- A signed-in user reports a job or a user, never both at once (400), and
+  never themselves (403). A job report is about the job's client.
+- A user has one open report per job or user. A second one returns 409
+  with the code `ALREADY_REPORTED`, until an admin handles the first.
+- Only admins see reports. Each report is handled once: handling it again
+  returns 409 with the code `REPORT_ALREADY_HANDLED`.
+- A report keeps the job's title when the job is deleted.
+- Suspending an account signs it out everywhere, closes its open jobs and
+  resolves the open reports about it. A suspended user cannot sign in or
+  confirm the email: both return 403 with the code `ACCOUNT_SUSPENDED`.
+  Admins cannot be suspended.
+- `isAdmin` on the user is set with `npm run admin -- <email>`. It is part
+  of the signed-in user, so the frontend shows the admin page.
 
 **Errors.** Errors use the standard NestJS shape,
 `{ statusCode, message, error }`. Errors that the frontend must tell apart
