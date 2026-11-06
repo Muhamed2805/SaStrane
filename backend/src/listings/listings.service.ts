@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { CreateListingDto } from './dto/create-listing.dto.js';
 import { ListingsQueryDto } from './dto/listings-query.dto.js';
+import { SavedListingsQueryDto } from './dto/saved-listings-query.dto.js';
 import { UpdateListingDto } from './dto/update-listing.dto.js';
 import { UpdateListingStatusDto } from './dto/update-listing-status.dto.js';
 import { PHOTO_ORDER } from './photos/listing-photos.service.js';
@@ -177,6 +178,60 @@ export class ListingsService {
         photos.map((photo) => photo.id),
       ),
     );
+  }
+
+  async getSaved(userId: string, query: SavedListingsQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const where = { userId };
+
+    const [rows, total] = await Promise.all([
+      this.prisma.savedListing.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { listingId: 'desc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+        select: { listing: { select: LISTING_SUMMARY_SELECT } },
+      }),
+      this.prisma.savedListing.count({ where }),
+    ]);
+
+    return {
+      items: rows.map((row) => this.toSummary(row.listing)),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getSavedIds(userId: string) {
+    const rows = await this.prisma.savedListing.findMany({
+      where: { userId },
+      select: { listingId: true },
+    });
+    return rows.map((row) => row.listingId);
+  }
+
+  // Saving twice keeps the first save, so the list order stays the same.
+  async save(listingId: string, userId: string) {
+    const listing = await this.prisma.listing.findUnique({
+      where: { id: listingId },
+      select: { clientId: true },
+    });
+    if (!listing) throw new NotFoundException('Listing not found');
+    if (listing.clientId === userId) {
+      throw new ForbiddenException('You cannot save your own listing');
+    }
+
+    await this.prisma.savedListing.createMany({
+      data: [{ userId, listingId }],
+      skipDuplicates: true,
+    });
+  }
+
+  async unsave(listingId: string, userId: string) {
+    await this.prisma.savedListing.deleteMany({ where: { userId, listingId } });
   }
 
   private async assertOwner(id: string, userId: string) {

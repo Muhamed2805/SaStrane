@@ -101,6 +101,7 @@ model User {
   sentMessages          Message[]      @relation("SentMessages")
   receivedRatings       Rating[]       @relation("ReceivedRatings")
   givenRatings          Rating[]       @relation("GivenRatings")
+  savedListings         SavedListing[]
 }
 
 // One signed-in browser or device. It ends at expiresAt even when it stays
@@ -157,9 +158,24 @@ model Listing {
   conversations Conversation[]
   ratings       Rating[]
   photos        ListingPhoto[]
+  savedBy       SavedListing[]
 
   @@index([status, createdAt])
   @@index([clientId, createdAt])
+}
+
+// A job the user marked to come back to later.
+model SavedListing {
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, listingId])
+  @@index([userId, createdAt])
+  @@index([listingId])
 }
 
 model Application {

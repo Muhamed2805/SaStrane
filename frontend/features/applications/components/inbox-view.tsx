@@ -7,6 +7,7 @@ import {
   type InfiniteQueryObserverResult,
 } from '@tanstack/react-query';
 import {
+  Bookmark,
   BriefcaseBusiness,
   ClipboardList,
   Inbox,
@@ -18,8 +19,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store';
+import { ListingCard } from '@/features/listings/components/listing-card';
 import { MyListingCard } from '@/features/listings/components/my-listing-card';
 import { ownedListingsQuery } from '@/features/listings/queries';
+import { savedListingsQuery } from '@/features/saved-listings/queries';
 import { pageItems, pageTotal } from '@/lib/paging';
 import { useDecideApplication } from '../hooks';
 import { receivedApplicationsQuery, sentApplicationsQuery } from '../queries';
@@ -27,7 +30,7 @@ import { ApplicationCardSkeleton } from './application-card-skeleton';
 import { MyApplicationCard } from './my-application-card';
 import { ReceivedApplicationCard } from './received-application-card';
 
-export type InboxTab = 'listings' | 'applications' | 'received';
+export type InboxTab = 'listings' | 'applications' | 'received' | 'saved';
 
 // A failed next page keeps the loaded pages, so it shows as a toast.
 async function loadMore(
@@ -113,12 +116,17 @@ export function InboxView({
     ...receivedApplicationsQuery(userId),
     enabled,
   });
+  const savedListings = useInfiniteQuery({
+    ...savedListingsQuery(userId),
+    enabled,
+  });
   const { decide, updatingId } = useDecideApplication(userId);
 
   const queries = {
     listings: ownedListings,
     applications: sentApplications,
     received: receivedApplications,
+    saved: savedListings,
   };
   const activeQuery = queries[activeTab];
   // A failed first page shows an error. A failed later page shows a toast.
@@ -128,6 +136,7 @@ export function InboxView({
   const myListings = pageItems(ownedListings.data?.pages);
   const myApplications = pageItems(sentApplications.data?.pages);
   const received = pageItems(receivedApplications.data?.pages);
+  const saved = pageItems(savedListings.data?.pages);
 
   // The tab is page state only, so the URL changes without a new render on
   // the server.
@@ -191,6 +200,12 @@ export function InboxView({
       count: pageTotal(receivedApplications.data?.pages),
       icon: Inbox,
     },
+    {
+      id: 'saved',
+      label: 'Sačuvano',
+      count: pageTotal(savedListings.data?.pages),
+      icon: Bookmark,
+    },
   ];
 
   return (
@@ -202,7 +217,8 @@ export function InboxView({
             Moj radni prostor
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
-            Upravljaj oglasima, poslanim prijavama i pristiglim ponudama.
+            Upravljaj oglasima, prijavama, pristiglim ponudama i sačuvanim
+            poslovima.
           </p>
         </div>
         <Link
@@ -215,7 +231,7 @@ export function InboxView({
       </header>
 
       <section
-        className="grid gap-4 sm:grid-cols-3"
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
         aria-label="Sažetak aktivnosti"
       >
         {tabs.map(({ id, label, count, icon: Icon }) => (
@@ -382,6 +398,34 @@ export function InboxView({
                   onClick={() =>
                     void loadMore(receivedApplications.fetchNextPage)
                   }
+                />
+              ) : null}
+            </>
+          )}
+        </section>
+      ) : null}
+
+      {!isLoading && !error && activeTab === 'saved' ? (
+        <section className="space-y-4" aria-label="Sačuvani oglasi">
+          {saved.length === 0 ? (
+            <EmptyState
+              icon={Bookmark}
+              title="Još nemaš sačuvanih oglasa"
+              description="Sačuvaj oglase koji te zanimaju, pa ih ovdje lako pronađi kasnije."
+              actionHref="/listings"
+              actionLabel="Pregledaj oglase"
+            />
+          ) : (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {saved.map((listing) => (
+                  <ListingCard key={listing.id} listing={listing} />
+                ))}
+              </div>
+              {savedListings.hasNextPage ? (
+                <LoadMoreButton
+                  isLoading={savedListings.isFetchingNextPage}
+                  onClick={() => void loadMore(savedListings.fetchNextPage)}
                 />
               ) : null}
             </>

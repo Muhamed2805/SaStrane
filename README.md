@@ -46,6 +46,8 @@ be both.
   the job page shows them all. Each photo is resized and saved as WebP,
   without the camera's location data.
 - Close a job to stop new applications, and reopen it at any time.
+- Save jobs from a job card or the job page, and find them later under
+  Saved in the workspace.
 
 **Applications**
 - Apply to a job with a message and an optional price offer. You can apply
@@ -55,8 +57,8 @@ be both.
   after accepting.
 - The executor gets an email when their application is accepted or
   rejected.
-- A workspace shows your jobs, the applications you sent and the ones you
-  received, each with its status.
+- A workspace shows your jobs, the applications you sent, the ones you
+  received, each with its status, and the jobs you saved.
 
 **Messages**
 - An executor can message the client of an open job, before or after
@@ -246,6 +248,8 @@ erDiagram
   Application ||--o| Rating : "is rated by"
   User ||--o{ Rating : receives
   Listing ||--o{ ListingPhoto : shows
+  User ||--o{ SavedListing : saves
+  Listing ||--o{ SavedListing : "is saved in"
 
   User {
     string id PK
@@ -315,6 +319,11 @@ erDiagram
     int position "the lowest is the cover"
     int width
     int height
+  }
+  SavedListing {
+    string userId PK "with listingId"
+    string listingId PK
+    datetime createdAt "orders the saved list"
   }
 ```
 

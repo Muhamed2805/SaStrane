@@ -166,6 +166,10 @@ two sides of the conversation.
 | `POST` | `/api/listings/:id/photos` | Owner | Adds a photo: `multipart/form-data` with the file in `photo`. |
 | `PUT` | `/api/listings/:id/photos/order` | Owner | Sets the order of the photos. The first is the cover. |
 | `DELETE` | `/api/listings/:id/photos/:photoId` | Owner | Deletes a photo. Returns 204. |
+| `GET` | `/api/saved-listings` | Bearer | Lists the jobs you saved, the last saved first. Paging: `page`, `limit` (max 50). |
+| `GET` | `/api/saved-listings/ids` | Bearer | Lists the IDs of the jobs you saved. |
+| `PUT` | `/api/saved-listings/:listingId` | Bearer | Saves a job. Saving it again changes nothing. Returns 204. |
+| `DELETE` | `/api/saved-listings/:listingId` | Bearer | Removes a job from the saved ones. Returns 204, also when it was not saved. |
 | `POST` | `/api/applications` | Bearer | Applies to a job, once per job. |
 | `GET` | `/api/applications/my` | Bearer | Lists the applications you sent. |
 | `GET` | `/api/applications/my/listing-ids` | Bearer | Lists the IDs of the jobs you applied to. |
@@ -197,6 +201,8 @@ two sides of the conversation.
 - A decision is final. Deciding on an application that is not `PENDING`
   returns 409 with the code `APPLICATION_ALREADY_DECIDED`.
 - The executor's email is `null` until the client accepts the application.
+- A user cannot save their own job (403). Saved jobs stay on the list
+  when they close, and leave it when they are deleted.
 - A new application emails the job's client with the executor's name, the
   price and the message, and a link to the received applications.
 - After a decision, the executor gets an email with the result and a link

@@ -21,6 +21,7 @@ import { useApplicationsStore } from '@/features/applications/store';
 import { listingsApi, type ListingStatus } from '@/features/listings/api';
 import { listingKeys, listingSaved } from '@/features/listings/queries';
 import { useOpenConversation } from '@/features/messages/hooks';
+import { SaveListingButton } from '@/features/saved-listings/components/save-listing-button';
 import { cn } from '@/lib/utils';
 
 type ListingActionsProps = {
@@ -183,6 +184,12 @@ export function ListingActions({
         <MessageCircle className="size-4" aria-hidden="true" />
         {isOpening ? 'Otvaram razgovor...' : 'Pošalji poruku'}
       </button>
+
+      <SaveListingButton
+        listingId={listingId}
+        clientId={clientId}
+        variant="full"
+      />
     </div>
   );
 }

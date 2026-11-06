@@ -17,9 +17,16 @@ describe('ListingsService', () => {
     delete: vi.fn(),
   };
   const photoRepository = { findMany: vi.fn() };
+  const savedRepository = {
+    findMany: vi.fn(),
+    count: vi.fn(),
+    createMany: vi.fn(),
+    deleteMany: vi.fn(),
+  };
   const prisma = {
     listing: listingRepository,
     listingPhoto: photoRepository,
+    savedListing: savedRepository,
     $transaction: vi.fn((run: (tx: unknown) => unknown) => run(prisma)),
   };
   const storage = {
@@ -276,6 +283,74 @@ describe('ListingsService', () => {
         'listings/listing-1/photo-1.webp',
         'listings/listing-1/photo-1-thumb.webp',
       ]);
+    });
+  });
+
+  describe('saved jobs', () => {
+    it('lists the saved jobs, the last saved first', async () => {
+      savedRepository.findMany.mockResolvedValue([
+        { listing: { id: 'listing-1', title: 'Košenje', client, photos: [] } },
+      ]);
+      savedRepository.count.mockResolvedValue(11);
+
+      await expect(
+        service.getSaved('user-2', { page: 2, limit: 10 }),
+      ).resolves.toEqual({
+        items: [
+          {
+            id: 'listing-1',
+            title: 'Košenje',
+            client: clientDto,
+            coverPhoto: null,
+          },
+        ],
+        total: 11,
+        page: 2,
+        limit: 10,
+        totalPages: 2,
+      });
+      expect(savedRepository.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: 'user-2' },
+          orderBy: [{ createdAt: 'desc' }, { listingId: 'desc' }],
+          skip: 10,
+          take: 10,
+        }),
+      );
+    });
+
+    it('saves a job once', async () => {
+      listingRepository.findUnique.mockResolvedValue({ clientId: 'user-1' });
+
+      await service.save('listing-1', 'user-2');
+
+      expect(savedRepository.createMany).toHaveBeenCalledWith({
+        data: [{ userId: 'user-2', listingId: 'listing-1' }],
+        skipDuplicates: true,
+      });
+    });
+
+    it('does not save a missing job or the user own job', async () => {
+      listingRepository.findUnique.mockResolvedValueOnce(null);
+      await expect(service.save('missing', 'user-2')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+
+      listingRepository.findUnique.mockResolvedValueOnce({
+        clientId: 'user-1',
+      });
+      await expect(service.save('listing-1', 'user-1')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+      expect(savedRepository.createMany).not.toHaveBeenCalled();
+    });
+
+    it('removes only the user own save', async () => {
+      await service.unsave('listing-1', 'user-2');
+
+      expect(savedRepository.deleteMany).toHaveBeenCalledWith({
+        where: { userId: 'user-2', listingId: 'listing-1' },
+      });
     });
   });
 });

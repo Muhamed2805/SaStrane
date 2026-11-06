@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
+  Bookmark,
   ChevronDown,
   ClipboardList,
   Inbox,
@@ -70,6 +71,7 @@ const workspaceLinks = [
   { href: '/inbox?tab=listings', label: 'Moji oglasi', icon: ClipboardList },
   { href: '/inbox?tab=applications', label: 'Moje prijave', icon: Send },
   { href: '/inbox?tab=received', label: 'Primljene prijave', icon: Inbox },
+  { href: '/inbox?tab=saved', label: 'Sačuvani oglasi', icon: Bookmark },
   { href: '/settings', label: 'Postavke naloga', icon: Settings },
 ];
 

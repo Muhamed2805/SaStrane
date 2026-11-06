@@ -571,6 +571,115 @@ describe('App (e2e)', () => {
     });
   });
 
+  describe('saved listings', () => {
+    const savedIds = async (auth: string) =>
+      (
+        await http()
+          .get('/api/saved-listings/ids')
+          .set('Authorization', auth)
+          .expect(200)
+      ).body as string[];
+
+    it('needs a signed-in user', async () => {
+      await http().get('/api/saved-listings').expect(401);
+      await http().put('/api/saved-listings/any').expect(401);
+    });
+
+    it('saves jobs once and lists them, the last saved first', async () => {
+      const client = await signedInUser('Amra Hodžić');
+      const executor = await signedInUser('Kenan Mehić');
+      const first = await postListing(client.auth);
+      const second = await postListing(client.auth);
+      const save = (id: string) =>
+        http()
+          .put(`/api/saved-listings/${id}`)
+          .set('Authorization', executor.auth);
+
+      await save(first.id).expect(204);
+      await save(second.id).expect(204);
+      await save(first.id).expect(204);
+
+      const list = await http()
+        .get('/api/saved-listings')
+        .set('Authorization', executor.auth)
+        .expect(200);
+      expect(list.body).toMatchObject({
+        items: [{ id: second.id }, { id: first.id }],
+        total: 2,
+        totalPages: 1,
+      });
+      expect(new Set(await savedIds(executor.auth))).toEqual(
+        new Set([first.id, second.id]),
+      );
+      // Each user has their own list.
+      expect(await savedIds(client.auth)).toEqual([]);
+    });
+
+    it('keeps closed jobs and drops deleted ones', async () => {
+      const client = await signedInUser();
+      const executor = await signedInUser();
+      const closed = await postListing(client.auth);
+      const deleted = await postListing(client.auth);
+      for (const { id } of [closed, deleted]) {
+        await http()
+          .put(`/api/saved-listings/${id}`)
+          .set('Authorization', executor.auth)
+          .expect(204);
+      }
+
+      await http()
+        .patch(`/api/listings/${closed.id}/status`)
+        .set('Authorization', client.auth)
+        .send({ status: 'CLOSED' })
+        .expect(200);
+      await http()
+        .delete(`/api/listings/${deleted.id}`)
+        .set('Authorization', client.auth)
+        .expect(204);
+
+      const list = await http()
+        .get('/api/saved-listings')
+        .set('Authorization', executor.auth)
+        .expect(200);
+      expect(list.body).toMatchObject({
+        items: [{ id: closed.id, status: 'CLOSED' }],
+        total: 1,
+      });
+    });
+
+    it('refuses the user own job and a missing one', async () => {
+      const client = await signedInUser();
+      const { id } = await postListing(client.auth);
+
+      await http()
+        .put(`/api/saved-listings/${id}`)
+        .set('Authorization', client.auth)
+        .expect(403);
+      await http()
+        .put('/api/saved-listings/missing')
+        .set('Authorization', client.auth)
+        .expect(404);
+    });
+
+    it('removes a saved job, and removing it again is fine', async () => {
+      const client = await signedInUser();
+      const executor = await signedInUser();
+      const { id } = await postListing(client.auth);
+      await http()
+        .put(`/api/saved-listings/${id}`)
+        .set('Authorization', executor.auth)
+        .expect(204);
+
+      for (let i = 0; i < 2; i++) {
+        await http()
+          .delete(`/api/saved-listings/${id}`)
+          .set('Authorization', executor.auth)
+          .expect(204);
+      }
+      expect(await savedIds(executor.auth)).toEqual([]);
+    });
+  });
+
   describe('applications', () => {
     const message = 'Imam iskustva, mogu doći u subotu ujutro.';
 
