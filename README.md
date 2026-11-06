@@ -476,3 +476,5 @@ Dependabot opens update PRs, grouped so that related packages move together.
   typescript-eslint support it.
 
 The app is in development and not deployed yet.
+[docs/deploy.md](docs/deploy.md) describes how to deploy it on the free
+tiers of Vercel, Render, Neon, Cloudflare R2 and Resend.

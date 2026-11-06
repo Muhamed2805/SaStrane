@@ -1,0 +1,64 @@
+# Render Blueprint for the backend. See docs/deploy.md.
+# Render asks for every `sync: false` value when the Blueprint is created.
+services:
+  - type: web
+    name: sastrane-api
+    runtime: node
+    plan: free
+    # Close to the Neon database (AWS eu-central-1) and Vercel's fra1.
+    region: frankfurt
+    # Only changes under backend/ trigger a deploy.
+    rootDir: backend
+    autoDeployTrigger: commit
+    # The free plan has no pre-deploy step, so the build applies the
+    # migrations after the app compiles. Dev dependencies hold the Nest and
+    # Prisma CLIs, and NODE_ENV=production would skip them.
+    buildCommand: >-
+      npm ci --include=dev &&
+      npx prisma generate &&
+      npm run build &&
+      npx prisma migrate deploy
+    startCommand: npm run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      # Neon's direct connection string, ending in ?sslmode=verify-full.
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: EMAIL_VERIFICATION_SECRET
+        generateValue: true
+      # The Vercel address, such as https://sastrane.vercel.app.
+      - key: APP_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      # Render's load balancer and Vercel's /api proxy each add a hop.
+      - key: TRUST_PROXY_HOPS
+        value: "2"
+      - key: RESEND_API_KEY
+        sync: false
+      # Without a verified domain, Resend sends only from this address and
+      # only to the email of the Resend account.
+      - key: EMAIL_FROM
+        value: SaStrane <onboarding@resend.dev>
+      # Cloudflare R2: https://<account-id>.r2.cloudflarestorage.com
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        value: auto
+      - key: S3_BUCKET
+        value: sastrane-photos
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_FORCE_PATH_STYLE
+        value: "false"
+      # The bucket's public r2.dev address.
+      - key: S3_PUBLIC_URL
+        sync: false

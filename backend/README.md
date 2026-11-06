@@ -24,6 +24,9 @@ The API runs on <http://localhost:4000>. Routes start with `/api`, except
 
 ## Environment variables
 
+For production, [docs/deploy.md](../docs/deploy.md) lists where each value comes
+from, and `render.yaml` in the repository root sets the fixed ones.
+
 The backend validates these at startup and refuses to start when one is
 invalid. `prisma.config.ts` reads `DATABASE_URL` from `.env` for the Prisma
 CLI. Variables already set in the environment win.
