@@ -132,8 +132,18 @@ be both.
       <p align="center"><sub><b>Messages</b>: one conversation per job and executor</sub></p>
     </td>
     <td width="50%">
-      <img src="docs/screenshots/user-profile.png" alt="Public profile with ratings">
-      <p align="center"><sub><b>Public profile</b>: ratings from clients</sub></p>
+      <img src="docs/screenshots/user-profile.png" alt="Public profile with a bio, skills and ratings">
+      <p align="center"><sub><b>Public profile</b>: bio, skills and ratings from clients</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/saved.png" alt="Workspace tab with saved jobs">
+      <p align="center"><sub><b>Saved jobs</b>: one click on a job card</sub></p>
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/settings.png" alt="Account settings with a profile photo">
+      <p align="center"><sub><b>Settings</b>: photo, profile, notices, password</sub></p>
     </td>
   </tr>
   <tr>
@@ -144,6 +154,26 @@ be both.
     <td width="50%">
       <img src="docs/screenshots/profile.png" alt="Profile page with activity counts">
       <p align="center"><sub><b>Profile</b>: activity at a glance</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/report-dialog.png" alt="Dialog for reporting a job">
+      <p align="center"><sub><b>Report</b>: a job or a user, seen only by admins</sub></p>
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/admin-reports.png" alt="Admin page with an open report">
+      <p align="center"><sub><b>Reports</b>: resolve, dismiss, delete the job or suspend</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/admin.png" alt="Admin overview with platform totals">
+      <p align="center"><sub><b>Admin overview</b>: platform totals</sub></p>
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/admin-users.png" alt="Admin list of every user">
+      <p align="center"><sub><b>Users</b>: search, filters and suspension</sub></p>
     </td>
   </tr>
 </table>
