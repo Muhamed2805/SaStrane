@@ -161,6 +161,31 @@ export function newApplicationEmailHtml(input: NewApplicationEmail) {
   );
 }
 
+export type InvitationEmail = {
+  fullName: string;
+  listingTitle: string;
+  clientName: string;
+  budget: number | null;
+  // Absolute links into the web app.
+  listingUrl: string;
+  settingsUrl: string;
+};
+
+export function invitationSubject(input: { listingTitle: string }) {
+  return `Poziv na oglas „${input.listingTitle}“`;
+}
+
+export function invitationEmailHtml(input: InvitationEmail) {
+  return layout(
+    'Poziv na posao',
+    `<p style="${TEXT_STYLE}">Zdravo ${escapeHtml(input.fullName)}, ${escapeHtml(input.clientName)} te poziva da se prijaviš na oglas „${escapeHtml(input.listingTitle)}“.</p>
+              <p style="${TEXT_STYLE};margin-top:12px"><strong>Budžet:</strong> ${formatPrice(input.budget)}</p>
+              ${button(input.listingUrl, 'Pogledaj oglas')}
+              <p style="${NOTE_STYLE}">Ako ti posao ne odgovara, poziv možeš odbiti u radnom prostoru.</p>
+              ${settingsNote(input.settingsUrl)}`,
+  );
+}
+
 // "1 nepročitana poruka", "3 nepročitane poruke", "5 nepročitanih poruka".
 export function unreadMessagesText(count: number) {
   const lastTwo = count % 100;

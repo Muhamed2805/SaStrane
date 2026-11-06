@@ -166,6 +166,35 @@ describe('EmailService', () => {
     expect(body.tags).toEqual([{ name: 'category', value: 'new_application' }]);
   });
 
+  it('invites a user to a job with a link to it', async () => {
+    fetchMock.mockResolvedValue(new Response('{}', { status: 200 }));
+    const service = createService({
+      RESEND_API_KEY: 'key',
+      APP_URL: 'https://sastrane.example',
+    });
+
+    await service.sendInvitation({
+      email: 'kenan@example.com',
+      fullName: 'Kenan',
+      listingId: 'listing/1',
+      listingTitle: 'Selidba <b>',
+      clientName: 'Amra',
+      budget: null,
+    });
+
+    const body = sentBody(fetchMock);
+    expect(body.to).toEqual(['kenan@example.com']);
+    expect(body.subject).toBe('Poziv na oglas „Selidba <b>“');
+    expect(body.html).toContain('Amra te poziva');
+    expect(body.html).toContain('Selidba &lt;b&gt;');
+    expect(body.html).toContain('po dogovoru');
+    expect(body.html).toContain(
+      'href="https://sastrane.example/listings/listing%2F1"',
+    );
+    expect(body.html).toContain('href="https://sastrane.example/settings"');
+    expect(body.tags).toEqual([{ name: 'category', value: 'invitation' }]);
+  });
+
   it('tells a user about unread messages with a link to the conversation', async () => {
     fetchMock.mockResolvedValue(new Response('{}', { status: 200 }));
     const service = createService({

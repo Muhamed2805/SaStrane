@@ -11,6 +11,7 @@ import { ConversationsModule } from './conversations/conversations.module.js';
 import { RatingsModule } from './ratings/ratings.module.js';
 import { ListingsModule } from './listings/listings.module.js';
 import { ModerationModule } from './moderation/moderation.module.js';
+import { InvitationsModule } from './invitations/invitations.module.js';
 import { validateEnvironment } from './config/environment.js';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter.js';
 
@@ -25,6 +26,7 @@ import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter.
     ConversationsModule,
     RatingsModule,
     ModerationModule,
+    InvitationsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -7,6 +7,8 @@ import { ConfigService } from '@nestjs/config';
 import {
   applicationDecisionEmailHtml,
   applicationDecisionSubject,
+  invitationEmailHtml,
+  invitationSubject,
   newApplicationEmailHtml,
   newApplicationSubject,
   passwordChangedEmailHtml,
@@ -112,6 +114,30 @@ export class EmailService {
       }),
       tag: 'new_application',
       developmentMessage: `New application email for ${input.email}: "${input.listingTitle}"`,
+    });
+  }
+
+  // Tells a user that a client invites them to apply to a job.
+  async sendInvitation(input: {
+    email: string;
+    fullName: string;
+    listingId: string;
+    listingTitle: string;
+    clientName: string;
+    budget: number | null;
+  }) {
+    await this.sendTransactionalEmail({
+      to: input.email,
+      subject: invitationSubject(input),
+      html: invitationEmailHtml({
+        ...input,
+        listingUrl: this.appUrl(
+          `/listings/${encodeURIComponent(input.listingId)}`,
+        ),
+        settingsUrl: this.appUrl('/settings'),
+      }),
+      tag: 'invitation',
+      developmentMessage: `Invitation email for ${input.email}: "${input.listingTitle}"`,
     });
   }
 

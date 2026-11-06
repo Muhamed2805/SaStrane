@@ -57,8 +57,9 @@ be both.
   after accepting.
 - The executor gets an email when their application is accepted or
   rejected.
-- A workspace shows your jobs, the applications you sent, the ones you
-  received, each with its status, and the jobs you saved.
+- A workspace shows your jobs, the applications you sent, your
+  invitations, the applications you received, each with its status, and the
+  jobs you saved.
 
 **Messages**
 - An executor can message the client of an open job, before or after
@@ -80,6 +81,9 @@ be both.
 - Find executors by the kind of job, the location or a word from the name
   or introduction, the best rated first. Users who do jobs and picked at
   least one kind of job are listed.
+- Invite an executor from their profile to apply to one of your open jobs.
+  They get an email and see the invitation in the workspace, where they
+  apply as usual or decline. A job takes at most 20 invitations.
 - A rating stays on the profile when the job is deleted.
 
 **Accounts**
@@ -144,6 +148,16 @@ be both.
     <td width="50%">
       <img src="docs/screenshots/executors.png" alt="List of executors with ratings, skills and locations">
       <p align="center"><sub><b>Find an executor</b>: by job, location or name, the best rated first</sub></p>
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/invite.png" alt="Dialog to invite an executor to one of the client's open jobs">
+      <p align="center"><sub><b>Invite</b>: pick one of your open jobs for an executor</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/invitations.png" alt="Workspace tab with an invitation to a job">
+      <p align="center"><sub><b>Invitations</b>: apply to the job or decline</sub></p>
     </td>
     <td width="50%">
       <img src="docs/screenshots/saved.png" alt="Workspace tab with saved jobs">

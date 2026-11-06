@@ -897,6 +897,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists the user's invitations to open jobs, newest first. */
+        get: operations["invitations_getReceived"];
+        put?: never;
+        /**
+         * Invites a user who does jobs to apply to one of the client's open jobs.
+         * @description The user gets an email unless they turned notices off. A job
+         *     takes at most 20 invitations.
+         */
+        post: operations["invitations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invitations/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lists the client's open jobs, the newest 50, and whether a user can be
+         *     invited to each.
+         */
+        get: operations["invitations_getOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invitations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Declines an invitation. The client is not told. */
+        delete: operations["invitations_decline"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1525,6 +1584,70 @@ export interface components {
              * @enum {string}
              */
             status: "RESOLVED" | "DISMISSED";
+        };
+        CreateInvitationDto: {
+            /** @description One of the client's open jobs. */
+            listingId: string;
+            /** @description The user who does jobs and gets the invitation. */
+            executorId: string;
+        };
+        InvitationDto: {
+            id: string;
+            listingId: string;
+            executorId: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        InvitationListingDto: {
+            category: components["schemas"]["ListingCategory"];
+            location: components["schemas"]["ListingLocation"];
+            id: string;
+            title: string;
+            /** @description In whole KM. Null means the price is agreed later. */
+            budget: number | null;
+        };
+        InvitationClientDto: {
+            id: string;
+            fullName: string;
+            /** @description A square WebP image of 256 pixels. Null without a profile photo. */
+            avatarUrl: string | null;
+        };
+        ReceivedInvitationDto: {
+            id: string;
+            /** @description True once the user has applied to the job. */
+            applied: boolean;
+            listing: components["schemas"]["InvitationListingDto"];
+            client: components["schemas"]["InvitationClientDto"];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ReceivedInvitationsPageDto: {
+            items: components["schemas"]["ReceivedInvitationDto"][];
+            /** @description The number of items on all pages together. */
+            total: number;
+            /** @description The current page, starting at 1. */
+            page: number;
+            /** @description The maximum number of items per page. */
+            limit: number;
+            /** @description The number of pages, 0 when there are no items. */
+            totalPages: number;
+        };
+        /**
+         * @description AVAILABLE: the user can be invited. INVITED: the user already has an
+         *     invitation. APPLIED: the user already applied.
+         * @enum {string}
+         */
+        InvitationOptionState: "AVAILABLE" | "INVITED" | "APPLIED";
+        InvitationOptionDto: {
+            category: components["schemas"]["ListingCategory"];
+            location: components["schemas"]["ListingLocation"];
+            /**
+             * @description AVAILABLE: the user can be invited. INVITED: the user already has an
+             *     invitation. APPLIED: the user already applied.
+             */
+            state: components["schemas"]["InvitationOptionState"];
+            listingId: string;
+            title: string;
         };
     };
     responses: never;
@@ -4968,6 +5091,263 @@ export interface operations {
                 };
             };
             /** @description The user does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    invitations_getReceived: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceivedInvitationsPageDto"];
+                };
+            };
+            /** @description A query parameter is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    invitations_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInvitationDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationDto"];
+                };
+            };
+            /** @description A field is missing or invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The job is not the user's own, or the user invites themselves. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The job or the invited user does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The job is closed (LISTING_CLOSED), the user does not take invitations (EXECUTOR_UNAVAILABLE), already applied (ALREADY_APPLIED) or is already invited (ALREADY_INVITED), or the job has 20 invitations (INVITATION_LIMIT). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    invitations_getOptions: {
+        parameters: {
+            query: {
+                /** @description The user the client wants to invite. */
+                executorId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationOptionDto"][];
+                };
+            };
+            /** @description A query parameter is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    invitations_decline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The invitation does not exist or is not the user's. */
             404: {
                 headers: {
                     [name: string]: unknown;

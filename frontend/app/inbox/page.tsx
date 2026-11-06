@@ -10,7 +10,13 @@ export const metadata: Metadata = {
   robots: PRIVATE_PAGE,
 };
 
-const TABS: InboxTab[] = ['listings', 'applications', 'received', 'saved'];
+const TABS: InboxTab[] = [
+  'listings',
+  'applications',
+  'invitations',
+  'received',
+  'saved',
+];
 
 export default async function InboxPage({
   searchParams,

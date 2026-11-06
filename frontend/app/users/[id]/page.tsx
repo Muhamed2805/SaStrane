@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
 import { CalendarDays, MapPin, Star } from 'lucide-react';
 import { UserAvatar } from '@/components/user-avatar';
+import { InviteButton } from '@/features/invitations/components/invite-button';
 import {
   CATEGORY_LABELS,
   LOCATION_LABELS,
@@ -150,6 +151,13 @@ export default async function UserProfilePage({ params }: PageProps) {
                 </div>
               ) : null}
             </div>
+          ) : null}
+          {/* Like the executor list: users with a job they do. */}
+          {profile.skills.length > 0 ? (
+            <InviteButton
+              executorId={profile.id}
+              executorName={profile.fullName}
+            />
           ) : null}
         </section>
         <div className="flex justify-end">

@@ -13,12 +13,16 @@ import {
   Inbox,
   LoaderCircle,
   LockKeyhole,
+  Mail,
   Plus,
   RefreshCw,
   Send,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store';
+import { InvitationCard } from '@/features/invitations/components/invitation-card';
+import { useDeclineInvitation } from '@/features/invitations/hooks';
+import { receivedInvitationsQuery } from '@/features/invitations/queries';
 import { ListingCard } from '@/features/listings/components/listing-card';
 import { MyListingCard } from '@/features/listings/components/my-listing-card';
 import { ownedListingsQuery } from '@/features/listings/queries';
@@ -30,7 +34,8 @@ import { ApplicationCardSkeleton } from './application-card-skeleton';
 import { MyApplicationCard } from './my-application-card';
 import { ReceivedApplicationCard } from './received-application-card';
 
-export type InboxTab = 'listings' | 'applications' | 'received' | 'saved';
+export type InboxTab =
+  'listings' | 'applications' | 'invitations' | 'received' | 'saved';
 
 // A failed next page keeps the loaded pages, so it shows as a toast.
 async function loadMore(
@@ -112,6 +117,10 @@ export function InboxView({
     ...sentApplicationsQuery(userId),
     enabled,
   });
+  const receivedInvitations = useInfiniteQuery({
+    ...receivedInvitationsQuery(userId),
+    enabled,
+  });
   const receivedApplications = useInfiniteQuery({
     ...receivedApplicationsQuery(userId),
     enabled,
@@ -121,10 +130,12 @@ export function InboxView({
     enabled,
   });
   const { decide, updatingId } = useDecideApplication(userId);
+  const { decline, decliningId } = useDeclineInvitation(userId);
 
   const queries = {
     listings: ownedListings,
     applications: sentApplications,
+    invitations: receivedInvitations,
     received: receivedApplications,
     saved: savedListings,
   };
@@ -135,6 +146,7 @@ export function InboxView({
 
   const myListings = pageItems(ownedListings.data?.pages);
   const myApplications = pageItems(sentApplications.data?.pages);
+  const invitations = pageItems(receivedInvitations.data?.pages);
   const received = pageItems(receivedApplications.data?.pages);
   const saved = pageItems(savedListings.data?.pages);
 
@@ -195,6 +207,12 @@ export function InboxView({
       icon: Send,
     },
     {
+      id: 'invitations',
+      label: 'Pozivi',
+      count: pageTotal(receivedInvitations.data?.pages),
+      icon: Mail,
+    },
+    {
       id: 'received',
       label: 'Primljene prijave',
       count: pageTotal(receivedApplications.data?.pages),
@@ -217,8 +235,8 @@ export function InboxView({
             Moj radni prostor
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
-            Upravljaj oglasima, prijavama, pristiglim ponudama i sačuvanim
-            poslovima.
+            Upravljaj oglasima, prijavama, pozivima, pristiglim ponudama i
+            sačuvanim poslovima.
           </p>
         </div>
         <Link
@@ -231,7 +249,7 @@ export function InboxView({
       </header>
 
       <section
-        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5"
         aria-label="Sažetak aktivnosti"
       >
         {tabs.map(({ id, label, count, icon: Icon }) => (
@@ -362,6 +380,41 @@ export function InboxView({
                 <LoadMoreButton
                   isLoading={sentApplications.isFetchingNextPage}
                   onClick={() => void loadMore(sentApplications.fetchNextPage)}
+                />
+              ) : null}
+            </>
+          )}
+        </section>
+      ) : null}
+
+      {!isLoading && !error && activeTab === 'invitations' ? (
+        <section className="space-y-4" aria-label="Pozivi">
+          {invitations.length === 0 ? (
+            <EmptyState
+              icon={Mail}
+              title="Još nema poziva"
+              description="Klijenti te mogu pozvati na svoj oglas sa tvog profila. Dodaj poslove koje radiš i lokaciju da te lakše pronađu."
+              actionHref="/settings"
+              actionLabel="Uredi profil"
+            />
+          ) : (
+            <>
+              <div className="space-y-4">
+                {invitations.map((invitation) => (
+                  <InvitationCard
+                    key={invitation.id}
+                    invitation={invitation}
+                    isDeclining={decliningId === invitation.id}
+                    onDecline={decline}
+                  />
+                ))}
+              </div>
+              {receivedInvitations.hasNextPage ? (
+                <LoadMoreButton
+                  isLoading={receivedInvitations.isFetchingNextPage}
+                  onClick={() =>
+                    void loadMore(receivedInvitations.fetchNextPage)
+                  }
                 />
               ) : null}
             </>

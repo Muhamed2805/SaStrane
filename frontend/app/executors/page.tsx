@@ -39,7 +39,8 @@ export default async function ExecutorsPage({
           </h1>
           <p className="mt-3 max-w-2xl text-muted-foreground">
             Pogledaj ko radi posao kakav ti treba i kako ga ocjenjuju klijenti.
-            Objavi oglas, pa izaberi među prijavama.
+            Pozovi izvođača na svoj oglas ili objavi novi i izaberi među
+            prijavama.
           </p>
         </div>
         <Link

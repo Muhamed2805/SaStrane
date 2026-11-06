@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/store';
+import { invitationKeys } from '@/features/invitations/queries';
 import { ApiError } from '@/lib/api-client';
 import {
   applicationsApi,
@@ -38,6 +39,10 @@ export function useApplyToListing(userId: string) {
       );
       void queryClient.invalidateQueries({
         queryKey: applicationKeys.all(userId),
+      });
+      // An invitation to this job now shows the application.
+      void queryClient.invalidateQueries({
+        queryKey: invitationKeys.received(userId),
       });
     },
   });

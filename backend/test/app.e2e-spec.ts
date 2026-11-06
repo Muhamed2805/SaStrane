@@ -1856,6 +1856,203 @@ describe('App (e2e)', () => {
     });
   });
 
+  describe('invitations', () => {
+    // A signed-in user who does jobs and can be invited.
+    async function executorWithSkills(fullName?: string) {
+      const executor = await signedInUser(fullName);
+      await prisma.user.update({
+        where: { id: executor.user.id },
+        data: { skills: ['MOVING'] },
+      });
+      return executor;
+    }
+
+    function invite(auth: string, body: object) {
+      return http()
+        .post('/api/invitations')
+        .set('Authorization', auth)
+        .send(body);
+    }
+
+    it('needs a signed-in user', async () => {
+      await http().get('/api/invitations').expect(401);
+      await http().post('/api/invitations').expect(401);
+      await http().get('/api/invitations/options?executorId=x').expect(401);
+      await http().delete('/api/invitations/x').expect(401);
+    });
+
+    it('invites a user, who sees it, applies or declines', async () => {
+      const client = await signedInUser('Amra Hodžić');
+      const executor = await executorWithSkills('Kenan Mehić');
+      const job = await postListing(client.auth);
+      const other = await postListing(client.auth, {
+        ...listingInput,
+        title: 'Selidba stana na Stupu',
+      });
+      const states = async () => {
+        const response = await http()
+          .get(`/api/invitations/options?executorId=${executor.user.id}`)
+          .set('Authorization', client.auth)
+          .expect(200);
+        const items = response.body as { listingId: string; state: string }[];
+        return Object.fromEntries(
+          items.map((item) => [item.listingId, item.state]),
+        );
+      };
+      const received = async () =>
+        (
+          await http()
+            .get('/api/invitations')
+            .set('Authorization', executor.auth)
+            .expect(200)
+        ).body as { items: { id: string; applied: boolean }[]; total: number };
+
+      expect(await states()).toEqual({
+        [job.id]: 'AVAILABLE',
+        [other.id]: 'AVAILABLE',
+      });
+
+      const created = await invite(client.auth, {
+        listingId: job.id,
+        executorId: executor.user.id,
+      }).expect(201);
+      expect(created.body).toEqual({
+        id: expect.any(String) as unknown,
+        listingId: job.id,
+        executorId: executor.user.id,
+        createdAt: expect.any(String) as unknown,
+      });
+      expect(emails.invitations).toEqual([
+        {
+          email: executor.user.email,
+          listingId: job.id,
+          listingTitle: listingInput.title,
+          clientName: 'Amra Hodžić',
+        },
+      ]);
+      const again = await invite(client.auth, {
+        listingId: job.id,
+        executorId: executor.user.id,
+      }).expect(409);
+      expect(again.body).toMatchObject({ code: 'ALREADY_INVITED' });
+      expect(await states()).toMatchObject({ [job.id]: 'INVITED' });
+
+      const list = await http()
+        .get('/api/invitations')
+        .set('Authorization', executor.auth)
+        .expect(200);
+      expect(list.body).toEqual({
+        items: [
+          {
+            id: (created.body as { id: string }).id,
+            applied: false,
+            listing: {
+              id: job.id,
+              title: listingInput.title,
+              category: 'LAWN_MOWING',
+              location: 'ILIDZA',
+              budget: 60,
+            },
+            client: {
+              id: client.user.id,
+              fullName: 'Amra Hodžić',
+              avatarUrl: null,
+            },
+            createdAt: expect.any(String) as unknown,
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      });
+      // The client's own list is empty.
+      const clientList = await http()
+        .get('/api/invitations')
+        .set('Authorization', client.auth)
+        .expect(200);
+      expect(clientList.body).toMatchObject({ items: [], total: 0 });
+
+      // Applying keeps the invitation and marks it.
+      await http()
+        .post('/api/applications')
+        .set('Authorization', executor.auth)
+        .send({ listingId: job.id, message: 'Mogu doći u subotu ujutro.' })
+        .expect(201);
+      expect((await received()).items).toMatchObject([{ applied: true }]);
+      expect(await states()).toMatchObject({ [job.id]: 'APPLIED' });
+      const applied = await invite(client.auth, {
+        listingId: other.id,
+        executorId: executor.user.id,
+      }).expect(201);
+
+      // Only the invited user declines, and the client is not told.
+      const declined = (applied.body as { id: string }).id;
+      await http()
+        .delete(`/api/invitations/${declined}`)
+        .set('Authorization', client.auth)
+        .expect(404);
+      await http()
+        .delete(`/api/invitations/${declined}`)
+        .set('Authorization', executor.auth)
+        .expect(204);
+      expect(await states()).toMatchObject({ [other.id]: 'AVAILABLE' });
+
+      // A closed job leaves the user's list and the client's options.
+      await http()
+        .patch(`/api/listings/${job.id}/status`)
+        .set('Authorization', client.auth)
+        .send({ status: 'CLOSED' })
+        .expect(200);
+      expect((await received()).total).toBe(0);
+      expect(await states()).toEqual({ [other.id]: 'AVAILABLE' });
+      const closed = await invite(client.auth, {
+        listingId: job.id,
+        executorId: executor.user.id,
+      }).expect(409);
+      expect(closed.body).toMatchObject({ code: 'LISTING_CLOSED' });
+    });
+
+    it('refuses strangers and users who take no invitations', async () => {
+      const client = await signedInUser();
+      const stranger = await signedInUser();
+      const noSkills = await signedInUser();
+      const executor = await executorWithSkills();
+      const job = await postListing(client.auth);
+      const pair = { listingId: job.id, executorId: executor.user.id };
+
+      const unavailable = await invite(client.auth, {
+        ...pair,
+        executorId: noSkills.user.id,
+      }).expect(409);
+      expect(unavailable.body).toMatchObject({ code: 'EXECUTOR_UNAVAILABLE' });
+      await invite(stranger.auth, pair).expect(403);
+      await invite(client.auth, { ...pair, executorId: client.user.id }).expect(
+        403,
+      );
+      await invite(client.auth, { ...pair, listingId: 'missing' }).expect(404);
+      await invite(client.auth, { ...pair, executorId: 'missing' }).expect(404);
+      await invite(client.auth, { listingId: job.id }).expect(400);
+      await http()
+        .get('/api/invitations/options')
+        .set('Authorization', client.auth)
+        .expect(400);
+
+      // A job takes 20 invitations.
+      const invited = await Promise.all(
+        Array.from({ length: 20 }, () => createUser(prisma)),
+      );
+      await prisma.invitation.createMany({
+        data: invited.map((user) => ({
+          listingId: job.id,
+          executorId: user.id,
+        })),
+      });
+      const full = await invite(client.auth, pair).expect(409);
+      expect(full.body).toMatchObject({ code: 'INVITATION_LIMIT' });
+    });
+  });
+
   describe('executors', () => {
     it('lists the users who do jobs, the best rated first', async () => {
       const tarik = await createUser(prisma, { fullName: 'Tarik Selimović' });

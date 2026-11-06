@@ -13,7 +13,7 @@ export async function resetDatabase(prisma: PrismaService) {
     { name: string }[]
   >`SELECT current_database() AS name`;
   assertTestDatabaseName(name);
-  await prisma.$executeRaw`TRUNCATE "Report", "SavedListing", "ListingPhoto", "Rating", "Message", "Conversation", "Application", "Listing", "RefreshToken", "Session", "User" CASCADE`;
+  await prisma.$executeRaw`TRUNCATE "Report", "Invitation", "SavedListing", "ListingPhoto", "Rating", "Message", "Conversation", "Application", "Listing", "RefreshToken", "Session", "User" CASCADE`;
 }
 
 let userCount = 0;
@@ -80,6 +80,12 @@ export class CapturingEmailService {
     unreadCount: number;
     lastMessage: string;
   }[] = [];
+  readonly invitations: {
+    email: string;
+    listingId: string;
+    listingTitle: string;
+    clientName: string;
+  }[] = [];
 
   sendVerificationCode(input: { email: string; code: string }) {
     this.sent.push({ kind: 'verification', ...input });
@@ -138,6 +144,17 @@ export class CapturingEmailService {
     return Promise.resolve();
   }
 
+  sendInvitation(input: {
+    email: string;
+    listingId: string;
+    listingTitle: string;
+    clientName: string;
+  }) {
+    const { email, listingId, listingTitle, clientName } = input;
+    this.invitations.push({ email, listingId, listingTitle, clientName });
+    return Promise.resolve();
+  }
+
   sendPasswordChanged(input: { email: string }) {
     this.passwordChanges.push(input.email);
     return Promise.resolve();
@@ -157,6 +174,7 @@ export class CapturingEmailService {
     this.passwordChanges.length = 0;
     this.newApplications.length = 0;
     this.unreadMessages.length = 0;
+    this.invitations.length = 0;
   }
 }
 

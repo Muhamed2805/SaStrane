@@ -595,8 +595,31 @@ async function main() {
       },
     });
 
+    // Tarik invites Amra and Kenan to his open jobs, for the Pozivi tab.
+    const invitations = [
+      {
+        id: 'seed-invitation-tv',
+        listingId: 'seed-listing-tv',
+        executorId: 'seed-user-amra',
+        createdAt: hoursAgo(3),
+      },
+      {
+        id: 'seed-invitation-groceries',
+        listingId: 'seed-listing-groceries',
+        executorId: 'seed-user-kenan',
+        createdAt: hoursAgo(8),
+      },
+    ];
+    for (const invitation of invitations) {
+      await prisma.invitation.upsert({
+        where: { id: invitation.id },
+        update: {},
+        create: invitation,
+      });
+    }
+
     console.log(
-      `Seeded ${users.length} users, ${listings.length} jobs, ${addedPhotos === null ? 0 : photos.length} photos, ${applications.length} applications, ${ratings.length} ratings and ${conversations.length} conversations and 1 report.`,
+      `Seeded ${users.length} users, ${listings.length} jobs, ${addedPhotos === null ? 0 : photos.length} photos, ${applications.length} applications, ${ratings.length} ratings, ${conversations.length} conversations, 1 report and ${invitations.length} invitations.`,
     );
     console.log(`Sign in as amra@example.com with ${DEMO_PASSWORD}.`);
     console.log('Sign in as admin@example.com to handle reports.');
