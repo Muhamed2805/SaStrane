@@ -49,6 +49,16 @@ function toSummary(average: number | null, count: number): RatingSummary {
   return { average: Math.round(average * 10) / 10, count };
 }
 
+export type UserStats = {
+  completedJobs: number;
+  responseMinutes: number | null;
+};
+
+// A response time needs this many answers, so one quick reply does not
+// make it.
+const MIN_REPLIES = 3;
+const RESPONSE_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
+
 // For ILIKE: the user's % and _ match themselves.
 function likePattern(text: string) {
   return `%${text.replace(/[\\%_]/g, '\\$&')}%`;
@@ -167,8 +177,74 @@ export class RatingsService {
     return result;
   }
 
+  // Completed jobs and response times for several users at once.
+  async stats(userIds: string[]) {
+    const ids = [...new Set(userIds)];
+    const result = new Map<string, UserStats>();
+    if (ids.length === 0) return result;
+    const since = new Date(Date.now() - RESPONSE_WINDOW_MS);
+
+    // A reply is the first message of one side after a run of messages from
+    // the other side. It is timed from the first message of that run.
+    const [completed, replies] = await Promise.all([
+      this.prisma.application.groupBy({
+        by: ['executorId'],
+        where: {
+          executorId: { in: ids },
+          status: ApplicationStatus.ACCEPTED,
+          listing: { status: ListingStatus.CLOSED },
+        },
+        _count: { _all: true },
+      }),
+      this.prisma.$queryRaw<
+        { userId: string; minutes: number; replies: number }[]
+      >`
+        WITH messages AS (
+          SELECT m.id, m."conversationId", m."senderId", m."createdAt",
+            LAG(m."senderId") OVER (
+              PARTITION BY m."conversationId" ORDER BY m."createdAt", m.id
+            ) AS "previousSender"
+          FROM "Message" m
+          JOIN "Conversation" c ON c.id = m."conversationId"
+          WHERE (c."clientId" = ANY(${ids}) OR c."executorId" = ANY(${ids}))
+            AND m."createdAt" >= ${since}
+        ),
+        runs AS (
+          SELECT "senderId", "createdAt",
+            LAG("createdAt") OVER (
+              PARTITION BY "conversationId" ORDER BY "createdAt", id
+            ) AS "previousRunAt"
+          FROM messages
+          WHERE "previousSender" IS DISTINCT FROM "senderId"
+        )
+        SELECT "senderId" AS "userId",
+          percentile_cont(0.5) WITHIN GROUP (
+            ORDER BY EXTRACT(EPOCH FROM ("createdAt" - "previousRunAt")) / 60
+          )::float8 AS minutes,
+          COUNT(*)::int AS replies
+        FROM runs
+        WHERE "previousRunAt" IS NOT NULL AND "senderId" = ANY(${ids})
+        GROUP BY "senderId"`,
+    ]);
+
+    for (const id of ids) {
+      result.set(id, { completedJobs: 0, responseMinutes: null });
+    }
+    for (const group of completed) {
+      result.get(group.executorId)!.completedJobs = group._count._all;
+    }
+    for (const row of replies) {
+      if (row.replies < MIN_REPLIES) continue;
+      result.get(row.userId)!.responseMinutes = Math.max(
+        1,
+        Math.round(row.minutes),
+      );
+    }
+    return result;
+  }
+
   async getProfile(userId: string) {
-    const [user, aggregate] = await Promise.all([
+    const [user, aggregate, stats] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
         select: PROFILE_SELECT,
@@ -178,6 +254,7 @@ export class RatingsService {
         _avg: { score: true },
         _count: { _all: true },
       }),
+      this.stats([userId]),
     ]);
 
     if (!user) throw new NotFoundException('User not found');
@@ -190,6 +267,7 @@ export class RatingsService {
       location: user.location,
       createdAt: user.createdAt,
       rating: toSummary(aggregate._avg.score, aggregate._count._all),
+      stats: stats.get(userId)!,
     };
   }
 
@@ -243,10 +321,14 @@ export class RatingsService {
         SELECT COUNT(*)::int AS total FROM "User" u WHERE ${where}`,
     ]);
 
-    const users = await this.prisma.user.findMany({
-      where: { id: { in: rows.map((row) => row.id) } },
-      select: PROFILE_SELECT,
-    });
+    const ids = rows.map((row) => row.id);
+    const [users, stats] = await Promise.all([
+      this.prisma.user.findMany({
+        where: { id: { in: ids } },
+        select: PROFILE_SELECT,
+      }),
+      this.stats(ids),
+    ]);
     const byId = new Map(users.map((user) => [user.id, user]));
 
     // A user deleted between the two reads is left out.
@@ -263,6 +345,7 @@ export class RatingsService {
           location: user.location,
           createdAt: user.createdAt,
           rating: toSummary(row.average, row.count ?? 0),
+          stats: stats.get(user.id)!,
         },
       ];
     });

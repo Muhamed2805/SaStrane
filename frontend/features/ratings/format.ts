@@ -13,3 +13,23 @@ export function ratingCountLabel(count: number) {
   }
   return `${count} ocjena`;
 }
+
+// "1 završen posao", "3 završena posla", "5 završenih poslova".
+export function completedJobsLabel(count: number) {
+  const lastTwo = count % 100;
+  const last = count % 10;
+  if (last === 1 && lastTwo !== 11) return `${count} završen posao`;
+  if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) {
+    return `${count} završena posla`;
+  }
+  return `${count} završenih poslova`;
+}
+
+// How fast the user usually answers, in rough steps: an exact minute count
+// would promise too much.
+export function responseTimeLabel(minutes: number) {
+  if (minutes <= 60) return 'Obično odgovara u roku od sat vremena';
+  if (minutes <= 6 * 60) return 'Obično odgovara u roku od nekoliko sati';
+  if (minutes <= 24 * 60) return 'Obično odgovara u roku od jednog dana';
+  return 'Obično odgovara za više od jednog dana';
+}

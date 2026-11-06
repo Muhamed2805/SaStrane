@@ -1,16 +1,22 @@
 import Link from 'next/link';
-import { MapPin, Star } from 'lucide-react';
+import { BriefcaseBusiness, Clock, MapPin, Star } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserAvatar } from '@/components/user-avatar';
 import {
   CATEGORY_LABELS,
   LOCATION_LABELS,
 } from '@/features/listings/constants';
-import { formatAverage, ratingCountLabel } from '@/features/ratings/format';
+import {
+  completedJobsLabel,
+  formatAverage,
+  ratingCountLabel,
+  responseTimeLabel,
+} from '@/features/ratings/format';
 import type { Executor } from '../api';
 
 export function ExecutorCard({ executor }: { executor: Executor }) {
   const { average, count } = executor.rating;
+  const { completedJobs, responseMinutes } = executor.stats;
   const nameId = `executor-${executor.id}-name`;
 
   // The name names the link: a link holding an article gets no name from
@@ -60,6 +66,25 @@ export function ExecutorCard({ executor }: { executor: Executor }) {
             </>
           )}
         </p>
+        {completedJobs > 0 || responseMinutes !== null ? (
+          <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+            {completedJobs > 0 ? (
+              <p className="flex items-center gap-1.5">
+                <BriefcaseBusiness
+                  className="size-3.5 text-primary"
+                  aria-hidden="true"
+                />
+                {completedJobsLabel(completedJobs)}
+              </p>
+            ) : null}
+            {responseMinutes !== null ? (
+              <p className="flex items-center gap-1.5">
+                <Clock className="size-3.5 text-primary" aria-hidden="true" />
+                {responseTimeLabel(responseMinutes)}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         {executor.bio ? (
           <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">

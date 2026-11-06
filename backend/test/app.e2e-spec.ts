@@ -1569,6 +1569,7 @@ describe('App (e2e)', () => {
         location: null,
         createdAt: expect.any(String) as unknown,
         rating: { average: 4, count: 1 },
+        stats: { completedJobs: 1, responseMinutes: null },
       });
 
       const ratings = await http()
@@ -1663,6 +1664,93 @@ describe('App (e2e)', () => {
     it('returns 404 for the profile of an unknown user', async () => {
       await http().get('/api/users/does-not-exist').expect(404);
       await http().get('/api/users/does-not-exist/ratings').expect(404);
+    });
+
+    it('shows completed jobs and how fast the user answers', async () => {
+      const client = await signedInUser('Amra Hodžić');
+      const executor = await signedInUser('Kenan Mehić');
+      const { id: listingId } = await postListing(client.auth);
+      const application = await http()
+        .post('/api/applications')
+        .set('Authorization', executor.auth)
+        .send({ listingId, message: 'Mogu doći u subotu ujutro.' })
+        .expect(201);
+      await http()
+        .patch(
+          `/api/applications/${(application.body as { id: string }).id}/status`,
+        )
+        .set('Authorization', client.auth)
+        .send({ status: 'ACCEPTED' })
+        .expect(200);
+      await http()
+        .patch(`/api/listings/${listingId}/status`)
+        .set('Authorization', client.auth)
+        .send({ status: 'CLOSED' })
+        .expect(200);
+
+      // Minutes after the start. The executor answers after 11, 30 and 5
+      // minutes, each time from the first unanswered message. The client
+      // answers twice, too few for a time.
+      const conversation = await prisma.conversation.create({
+        data: {
+          listingId,
+          clientId: client.user.id,
+          executorId: executor.user.id,
+        },
+      });
+      const start = Date.now() - 2 * 24 * 60 * 60 * 1000;
+      const old = Date.now() - 100 * 24 * 60 * 60 * 1000;
+      const at = (minutes: number, from = start) =>
+        new Date(from + minutes * 60 * 1000);
+      const messages: [string, Date][] = [
+        // Older than 90 days: not counted.
+        [client.user.id, at(0, old)],
+        [executor.user.id, at(1000, old)],
+        [client.user.id, at(0)],
+        [client.user.id, at(1)],
+        [executor.user.id, at(11)],
+        [client.user.id, at(20)],
+        [executor.user.id, at(50)],
+        [client.user.id, at(60)],
+        [executor.user.id, at(65)],
+        [executor.user.id, at(70)],
+      ];
+      await prisma.message.createMany({
+        data: messages.map(([senderId, createdAt]) => ({
+          conversationId: conversation.id,
+          senderId,
+          body: 'Poruka',
+          createdAt,
+        })),
+      });
+
+      const profile = await http()
+        .get(`/api/users/${executor.user.id}`)
+        .expect(200);
+      expect(profile.body).toMatchObject({
+        stats: { completedJobs: 1, responseMinutes: 11 },
+      });
+      const clientProfile = await http()
+        .get(`/api/users/${client.user.id}`)
+        .expect(200);
+      expect(clientProfile.body).toMatchObject({
+        stats: { completedJobs: 0, responseMinutes: null },
+      });
+
+      // The executor list shows the same.
+      await prisma.user.update({
+        where: { id: executor.user.id },
+        data: { skills: ['LAWN_MOWING'] },
+      });
+      const list = await http().get('/api/users').expect(200);
+      expect(list.body).toMatchObject({
+        items: [
+          {
+            id: executor.user.id,
+            stats: { completedJobs: 1, responseMinutes: 11 },
+          },
+        ],
+      });
     });
 
     it('keeps the email off the public profile', async () => {
@@ -2291,6 +2379,7 @@ describe('App (e2e)', () => {
             location: 'SARAJEVO',
             createdAt: expect.any(String) as unknown,
             rating: { average: 5, count: 1 },
+            stats: { completedJobs: 0, responseMinutes: null },
           },
           expect.objectContaining({
             id: kenan.id,

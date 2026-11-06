@@ -2,7 +2,13 @@ import { cache } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
-import { CalendarDays, MapPin, Star } from 'lucide-react';
+import {
+  BriefcaseBusiness,
+  CalendarDays,
+  Clock,
+  MapPin,
+  Star,
+} from 'lucide-react';
 import { UserAvatar } from '@/components/user-avatar';
 import { InviteButton } from '@/features/invitations/components/invite-button';
 import {
@@ -13,7 +19,12 @@ import { ReportButton } from '@/features/moderation/components/report-button';
 import { ratingsApi } from '@/features/ratings/api';
 import { RatingStars } from '@/features/ratings/components/rating-stars';
 import { UserRatings } from '@/features/ratings/components/user-ratings';
-import { formatAverage, ratingCountLabel } from '@/features/ratings/format';
+import {
+  completedJobsLabel,
+  formatAverage,
+  ratingCountLabel,
+  responseTimeLabel,
+} from '@/features/ratings/format';
 import { profileKeys, userRatingsQuery } from '@/features/ratings/queries';
 import { ApiError } from '@/lib/api-client';
 import { formatDate } from '@/lib/format-date';
@@ -68,6 +79,7 @@ export default async function UserProfilePage({ params }: PageProps) {
   await queryClient.prefetchInfiniteQuery(userRatingsQuery(profile.id));
 
   const { average, count } = profile.rating;
+  const { completedJobs, responseMinutes } = profile.stats;
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
@@ -100,6 +112,21 @@ export default async function UserProfilePage({ params }: PageProps) {
                   />
                   Član od {formatDate(profile.createdAt)}
                 </p>
+                {completedJobs > 0 ? (
+                  <p className="flex items-center gap-1.5">
+                    <BriefcaseBusiness
+                      className="size-4 text-primary"
+                      aria-hidden="true"
+                    />
+                    {completedJobsLabel(completedJobs)}
+                  </p>
+                ) : null}
+                {responseMinutes !== null ? (
+                  <p className="flex items-center gap-1.5">
+                    <Clock className="size-4 text-primary" aria-hidden="true" />
+                    {responseTimeLabel(responseMinutes)}
+                  </p>
+                ) : null}
               </div>
             </div>
             <div className="rounded-xl bg-amber-50 px-5 py-4 text-center">

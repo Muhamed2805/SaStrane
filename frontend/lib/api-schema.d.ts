@@ -1452,6 +1452,16 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        UserStatsDto: {
+            /** @description Accepted applications on jobs the client closed. */
+            completedJobs: number;
+            /**
+             * @description The median minutes the user took to answer a message in the last 90
+             *     days, from the other side's first unanswered message. Null with fewer
+             *     than 3 answers.
+             */
+            responseMinutes: number | null;
+        };
         UserProfileDto: {
             /** @description The kinds of jobs the user does. */
             skills: components["schemas"]["ListingCategory"][];
@@ -1470,6 +1480,7 @@ export interface components {
             createdAt: string;
             /** @description Ratings received as an executor. */
             rating: components["schemas"]["RatingSummaryDto"];
+            stats: components["schemas"]["UserStatsDto"];
         };
         ExecutorsPageDto: {
             items: components["schemas"]["UserProfileDto"][];

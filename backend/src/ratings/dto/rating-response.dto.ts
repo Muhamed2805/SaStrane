@@ -13,6 +13,19 @@ export class RatingSummaryDto {
   count!: number;
 }
 
+// How a user works, besides the ratings.
+export class UserStatsDto {
+  /** Accepted applications on jobs the client closed. */
+  completedJobs!: number;
+
+  /**
+   * The median minutes the user took to answer a message in the last 90
+   * days, from the other side's first unanswered message. Null with fewer
+   * than 3 answers.
+   */
+  responseMinutes!: number | null;
+}
+
 // The client who wrote a rating.
 export class RatingClientDto {
   id!: string;
@@ -77,6 +90,8 @@ export class UserProfileDto {
 
   /** Ratings received as an executor. */
   rating!: RatingSummaryDto;
+
+  stats!: UserStatsDto;
 }
 
 // The best rated first. See RatingsService.getExecutors.

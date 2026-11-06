@@ -7,7 +7,7 @@ import { StorageService } from '../storage/storage.service.js';
 import { RatingsService } from './ratings.service.js';
 
 describe('RatingsService', () => {
-  const applicationRepository = { findUnique: vi.fn() };
+  const applicationRepository = { findUnique: vi.fn(), groupBy: vi.fn() };
   const ratingRepository = {
     create: vi.fn(),
     groupBy: vi.fn(),
@@ -34,6 +34,9 @@ describe('RatingsService', () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
+    // No completed jobs and no answers, unless a test says otherwise.
+    applicationRepository.groupBy.mockResolvedValue([]);
+    queryRaw.mockResolvedValue([]);
   });
 
   describe('create', () => {
@@ -217,6 +220,10 @@ describe('RatingsService', () => {
         ['b', { average: 4.7, count: 3 }],
         ['a', { average: null, count: 0 }],
       ]);
+      expect(result.items[0].stats).toEqual({
+        completedJobs: 0,
+        responseMinutes: null,
+      });
       expect(result.items[0]).not.toHaveProperty('avatarId');
     });
 
@@ -260,6 +267,7 @@ describe('RatingsService', () => {
         location: 'ILIDZA',
         createdAt,
         rating: { average: null, count: 0 },
+        stats: { completedJobs: 0, responseMinutes: null },
       });
       expect(userRepository.findUnique).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -306,6 +314,50 @@ describe('RatingsService', () => {
       await expect(service.getProfile('missing')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('stats', () => {
+    it('counts completed jobs and rounds the response time', async () => {
+      applicationRepository.groupBy.mockResolvedValue([
+        { executorId: 'a', _count: { _all: 4 } },
+      ]);
+      queryRaw.mockResolvedValue([
+        { userId: 'a', minutes: 42.6, replies: 3 },
+        { userId: 'b', minutes: 0.2, replies: 5 },
+      ]);
+
+      const stats = await service.stats(['a', 'b', 'a']);
+
+      expect(Object.fromEntries(stats)).toEqual({
+        a: { completedJobs: 4, responseMinutes: 43 },
+        b: { completedJobs: 0, responseMinutes: 1 },
+      });
+      expect(applicationRepository.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            executorId: { in: ['a', 'b'] },
+            status: 'ACCEPTED',
+            listing: { status: 'CLOSED' },
+          },
+        }),
+      );
+    });
+
+    it('needs three answers for a response time', async () => {
+      queryRaw.mockResolvedValue([{ userId: 'a', minutes: 5, replies: 2 }]);
+
+      const stats = await service.stats(['a']);
+
+      expect(stats.get('a')).toEqual({
+        completedJobs: 0,
+        responseMinutes: null,
+      });
+    });
+
+    it('asks nothing for an empty list', async () => {
+      await expect(service.stats([])).resolves.toEqual(new Map());
+      expect(queryRaw).not.toHaveBeenCalled();
     });
   });
 

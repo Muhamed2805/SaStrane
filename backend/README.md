@@ -100,7 +100,7 @@ after every install and every schema change.
 
 The seed in `prisma/seed.ts` adds four users, two of them with an
 introduction and skills, an admin (`admin@example.com`), ten jobs, seven
-photos, seven applications, two ratings, three conversations, one open
+photos, seven applications, two ratings, four conversations, one open
 report, two invitations and five notifications for Amra. The photos come from
 `prisma/seed-photos` and need the storage container and
 `npm run storage:init`. When the storage is not reachable, as in CI, the
@@ -199,8 +199,8 @@ admin, or the route returns 403.
 | `POST` | `/api/conversations/:id/messages` | Member | Sends a message. |
 | `POST` | `/api/conversations/:id/read` | Member | Marks the conversation as read. Returns 204. |
 | `POST` | `/api/ratings` | Owner | Rates the executor of an accepted application to a closed job. |
-| `GET` | `/api/users` | | Lists the users who do jobs, the best rated first. Only confirmed, not suspended users with at least one skill. Filters: `q` (name or introduction), `skill`, `location`. Paging: `page`, `limit` (max 50, default 12). |
-| `GET` | `/api/users/:id` | | Returns a user's public profile: photo, introduction, skills, location and rating. |
+| `GET` | `/api/users` | | Lists the users who do jobs, the best rated first, each with the profile fields and `stats`. Only confirmed, not suspended users with at least one skill. Filters: `q` (name or introduction), `skill`, `location`. Paging: `page`, `limit` (max 50, default 12). |
+| `GET` | `/api/users/:id` | | Returns a user's public profile: photo, introduction, skills, location, rating and `stats`: completed jobs and the median minutes to answer a message in the last 90 days (null with fewer than 3 answers). |
 | `GET` | `/api/users/:id/ratings` | | Lists the ratings a user received, newest first. Paging: `page`, `limit` (max 50). |
 | `POST` | `/api/reports` | Bearer | Reports a job (`listingId`) or a user (`userId`) with a reason and optional details. Returns 204. |
 | `GET` | `/api/admin/stats` | Admin | Returns the totals for the admin overview. |
@@ -285,8 +285,13 @@ admin, or the route returns 403.
 - Application lists show the executor's average and count. The client's
   lists also have `canRate`, which is true when the executor can be rated.
 - Profiles under `/api/users` are public. They show the name, the profile
-  photo, the introduction, the skills, the sign-up date and the ratings,
-  never the email.
+  photo, the introduction, the skills, the sign-up date, the ratings, the
+  completed jobs and the response time, never the email.
+- A completed job is an accepted application on a job its client closed. It
+  is no longer counted once the job is deleted.
+- The response time is timed from the first message of the other side that
+  is not answered yet to the user's answer. It is the median of the last 90
+  days and shows from 3 answers, so one quick reply does not make it.
 
 **Account.**
 - The email address cannot be changed. `PATCH /api/auth/me` changes only

@@ -12,6 +12,7 @@ const tarik = {
   location: 'SARAJEVO',
   createdAt: '2026-09-15T12:00:00.000Z',
   rating: { average: 4.5, count: 2 },
+  stats: { completedJobs: 3, responseMinutes: 25 },
 };
 
 const kenan = {
@@ -23,6 +24,7 @@ const kenan = {
   location: null,
   createdAt: '2026-09-20T12:00:00.000Z',
   rating: { average: null, count: 0 },
+  stats: { completedJobs: 0, responseMinutes: null },
 };
 
 function json(body: unknown, status = 200) {
@@ -78,9 +80,14 @@ test('lists executors and filters them by job and search', async ({ page }) => {
   await expect(tarikCard).toContainText('4,5');
   await expect(tarikCard).toContainText('2 ocjene');
   await expect(tarikCard).toContainText('Montaža');
-  await expect(page.getByRole('link', { name: /Kenan Mehić/ })).toContainText(
-    'Još nema ocjena',
+  await expect(tarikCard).toContainText('3 završena posla');
+  await expect(tarikCard).toContainText(
+    'Obično odgovara u roku od sat vremena',
   );
+  const kenanCard = page.getByRole('link', { name: /Kenan Mehić/ });
+  await expect(kenanCard).toContainText('Još nema ocjena');
+  await expect(kenanCard).not.toContainText('završen');
+  await expect(kenanCard).not.toContainText('Obično odgovara');
 
   await page.getByLabel('Filtriraj po poslu').selectOption('IT_HELP');
   await expect(page).toHaveURL(/\/executors\?skill=IT_HELP$/);

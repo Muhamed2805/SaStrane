@@ -6707,6 +6707,24 @@
           "createdAt"
         ]
       },
+      "UserStatsDto": {
+        "type": "object",
+        "properties": {
+          "completedJobs": {
+            "type": "number",
+            "description": "Accepted applications on jobs the client closed."
+          },
+          "responseMinutes": {
+            "type": "number",
+            "nullable": true,
+            "description": "The median minutes the user took to answer a message in the last 90\ndays, from the other side's first unanswered message. Null with fewer\nthan 3 answers."
+          }
+        },
+        "required": [
+          "completedJobs",
+          "responseMinutes"
+        ]
+      },
       "UserProfileDto": {
         "type": "object",
         "properties": {
@@ -6754,6 +6772,9 @@
                 "$ref": "#/components/schemas/RatingSummaryDto"
               }
             ]
+          },
+          "stats": {
+            "$ref": "#/components/schemas/UserStatsDto"
           }
         },
         "required": [
@@ -6764,7 +6785,8 @@
           "avatarUrl",
           "bio",
           "createdAt",
-          "rating"
+          "rating",
+          "stats"
         ]
       },
       "ExecutorsPageDto": {

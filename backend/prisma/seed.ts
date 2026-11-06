@@ -1,6 +1,6 @@
 // Demo data for local development: four users and an admin, ten jobs,
-// seven photos, seven applications, two ratings, three conversations and
-// one open report, with Bosnian text as in real use. Every demo user signs
+// seven photos, seven applications, two ratings, four conversations, one
+// open report, two invitations and five notifications, with Bosnian text as in real use. Every demo user signs
 // in with the password below.
 //
 // Run it with `npx prisma db seed`. It upserts fixed IDs, so a second run
@@ -380,6 +380,46 @@ const conversations: {
         fromClient: true,
         body: 'Oko 20 kutija. Lift ima samo na Grbavici, na Stupu je drugi sprat.',
         minutesAgo: 150,
+      },
+    ],
+  },
+  // Lejla agreed the fence job with Kenan. His quick answers give him a
+  // response time on his profile.
+  {
+    id: 'seed-conversation-fence-kenan',
+    listingId: 'seed-listing-fence',
+    clientId: 'seed-user-lejla',
+    executorId: 'seed-user-kenan',
+    messages: [
+      {
+        fromClient: true,
+        body: 'Pozdrav! Je li ti subota u redu za farbanje?',
+        minutesAgo: 236 * 60,
+      },
+      {
+        fromClient: false,
+        body: 'Jeste, mogu doći u 9h.',
+        minutesAgo: 236 * 60 - 20,
+      },
+      {
+        fromClient: true,
+        body: 'Super. Trebaju li ti merdevine?',
+        minutesAgo: 235 * 60,
+      },
+      {
+        fromClient: false,
+        body: 'Ne trebaju, ograda je niska. Samo neka boja bude tu.',
+        minutesAgo: 235 * 60 - 35,
+      },
+      {
+        fromClient: true,
+        body: 'Boja je kupljena, ostavila sam je pored kapije.',
+        minutesAgo: 232 * 60,
+      },
+      {
+        fromClient: false,
+        body: 'Hvala, vidimo se u subotu.',
+        minutesAgo: 232 * 60 - 10,
       },
     ],
   },

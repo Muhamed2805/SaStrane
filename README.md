@@ -81,6 +81,9 @@ be both.
 - Every user has a public profile with a photo, a short introduction, the
   kinds of jobs they do, where they work, their average rating and the
   reviews. Application cards show the executor's rating and link to it.
+- Profiles and executor cards show the number of completed jobs and how
+  fast the user usually answers messages: the median over the last 90 days,
+  once they answered at least 3 times.
 - Find executors by the kind of job, the location or a word from the name
   or introduction, the best rated first. Users who do jobs and picked at
   least one kind of job are listed.
