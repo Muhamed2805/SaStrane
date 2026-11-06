@@ -856,6 +856,19 @@ describe('App (e2e)', () => {
       await login(client.user.email);
     });
 
+    it('locks out a session that a sign-in started during the suspension', async () => {
+      const user = await createUser(prisma);
+      // The sign-in passed its check just before the suspension was saved.
+      const { accessToken, cookie } = await login(user.email);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { suspendedAt: new Date() },
+      });
+
+      await me(accessToken).expect(401);
+      await refresh(cookie).expect(401);
+    });
+
     it('gives admins the totals and every user and job', async () => {
       const client = await signedInUser('Amra Hodžić');
       const reporter = await signedInUser('Kenan Mehić');
@@ -871,6 +884,8 @@ describe('App (e2e)', () => {
       }).expect(204);
       const get = (path: string) =>
         http().get(`/api/admin/${path}`).set('Authorization', admin.auth);
+      const items = (response: { body: unknown }) =>
+        (response.body as { items: unknown[] }).items;
       const setStatus = (id: string, status: string) =>
         http()
           .patch(`/api/admin/listings/${id}/status`)
@@ -895,7 +910,7 @@ describe('App (e2e)', () => {
 
       const found = await get('users?q=amra').expect(200);
       expect(found.body).toMatchObject({ total: 1, page: 1, limit: 20 });
-      expect(found.body.items).toEqual([
+      expect(items(found)).toEqual([
         {
           id: client.user.id,
           fullName: 'Amra Hodžić',
@@ -905,25 +920,25 @@ describe('App (e2e)', () => {
           isAdmin: false,
           suspendedAt: null,
           emailVerified: true,
-          createdAt: expect.any(String),
+          createdAt: expect.any(String) as unknown,
           listings: 2,
           applications: 0,
           openReports: 1,
         },
       ]);
       const admins = await get('users?filter=ADMINS').expect(200);
-      expect(admins.body.items).toMatchObject([{ id: admin.user.id }]);
+      expect(items(admins)).toMatchObject([{ id: admin.user.id }]);
       await get('users?filter=EVERYONE').expect(400);
 
       const jobs = await get('listings?q=ograde').expect(200);
-      expect(jobs.body.items).toEqual([
+      expect(items(jobs)).toEqual([
         {
           id: fenceId,
           title: 'Farbanje drvene ograde',
           status: 'OPEN',
           category: 'LAWN_MOWING',
           location: 'ILIDZA',
-          createdAt: expect.any(String),
+          createdAt: expect.any(String) as unknown,
           client: {
             id: client.user.id,
             fullName: 'Amra Hodžić',
@@ -936,7 +951,7 @@ describe('App (e2e)', () => {
 
       await setStatus(lawnId, 'CLOSED').expect(204);
       const closed = await get('listings?status=CLOSED').expect(200);
-      expect(closed.body.items).toMatchObject([{ id: lawnId }]);
+      expect(items(closed)).toMatchObject([{ id: lawnId }]);
       await setStatus('missing', 'CLOSED').expect(404);
       await setStatus(lawnId, 'DONE').expect(400);
 
@@ -947,8 +962,8 @@ describe('App (e2e)', () => {
       const reopen = await setStatus(lawnId, 'OPEN').expect(409);
       expect(reopen.body).toMatchObject({ code: 'CLIENT_SUSPENDED' });
       const suspended = await get('users?filter=SUSPENDED').expect(200);
-      expect(suspended.body.items).toMatchObject([
-        { id: client.user.id, suspendedAt: expect.any(String) },
+      expect(items(suspended)).toMatchObject([
+        { id: client.user.id, suspendedAt: expect.any(String) as unknown },
       ]);
     });
   });

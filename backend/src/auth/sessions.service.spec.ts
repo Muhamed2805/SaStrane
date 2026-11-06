@@ -53,7 +53,11 @@ describe('SessionsService', () => {
   // A stored token as rotate() reads it, with a valid, active session.
   function storedToken(
     overrides: { expiresAt?: Date; rotatedAt?: Date | null } = {},
-    session: { expiresAt?: Date; revokedAt?: Date | null } = {},
+    session: {
+      expiresAt?: Date;
+      revokedAt?: Date | null;
+      user?: typeof user & { suspendedAt: Date | null };
+    } = {},
   ) {
     return {
       id: 'token-1',
@@ -64,7 +68,7 @@ describe('SessionsService', () => {
         id: 'session-1',
         expiresAt: new Date(now.getTime() + SESSION_MAX_AGE_MS),
         revokedAt: null,
-        user,
+        user: { ...user, suspendedAt: null },
         ...session,
       },
     };
@@ -173,6 +177,15 @@ describe('SessionsService', () => {
         where: { id: 'session-1' },
         data: { lastUsedAt: now },
       });
+    });
+
+    it('refuses the token of a suspended user', async () => {
+      refreshTokenRepository.findUnique.mockResolvedValue(
+        storedToken({}, { user: { ...user, suspendedAt: now } }),
+      );
+
+      await expect(service.rotate('current-token')).resolves.toBeNull();
+      expect(refreshTokenRepository.updateMany).not.toHaveBeenCalled();
     });
 
     it('never lets a new token outlive its session', async () => {
@@ -317,7 +330,7 @@ describe('SessionsService', () => {
     });
   });
 
-  it('treats only an unrevoked, unexpired session of the user as active', async () => {
+  it('treats only an unrevoked, unexpired session of a user who is not suspended as active', async () => {
     sessionRepository.findFirst.mockResolvedValue({ id: 'session-1' });
 
     await expect(service.isActive('session-1', user.id)).resolves.toBe(true);
@@ -328,6 +341,7 @@ describe('SessionsService', () => {
         userId: user.id,
         revokedAt: null,
         expiresAt: { gt: now },
+        user: { suspendedAt: null },
       },
       select: { id: true },
     });

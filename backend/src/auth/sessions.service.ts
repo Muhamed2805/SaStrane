@@ -108,7 +108,7 @@ export class SessionsService {
             id: true,
             expiresAt: true,
             revokedAt: true,
-            user: { select: PUBLIC_USER_SELECT },
+            user: { select: { ...PUBLIC_USER_SELECT, suspendedAt: true } },
           },
         },
       },
@@ -117,8 +117,12 @@ export class SessionsService {
     if (!stored || stored.expiresAt <= now) return null;
     const { session } = stored;
     if (session.revokedAt || session.expiresAt <= now) return null;
+    // Suspending ends every session, but a sign-in that raced with it could
+    // have started a new one.
+    const { suspendedAt, ...user } = session.user;
+    if (suspendedAt) return null;
 
-    const grant = { sessionId: session.id, user: session.user };
+    const grant = { sessionId: session.id, user };
 
     if (stored.rotatedAt) {
       if (now.getTime() - stored.rotatedAt.getTime() <= ROTATION_GRACE_MS) {
@@ -216,6 +220,8 @@ export class SessionsService {
     });
   }
 
+  // A suspended user's sessions never count, also one that a sign-in
+  // started while the suspension was being saved.
   async isActive(sessionId: string, userId: string) {
     const session = await this.prisma.session.findFirst({
       where: {
@@ -223,6 +229,7 @@ export class SessionsService {
         userId,
         revokedAt: null,
         expiresAt: { gt: new Date() },
+        user: { suspendedAt: null },
       },
       select: { id: true },
     });
