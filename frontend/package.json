@@ -15,11 +15,11 @@
     "api:types": "openapi-typescript ../backend/openapi.json --output lib/api-schema.d.ts --default-non-nullable false"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.104.5",
+    "@tanstack/react-query": "^5.106.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^1.58.0",
-    "next": "^16.4.3",
+    "lucide-react": "^1.69.0",
+    "next": "^16.4.5",
     "radix-ui": "^1.8.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
