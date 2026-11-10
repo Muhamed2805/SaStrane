@@ -1401,17 +1401,35 @@ describe('App (e2e)', () => {
         expect(await clientStream.next()).toEqual(message);
         expect(await executorStream.next()).toEqual(message);
 
-        // Reading tells the reader's tabs, once.
+        // Reading tells the reader's tabs and the other side, once.
         const markRead = () =>
           http()
             .post(`/api/conversations/${id}/read`)
             .set('Authorization', executor.auth)
             .expect(204);
+        const read = { type: 'read', conversationId: id };
+        const lastSentAt = (
+          await prisma.conversation.findUniqueOrThrow({ where: { id } })
+        ).lastMessageAt!;
+        const seenBy = async () => {
+          const response = await http()
+            .get(`/api/conversations/${id}`)
+            .set('Authorization', client.auth)
+            .expect(200);
+          return new Date(
+            (response.body as { otherReadAt: string }).otherReadAt,
+          );
+        };
+        // The executor wrote before the client's answer and has not
+        // seen it yet.
+        expect((await seenBy()).getTime()).toBeLessThan(lastSentAt.getTime());
+
         await markRead();
-        expect(await executorStream.next()).toEqual({
-          type: 'read',
-          conversationId: id,
-        });
+        expect(await executorStream.next()).toEqual(read);
+        expect(await clientStream.next()).toEqual(read);
+        expect((await seenBy()).getTime()).toBeGreaterThanOrEqual(
+          lastSentAt.getTime(),
+        );
         await markRead();
         await send(client.auth, id, 'Stara je dvije godine.').expect(201);
         expect(await executorStream.next()).toEqual(message);
@@ -1473,6 +1491,7 @@ describe('App (e2e)', () => {
         otherUser: { id: client.user.id, fullName: 'Amra Hodžić' },
         lastMessage: null,
         unreadCount: 0,
+        otherReadAt: null,
       });
       // Starting again returns the same conversation.
       expect(await startAs(executor.auth, listingId)).toBe(id);

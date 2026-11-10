@@ -83,6 +83,8 @@ be both.
   devices follow: a sent message shows there and a read conversation
   leaves the count. A notification also reloads the workspace list it is
   about. Without the stream, the site checks for news every few seconds.
+- The sender sees "Viđeno" under their newest message once the other side
+  has read it.
 - Messages left unread for 10 minutes trigger one email per conversation,
   until the user reads it.
 

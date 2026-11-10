@@ -65,6 +65,8 @@ export function conversationQuery(userId: string, id: string) {
   return queryOptions({
     queryKey: messageKeys.detail(userId, id),
     queryFn: () => messagesApi.getById(id),
+    // For when the other side reads the user's messages.
+    refetchInterval: pollEvery(POLL_MS.list),
   });
 }
 
@@ -92,6 +94,21 @@ export function threadMessages(pages: MessagesPage[] | undefined): Message[] {
     }),
   );
   return newestFirst.reverse();
+}
+
+// Whether the other side has seen the newest message: the user sent it, and
+// the other side read the conversation or wrote in it since.
+export function isSeen(
+  newest: Message | undefined,
+  userId: string,
+  otherReadAt: string | null | undefined,
+) {
+  return Boolean(
+    newest &&
+    newest.senderId === userId &&
+    otherReadAt &&
+    Date.parse(otherReadAt) >= Date.parse(newest.createdAt),
+  );
 }
 
 // Shows a sent message at once. The lists load again for the new order and

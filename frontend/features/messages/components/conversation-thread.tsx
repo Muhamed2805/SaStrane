@@ -31,6 +31,7 @@ import { MAX_MESSAGE_LENGTH, messagesApi, type Message } from '../api';
 import {
   conversationQuery,
   conversationRead,
+  isSeen,
   messageSent,
   messagesQuery,
   threadMessages,
@@ -325,6 +326,12 @@ export function ConversationThread({
                   message={message}
                   isMine={message.senderId === userId}
                 />
+                {message === newest &&
+                isSeen(newest, userId, details?.otherReadAt) ? (
+                  <p className="pr-1 text-right text-[11px] font-medium text-muted-foreground">
+                    Viđeno
+                  </p>
+                ) : null}
               </Fragment>
             );
           })

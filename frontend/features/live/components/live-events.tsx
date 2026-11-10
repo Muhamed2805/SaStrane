@@ -55,10 +55,14 @@ export function LiveEvents() {
           break;
         case 'message':
           reload(messageKeys.messages(userId, event.conversationId));
+          reload(messageKeys.detail(userId, event.conversationId));
           reload(messageKeys.list(userId));
           reload(messageKeys.unreadCount(userId));
           break;
         case 'read':
+          // The user read it elsewhere, or the other side saw the user's
+          // messages.
+          reload(messageKeys.detail(userId, event.conversationId));
           reload(messageKeys.list(userId));
           reload(messageKeys.unreadCount(userId));
           break;

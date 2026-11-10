@@ -37,6 +37,7 @@ const conversation = {
   },
   lastMessage: firstMessage,
   unreadCount: 1,
+  otherReadAt: null,
   createdAt: '2026-11-01T10:00:00.000Z',
 };
 
@@ -59,6 +60,8 @@ async function mockMessagesApi(page: Page) {
     unread: 1,
     sent: [] as string[],
     reads: 0,
+    // When the other side last read the conversation.
+    otherReadAt: null as string | null,
   };
 
   await page.addInitScript((key) => {
@@ -91,7 +94,13 @@ async function mockMessagesApi(page: Page) {
     ),
   );
   await page.route(apiRoute(`/conversations/${conversation.id}$`), (route) =>
-    route.fulfill(json({ ...conversation, unreadCount: state.unread })),
+    route.fulfill(
+      json({
+        ...conversation,
+        unreadCount: state.unread,
+        otherReadAt: state.otherReadAt,
+      }),
+    ),
   );
   await page.route(
     apiRoute(`/conversations/${conversation.id}/messages`),
@@ -180,6 +189,52 @@ test('sends a message with Enter and keeps Shift+Enter for new lines', async ({
   await expect(
     page.getByRole('button', { name: 'Pošalji poruku' }),
   ).toBeDisabled();
+});
+
+test('shows that the other side has seen the newest message', async ({
+  page,
+}) => {
+  const state = await mockMessagesApi(page);
+  // The other side read the conversation before the user answers.
+  state.otherReadAt = new Date().toISOString();
+  // The server tells the open tab that the other side has read it.
+  let tellRead = () => {};
+  const read = new Promise<void>((resolve) => {
+    tellRead = resolve;
+  });
+  let streams = 0;
+  await page.route(apiRoute('/live$'), async (route) => {
+    streams += 1;
+    if (streams > 1) return route.fulfill(json({ message: 'Down' }, 503));
+    await read;
+    return route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      body:
+        'data: {"type":"ready"}\n\n' +
+        `data: {"type":"read","conversationId":"${conversation.id}"}\n\n`,
+    });
+  });
+
+  await page.goto(`/messages/${conversation.id}`);
+  const input = page.getByLabel('Poruka', { exact: true });
+  const seen = page.getByText('Viđeno', { exact: true });
+
+  // The newest message is the other side's: nothing to see.
+  await expect(page.getByText(firstMessage.body).last()).toBeVisible();
+  await expect(seen).toHaveCount(0);
+
+  await input.fill('Može u 15h.');
+  await input.press('Enter');
+  await expect(
+    page.getByRole('paragraph').filter({ hasText: 'Može u 15h.' }),
+  ).toBeVisible();
+  // Sent after the other side last read.
+  await expect(seen).toHaveCount(0);
+
+  state.otherReadAt = new Date(Date.now() + 1_000).toISOString();
+  tellRead();
+  await expect(seen).toBeVisible();
 });
 
 test('asks a signed-out visitor to sign in', async ({ page }) => {

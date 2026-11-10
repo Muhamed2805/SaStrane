@@ -327,6 +327,11 @@ model Conversation {
   clientUnread   Int @default(0)
   executorUnread Int @default(0)
 
+  // When each side last read the conversation or wrote in it. The other
+  // side sees its newest message as seen when this is not before it.
+  clientReadAt   DateTime?
+  executorReadAt DateTime?
+
   // When each side's oldest unread message arrived, and when that side got
   // an email about it. Reading the conversation clears both, so each side
   // gets at most one email until they read it.

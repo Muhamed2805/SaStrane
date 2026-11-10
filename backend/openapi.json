@@ -35,7 +35,7 @@
     },
     "/api/live": {
       "get": {
-        "description": "Each event's data is JSON with a `type`: `ready` when the\nstream opens, `ping` every 15 seconds, `message` with a `conversationId`\nfor a new message that the user got or sent, `read` with a\n`conversationId` when the user read a conversation, and `notification`\nfor a new notification. Events carry no content: load it from the\nusual endpoints. The stream ends after 10 minutes; open a new one.",
+        "description": "Each event's data is JSON with a `type`: `ready` when the\nstream opens, `ping` every 15 seconds, `message` with a `conversationId`\nfor a new message that the user got or sent, `read` with a\n`conversationId` when either side read a conversation, and `notification`\nfor a new notification. Events carry no content: load it from the\nusual endpoints. The stream ends after 10 minutes; open a new one.",
         "operationId": "live_stream",
         "parameters": [],
         "responses": {
@@ -8223,6 +8223,12 @@
             "type": "number",
             "description": "The messages from the other side that the user has not read yet."
           },
+          "otherReadAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the other side last read the conversation or wrote in it. They\nhave seen the user's messages up to this time. Null when never."
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -8235,6 +8241,7 @@
           "listing",
           "otherUser",
           "unreadCount",
+          "otherReadAt",
           "createdAt"
         ]
       },

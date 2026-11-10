@@ -52,6 +52,8 @@ describe('ConversationsService', () => {
     executorId: 'executor-1',
     clientUnread: 2,
     executorUnread: 0,
+    clientReadAt: new Date('2026-11-01T10:05:00Z'),
+    executorReadAt: new Date('2026-11-01T11:00:00Z'),
     createdAt: new Date('2026-11-01T10:00:00Z'),
     listing: { id: 'listing-1', title: 'Selidba', status: 'OPEN' },
     client: { id: 'client-1', fullName: 'Amra Hodžić', avatarId: 'avatar-1' },
@@ -85,6 +87,8 @@ describe('ConversationsService', () => {
           avatarUrl: 'https://files.test/avatars/client-1/avatar-1.webp',
         },
         unreadCount: 0,
+        // When the other side, the client, last read it.
+        otherReadAt: row.clientReadAt,
       });
       expect(conversationRepository.create).not.toHaveBeenCalled();
     });
@@ -176,6 +180,7 @@ describe('ConversationsService', () => {
           avatarUrl: null,
         },
         unreadCount: 2,
+        otherReadAt: row.executorReadAt,
       });
     });
 
@@ -303,6 +308,8 @@ describe('ConversationsService', () => {
           executorUnread: 0,
           executorUnreadSince: null,
           executorEmailedAt: null,
+          // Whoever writes has seen everything before.
+          executorReadAt: message.createdAt,
           clientUnread: { increment: 1 },
         },
       });
@@ -332,20 +339,49 @@ describe('ConversationsService', () => {
     it('marks the conversation as read for the side who asks', async () => {
       conversationRepository.findUnique.mockResolvedValue(row);
 
+      const before = Date.now();
       await service.markRead('conversation-1', 'client-1');
 
-      expect(conversationRepository.update).toHaveBeenCalledWith({
+      const update = conversationRepository.update.mock.calls[0][0] as {
+        data: { clientReadAt: Date };
+      };
+      expect(update).toEqual({
         where: { id: 'conversation-1' },
         data: {
           clientUnread: 0,
           clientUnreadSince: null,
           clientEmailedAt: null,
+          clientReadAt: expect.any(Date) as Date,
         },
       });
-      // The client had two unread messages: their other tabs hear it.
+      expect(update.data.clientReadAt.getTime()).toBeGreaterThanOrEqual(before);
+      // The client had two unread messages: their other tabs hear it,
+      // and the executor sees the messages as seen.
+      const event = { type: 'read', conversationId: 'conversation-1' };
       expect(live.emit.mock.calls).toEqual([
-        ['client-1', { type: 'read', conversationId: 'conversation-1' }],
+        ['client-1', event],
+        ['executor-1', event],
       ]);
+    });
+
+    it('never reads before the last message', async () => {
+      // The database's clock is ahead of this server's.
+      const createdAt = new Date(Date.now() + 60_000);
+      conversationRepository.findUnique.mockResolvedValue({
+        ...row,
+        lastMessage: {
+          id: 'm1',
+          senderId: 'executor-1',
+          body: 'Halo',
+          createdAt,
+        },
+      });
+
+      await service.markRead('conversation-1', 'client-1');
+
+      expect(conversationRepository.update.mock.calls[0][0]).toMatchObject({
+        data: { clientReadAt: createdAt },
+      });
     });
 
     it('tells nobody when there was nothing unread', async () => {

@@ -33,7 +33,7 @@ export interface paths {
          * @description Each event's data is JSON with a `type`: `ready` when the
          *     stream opens, `ping` every 15 seconds, `message` with a `conversationId`
          *     for a new message that the user got or sent, `read` with a
-         *     `conversationId` when the user read a conversation, and `notification`
+         *     `conversationId` when either side read a conversation, and `notification`
          *     for a new notification. Events carry no content: load it from the
          *     usual endpoints. The stream ends after 10 minutes; open a new one.
          */
@@ -1819,6 +1819,12 @@ export interface components {
             otherUser: components["schemas"]["ConversationUserDto"];
             /** @description The messages from the other side that the user has not read yet. */
             unreadCount: number;
+            /**
+             * Format: date-time
+             * @description When the other side last read the conversation or wrote in it. They
+             *     have seen the user's messages up to this time. Null when never.
+             */
+            otherReadAt: string | null;
             /** Format: date-time */
             createdAt: string;
         };

@@ -36,6 +36,8 @@ const CONVERSATION_SELECT = {
   executorId: true,
   clientUnread: true,
   executorUnread: true,
+  clientReadAt: true,
+  executorReadAt: true,
   createdAt: true,
   listing: { select: { id: true, title: true, status: true } },
   client: USER_SELECT,
@@ -98,6 +100,10 @@ function toDto(
       role === 'CLIENT'
         ? conversation.clientUnread
         : conversation.executorUnread,
+    otherReadAt:
+      role === 'CLIENT'
+        ? conversation.executorReadAt
+        : conversation.clientReadAt,
     createdAt: conversation.createdAt,
   };
 }
@@ -286,8 +292,16 @@ export class ConversationsService {
           lastMessageId: message.id,
           lastMessageAt: message.createdAt,
           ...(role === 'CLIENT'
-            ? { ...READ_BY_CLIENT, executorUnread: { increment: 1 } }
-            : { ...READ_BY_EXECUTOR, clientUnread: { increment: 1 } }),
+            ? {
+                ...READ_BY_CLIENT,
+                clientReadAt: message.createdAt,
+                executorUnread: { increment: 1 },
+              }
+            : {
+                ...READ_BY_EXECUTOR,
+                executorReadAt: message.createdAt,
+                clientUnread: { increment: 1 },
+              }),
         },
       });
       // The other side's first unread message starts the wait for an email
@@ -317,19 +331,30 @@ export class ConversationsService {
   async markRead(id: string, userId: string) {
     const conversation = await this.findForUser(id, userId);
     const role = roleOf(conversation, userId);
+    // Never before the last message, whatever this server's clock says:
+    // the reader has seen it.
+    const now = new Date();
+    const lastAt = conversation.lastMessage?.createdAt;
+    const readAt = lastAt && lastAt > now ? lastAt : now;
     await this.prisma.conversation.update({
       where: { id },
-      data: role === 'CLIENT' ? READ_BY_CLIENT : READ_BY_EXECUTOR,
+      data:
+        role === 'CLIENT'
+          ? { ...READ_BY_CLIENT, clientReadAt: readAt }
+          : { ...READ_BY_EXECUTOR, executorReadAt: readAt },
     });
 
-    // The user's other tabs drop the unread count. Reading what was
-    // already read changes nothing for them.
+    // The reader's other tabs drop the unread count, and the other side
+    // sees its messages as seen. Reading what was already read changes
+    // nothing for either.
     const unread =
       role === 'CLIENT'
         ? conversation.clientUnread
         : conversation.executorUnread;
     if (unread > 0) {
-      this.live.emit(userId, { type: 'read', conversationId: id });
+      for (const side of [conversation.clientId, conversation.executorId]) {
+        this.live.emit(side, { type: 'read', conversationId: id });
+      }
     }
   }
 

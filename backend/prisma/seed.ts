@@ -705,6 +705,8 @@ async function main() {
           lastMessageAt: minutesAgo(last.minutesAgo),
           clientUnread: last.fromClient ? 0 : 1,
           executorUnread: last.fromClient ? 1 : 0,
+          clientReadAt: last.fromClient ? minutesAgo(last.minutesAgo) : null,
+          executorReadAt: last.fromClient ? null : minutesAgo(last.minutesAgo),
         },
       });
     }

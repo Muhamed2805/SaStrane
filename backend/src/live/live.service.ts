@@ -11,7 +11,8 @@ export type LiveEvent =
   // A new message in this conversation, from the other side or from the
   // user in another tab.
   | { type: 'message'; conversationId: string }
-  // The user read this conversation, here or in another tab.
+  // One side read this conversation: the user, here or in another tab,
+  // or the other side.
   | { type: 'read'; conversationId: string }
   // The user has a new notification.
   | { type: 'notification' };

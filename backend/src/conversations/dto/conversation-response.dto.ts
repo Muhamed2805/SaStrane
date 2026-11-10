@@ -54,6 +54,12 @@ export class ConversationDto {
   /** The messages from the other side that the user has not read yet. */
   unreadCount!: number;
 
+  /**
+   * When the other side last read the conversation or wrote in it. They
+   * have seen the user's messages up to this time. Null when never.
+   */
+  otherReadAt!: Date | null;
+
   createdAt!: Date;
 }
 
