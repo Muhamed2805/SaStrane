@@ -7,6 +7,7 @@ import { DeleteAccount } from '@/features/account/components/delete-account';
 import { JobAlertSettings } from '@/features/job-alerts/components/job-alert-settings';
 import { NotificationSettings } from '@/features/account/components/notification-settings';
 import { PasswordSettings } from '@/features/account/components/password-settings';
+import { PortfolioSettings } from '@/features/portfolio/components/portfolio-settings';
 import { ProfileSettings } from '@/features/account/components/profile-settings';
 import { useAuthStore } from '@/features/auth/store';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -72,6 +73,7 @@ export default function SettingsPage() {
         key={JSON.stringify([user.fullName, user.role, user.bio, user.skills])}
         user={user}
       />
+      <PortfolioSettings userId={user.id} />
       <NotificationSettings user={user} />
       <JobAlertSettings userId={user.id} />
       <PasswordSettings />

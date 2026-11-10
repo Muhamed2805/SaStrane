@@ -11,6 +11,7 @@ import { SessionRevocationReason } from '../generated/prisma/enums.js';
 import { EmailService } from '../email/email.service.js';
 import { processAvatar } from '../listings/photos/photo-image.js';
 import { photoKeys } from '../listings/photos/photo-keys.js';
+import { allPortfolioKeys } from '../portfolio/portfolio-photo.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { ChangePasswordDto } from './dto/change-password.dto.js';
@@ -158,20 +159,25 @@ export class AccountService {
   }
 
   // Deletes the user with their jobs, applications, conversations and
-  // ratings, then the photo files of their jobs and their profile photo.
+  // ratings, then the photo files of their jobs, their gallery and their
+  // profile photo.
   async deleteAccount(userId: string, password: string) {
     const user = await this.findWithPassword(userId);
     if (!(await bcrypt.compare(password, user.passwordHash))) {
       throw wrongPassword();
     }
 
-    const photos = await this.prisma.$transaction(async (tx) => {
+    const { photos, portfolio } = await this.prisma.$transaction(async (tx) => {
       const found = await tx.listingPhoto.findMany({
         where: { listing: { clientId: userId } },
         select: { id: true, listingId: true },
       });
+      const gallery = await tx.portfolioPhoto.findMany({
+        where: { userId },
+        select: { id: true },
+      });
       await tx.user.delete({ where: { id: userId } });
-      return found;
+      return { photos: found, portfolio: gallery };
     });
 
     await this.storage.delete([
@@ -179,6 +185,10 @@ export class AccountService {
         const keys = photoKeys(photo.listingId, photo.id);
         return [keys.large, keys.thumbnail];
       }),
+      ...allPortfolioKeys(
+        userId,
+        portfolio.map((photo) => photo.id),
+      ),
       ...(user.avatarId ? [avatarKey(userId, user.avatarId)] : []),
     ]);
   }

@@ -140,9 +140,26 @@ model User {
   invitations           Invitation[]
   notifications         Notification[]
   jobAlerts             JobAlert[]
+  portfolioPhotos       PortfolioPhoto[]
   reportsSent           Report[]       @relation("ReportsSent")
   reportsReceived       Report[]       @relation("ReportsReceived")
   reportsHandled        Report[]       @relation("ReportsHandled")
+}
+
+// A photo of work the user has done, shown on their public profile.
+model PortfolioPhoto {
+  id       String @id
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  position Int
+  // The size of the large image, after resizing.
+  width    Int
+  height   Int
+  caption  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, position])
 }
 
 // One signed-in browser or device. It ends at expiresAt even when it stays

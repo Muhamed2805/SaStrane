@@ -60,10 +60,14 @@ describe('AccountService', () => {
   const listingPhotoRepository = {
     findMany: vi.fn<(...args: Call) => Promise<unknown>>(),
   };
+  const portfolioPhotoRepository = {
+    findMany: vi.fn<(...args: Call) => Promise<unknown>>(),
+  };
   type TransactionCallback = (tx: unknown) => Promise<unknown>;
   const prisma = {
     user: userRepository,
     listingPhoto: listingPhotoRepository,
+    portfolioPhoto: portfolioPhotoRepository,
     $transaction: vi.fn<(callback: TransactionCallback) => Promise<unknown>>(),
     $queryRaw:
       vi.fn<(...args: unknown[]) => Promise<{ avatarId: string | null }[]>>(),
@@ -306,7 +310,7 @@ describe('AccountService', () => {
   });
 
   describe('deleteAccount', () => {
-    it('deletes the user and then the photo files of their jobs', async () => {
+    it('deletes the user and then their photo files', async () => {
       userRepository.findUnique.mockResolvedValue({
         ...stored,
         avatarId: 'avatar-1',
@@ -315,6 +319,7 @@ describe('AccountService', () => {
         { id: 'photo-1', listingId: 'listing-1' },
         { id: 'photo-2', listingId: 'listing-2' },
       ]);
+      portfolioPhotoRepository.findMany.mockResolvedValue([{ id: 'work-1' }]);
 
       await service.deleteAccount('user-1', 'password');
 
@@ -330,6 +335,8 @@ describe('AccountService', () => {
         'listings/listing-1/photo-1-thumb.webp',
         'listings/listing-2/photo-2.webp',
         'listings/listing-2/photo-2-thumb.webp',
+        'portfolio/user-1/work-1.webp',
+        'portfolio/user-1/work-1-thumb.webp',
         'avatars/user-1/avatar-1.webp',
       ]);
     });

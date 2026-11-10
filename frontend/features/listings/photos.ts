@@ -23,8 +23,14 @@ export function photoFileError(file: File): string | null {
 }
 
 // Splits picked files into those that can be added, within the free places,
-// and the reasons the others cannot.
-export function pickPhotos(files: File[], currentCount: number) {
+// and the reasons the others cannot. `fullMessage` is said when files are
+// left out because the limit is reached.
+export function pickPhotos(
+  files: File[],
+  currentCount: number,
+  limit = MAX_PHOTOS,
+  fullMessage = `Oglas može imati najviše ${MAX_PHOTOS} slika.`,
+) {
   const accepted: File[] = [];
   const errors: string[] = [];
   let skipped = 0;
@@ -32,12 +38,10 @@ export function pickPhotos(files: File[], currentCount: number) {
   for (const file of files) {
     const error = photoFileError(file);
     if (error) errors.push(error);
-    else if (currentCount + accepted.length < MAX_PHOTOS) accepted.push(file);
+    else if (currentCount + accepted.length < limit) accepted.push(file);
     else skipped += 1;
   }
-  if (skipped > 0) {
-    errors.push(`Oglas može imati najviše ${MAX_PHOTOS} slika.`);
-  }
+  if (skipped > 0) errors.push(fullMessage);
   return { accepted, errors };
 }
 

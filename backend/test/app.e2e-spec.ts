@@ -1572,6 +1572,7 @@ describe('App (e2e)', () => {
         rating: { average: 4, count: 1 },
         clientRating: { average: null, count: 0 },
         stats: { completedJobs: 1, responseMinutes: null },
+        portfolio: [],
       });
 
       const ratings = await http()
@@ -2065,6 +2066,123 @@ describe('App (e2e)', () => {
 
       expect(storage.files.size).toBe(0);
       expect(await prisma.listingPhoto.count()).toBe(0);
+    });
+  });
+
+  describe('portfolio', () => {
+    let jpeg: Buffer;
+
+    beforeAll(async () => {
+      jpeg = await sharp({
+        create: {
+          width: 1200,
+          height: 900,
+          channels: 3,
+          background: '#0f9d8a',
+        },
+      })
+        .jpeg()
+        .toBuffer();
+    });
+
+    function upload(auth: string, caption?: string) {
+      const call = http()
+        .post('/api/auth/me/portfolio')
+        .set('Authorization', auth)
+        .attach('photo', jpeg, {
+          filename: 'rad.jpg',
+          contentType: 'image/jpeg',
+        });
+      return caption === undefined ? call : call.field('caption', caption);
+    }
+
+    type Photo = { id: string; caption: string | null };
+
+    it('adds photos and shows them on the public profile', async () => {
+      const { user, auth } = await signedInUser();
+
+      const first = await upload(auth, '  Ormar po mjeri  ').expect(201);
+      const second = await upload(auth).expect(201);
+      const photo = first.body as Photo;
+
+      expect(first.body).toEqual({
+        id: photo.id,
+        url: `https://photos.test/portfolio/${user.id}/${photo.id}.webp`,
+        thumbnailUrl: `https://photos.test/portfolio/${user.id}/${photo.id}-thumb.webp`,
+        width: 1200,
+        height: 900,
+        caption: 'Ormar po mjeri',
+      });
+      expect(second.body).toMatchObject({ caption: null });
+      expect(storage.files.size).toBe(4);
+
+      const profile = await http().get(`/api/users/${user.id}`).expect(200);
+      expect(profile.body).toMatchObject({
+        portfolio: [{ id: photo.id }, { id: (second.body as Photo).id }],
+      });
+    });
+
+    it('changes a caption and deletes a photo, only for the owner', async () => {
+      const { user, auth } = await signedInUser();
+      const other = await signedInUser();
+      const photo = (await upload(auth, 'Staro').expect(201)).body as Photo;
+      const path = `/api/auth/me/portfolio/${photo.id}`;
+
+      await http()
+        .patch(path)
+        .set('Authorization', other.auth)
+        .send({ caption: 'Tuđe' })
+        .expect(404);
+      await http().delete(path).set('Authorization', other.auth).expect(404);
+      await http().patch(path).send({ caption: 'Novo' }).expect(401);
+
+      const changed = await http()
+        .patch(path)
+        .set('Authorization', auth)
+        .send({ caption: 'Novo' })
+        .expect(200);
+      expect(changed.body).toMatchObject({ id: photo.id, caption: 'Novo' });
+      await http()
+        .patch(path)
+        .set('Authorization', auth)
+        .send({ caption: 'a'.repeat(121) })
+        .expect(400);
+
+      await http().delete(path).set('Authorization', auth).expect(204);
+      expect(storage.files.size).toBe(0);
+      const profile = await http().get(`/api/users/${user.id}`).expect(200);
+      expect(profile.body).toMatchObject({ portfolio: [] });
+    });
+
+    it('takes at most eight photos and only images', async () => {
+      const { auth } = await signedInUser();
+      for (let index = 0; index < 8; index += 1) {
+        await upload(auth).expect(201);
+      }
+
+      const full = await upload(auth).expect(409);
+      expect(full.body).toMatchObject({ code: 'PORTFOLIO_LIMIT_REACHED' });
+      expect(storage.files.size).toBe(16);
+
+      const other = await signedInUser();
+      const invalid = await http()
+        .post('/api/auth/me/portfolio')
+        .set('Authorization', other.auth)
+        .attach('photo', Buffer.from('not an image'), 'a.jpg')
+        .expect(400);
+      expect(invalid.body).toMatchObject({ code: 'INVALID_IMAGE' });
+    });
+
+    it('deletes the files with the account', async () => {
+      const { auth } = await signedInUser();
+      await upload(auth).expect(201);
+
+      await http()
+        .delete('/api/auth/me')
+        .set('Authorization', auth)
+        .send({ password: PASSWORD })
+        .expect(204);
+      expect(storage.files.size).toBe(0);
     });
   });
 

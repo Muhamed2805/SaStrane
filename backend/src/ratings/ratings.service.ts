@@ -12,6 +12,11 @@ import {
 } from '../generated/prisma/enums.js';
 import { avatarUrl } from '../auth/avatar.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
+import {
+  PORTFOLIO_ORDER,
+  PORTFOLIO_PHOTO_SELECT,
+  toPortfolioPhotoDto,
+} from '../portfolio/portfolio-photo.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { CreateClientRatingDto } from './dto/create-client-rating.dto.js';
@@ -351,7 +356,13 @@ export class RatingsService {
     const [user, aggregate, clientSummaries, stats] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
-        select: PROFILE_SELECT,
+        select: {
+          ...PROFILE_SELECT,
+          portfolioPhotos: {
+            orderBy: PORTFOLIO_ORDER,
+            select: PORTFOLIO_PHOTO_SELECT,
+          },
+        },
       }),
       this.prisma.rating.aggregate({
         where: { executorId: userId },
@@ -374,6 +385,9 @@ export class RatingsService {
       rating: toSummary(aggregate._avg.score, aggregate._count._all),
       clientRating: clientSummaries.get(userId)!,
       stats: stats.get(userId)!,
+      portfolio: user.portfolioPhotos.map((photo) =>
+        toPortfolioPhotoDto(this.storage, userId, photo),
+      ),
     };
   }
 

@@ -1124,6 +1124,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/me/portfolio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Adds a photo of work to the signed-in user's profile.
+         * @description Send the file as `photo` in a multipart form, up to 5 MB, as
+         *     JPG, PNG, WebP or AVIF, with an optional `caption` of up to 120
+         *     characters. The API stores two WebP versions without the EXIF data. A
+         *     profile takes up to eight photos.
+         */
+        post: operations["portfolio_add"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/me/portfolio/{photoId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Deletes a photo from the signed-in user's gallery. */
+        delete: operations["portfolio_remove"];
+        options?: never;
+        head?: never;
+        /** Changes the caption of a photo in the signed-in user's gallery. */
+        patch: operations["portfolio_updateCaption"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1621,7 +1662,7 @@ export interface components {
              */
             responseMinutes: number | null;
         };
-        UserProfileDto: {
+        ExecutorDto: {
             /** @description The kinds of jobs the user does. */
             skills: components["schemas"]["ListingCategory"][];
             /** @description Where the user does jobs. */
@@ -1644,7 +1685,7 @@ export interface components {
             stats: components["schemas"]["UserStatsDto"];
         };
         ExecutorsPageDto: {
-            items: components["schemas"]["UserProfileDto"][];
+            items: components["schemas"]["ExecutorDto"][];
             /** @description The number of items on all pages together. */
             total: number;
             /** @description The current page, starting at 1. */
@@ -1653,6 +1694,42 @@ export interface components {
             limit: number;
             /** @description The number of pages, 0 when there are no items. */
             totalPages: number;
+        };
+        PortfolioPhotoDto: {
+            id: string;
+            /** @description At most 1600 pixels on the longest side. */
+            url: string;
+            /** @description At most 640 pixels on the longest side, for the gallery grid. */
+            thumbnailUrl: string;
+            /** @description The size of the image at `url`, in pixels. */
+            width: number;
+            height: number;
+            /** @description What the photo shows, in the user's words. */
+            caption: string | null;
+        };
+        UserProfileDto: {
+            /** @description The kinds of jobs the user does. */
+            skills: components["schemas"]["ListingCategory"][];
+            /** @description Where the user does jobs. */
+            location: components["schemas"]["ListingLocation"] | null;
+            id: string;
+            fullName: string;
+            /** @description A square WebP image of 256 pixels. Null without a profile photo. */
+            avatarUrl: string | null;
+            /** @description A short introduction written by the user. */
+            bio: string | null;
+            /**
+             * Format: date-time
+             * @description When the user signed up.
+             */
+            createdAt: string;
+            /** @description Ratings received as an executor. */
+            rating: components["schemas"]["RatingSummaryDto"];
+            /** @description Ratings received as a client, from the executors they hired. */
+            clientRating: components["schemas"]["RatingSummaryDto"];
+            stats: components["schemas"]["UserStatsDto"];
+            /** @description Photos of work the user has done, in the user's order. At most 8. */
+            portfolio: components["schemas"]["PortfolioPhotoDto"][];
         };
         RatingsPageDto: {
             items: components["schemas"]["RatingDto"][];
@@ -1944,6 +2021,10 @@ export interface components {
             state: components["schemas"]["InvitationOptionState"];
             listingId: string;
             title: string;
+        };
+        PortfolioCaptionDto: {
+            /** @description What the photo shows, up to 120 characters. Empty removes it. */
+            caption?: string;
         };
     };
     responses: never;
@@ -6254,6 +6335,212 @@ export interface operations {
                 };
             };
             /** @description The invitation does not exist or is not the user's. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    portfolio_add: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    photo: string;
+                    caption?: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioPhotoDto"];
+                };
+            };
+            /** @description The file is missing, it is not a JPG, PNG, WebP or AVIF image (INVALID_IMAGE), or the caption is too long. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The profile has eight photos already (PORTFOLIO_LIMIT_REACHED). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The file is larger than 5 MB. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The database or the photo storage is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    portfolio_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                photoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The photo does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    portfolio_updateCaption: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                photoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortfolioCaptionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioPhotoDto"];
+                };
+            };
+            /** @description The caption is too long. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The photo does not exist. */
             404: {
                 headers: {
                     [name: string]: unknown;

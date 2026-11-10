@@ -92,6 +92,9 @@ be both.
 - Every user has a public profile with a photo, a short introduction, the
   kinds of jobs they do, where they work, their average rating and the
   reviews. Application cards show the executor's rating and link to it.
+- A gallery of work: a user adds up to eight photos of jobs they did, each
+  with a short caption, in the account settings. The public profile shows
+  them, and a photo opens large with arrows to the others.
 - Profiles and executor cards show the number of completed jobs and how
   fast the user usually answers messages: the median over the last 90 days,
   once they answered at least 3 times.

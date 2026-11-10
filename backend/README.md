@@ -100,7 +100,7 @@ after every install and every schema change.
 
 The seed in `prisma/seed.ts` adds four users, two of them with an
 introduction and skills, an admin (`admin@example.com`), ten jobs, seven
-photos, seven applications, two ratings of executors, one of a client,
+photos, three photos of work on Lejla's profile, seven applications, two ratings of executors, one of a client,
 four conversations, one open
 report, two invitations, two job alerts and five notifications for Amra.
 Amra's laptop job is 28 days old, so the API reminds her that it expires
@@ -163,8 +163,11 @@ admin, or the route returns 403.
 | `PATCH` | `/api/auth/me` | Bearer | Changes the user's name, role, `bio`, `skills`, `location` or `emailNotifications`. A `location` of null removes it. |
 | `PUT` | `/api/auth/me/avatar` | Bearer | Sets the profile photo: `multipart/form-data` with the file in `photo`. |
 | `DELETE` | `/api/auth/me/avatar` | Bearer | Removes the profile photo. |
+| `POST` | `/api/auth/me/portfolio` | Bearer | Adds a photo of work to the user's gallery: `multipart/form-data` with the file in `photo` and an optional `caption` (max 120 characters). Up to eight photos; a ninth returns 409 `PORTFOLIO_LIMIT_REACHED`. |
+| `PATCH` | `/api/auth/me/portfolio/:photoId` | Bearer | Changes the `caption` of a photo in the gallery. Empty removes it. |
+| `DELETE` | `/api/auth/me/portfolio/:photoId` | Bearer | Deletes a photo from the gallery. Returns 204. |
 | `POST` | `/api/auth/change-password` | Bearer | Checks the current password, sets a new one and revokes the other sessions. Returns 204. |
-| `DELETE` | `/api/auth/me` | Bearer | Checks the password and deletes the account with its jobs, photos, applications, conversations and ratings. Returns 204. |
+| `DELETE` | `/api/auth/me` | Bearer | Checks the password and deletes the account with its jobs, photos, gallery, applications, conversations and ratings. Returns 204. |
 | `POST` | `/api/auth/forgot-password` | | Emails a password reset code. |
 | `POST` | `/api/auth/reset-password` | | Sets a new password and revokes all sessions. |
 | `GET` | `/api/listings` | | Lists jobs, the newest first. Filters: `q` (title and description), `category`, `location`, `status`, `clientId`, `minBudget` and `maxBudget` in KM (these leave out jobs with the price agreed later; a minimum above the maximum returns 400 `INVALID_BUDGET_RANGE`). `sort`: `NEWEST`, `BUDGET_HIGH` or `BUDGET_LOW`, with the agreed-later jobs last. Paging: `page`, `limit` (max 100). |
@@ -208,7 +211,7 @@ admin, or the route returns 403.
 | `POST` | `/api/ratings` | Owner | Rates the executor of an accepted application to a closed job. |
 | `POST` | `/api/client-ratings` | Executor | Rates the client of a closed job through your accepted application. Once per application, and final. |
 | `GET` | `/api/users` | | Lists the users who do jobs, the best rated first, each with the profile fields and `stats`. Only confirmed, not suspended users with at least one skill. Filters: `q` (name or introduction), `skill`, `location`. Paging: `page`, `limit` (max 50, default 12). |
-| `GET` | `/api/users/:id` | | Returns a user's public profile: photo, introduction, skills, location, `rating` as an executor, `clientRating` as a client and `stats`: completed jobs and the median minutes to answer a message in the last 90 days (null with fewer than 3 answers). |
+| `GET` | `/api/users/:id` | | Returns a user's public profile: photo, introduction, skills, location, `portfolio` (the photos of work, in order), `rating` as an executor, `clientRating` as a client and `stats`: completed jobs and the median minutes to answer a message in the last 90 days (null with fewer than 3 answers). |
 | `GET` | `/api/users/:id/ratings` | | Lists the ratings a user received as an executor, newest first. Paging: `page`, `limit` (max 50). |
 | `GET` | `/api/users/:id/client-ratings` | | Lists the ratings a user received as a client, newest first. Paging: `page`, `limit` (max 50). |
 | `POST` | `/api/reports` | Bearer | Reports a job (`listingId`) or a user (`userId`) with a reason and optional details. Returns 204. |

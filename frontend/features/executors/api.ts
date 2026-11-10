@@ -2,7 +2,7 @@ import { apiRequest } from '@/lib/api-client';
 import type { components, operations } from '@/lib/api-schema';
 
 // The types come from the backend's openapi.json. See lib/api-schema.d.ts.
-export type Executor = components['schemas']['UserProfileDto'];
+export type Executor = components['schemas']['ExecutorDto'];
 export type ExecutorsPage = components['schemas']['ExecutorsPageDto'];
 export type GetExecutorsParams = NonNullable<
   operations['users_getExecutors']['parameters']['query']

@@ -1,5 +1,5 @@
 // Demo data for local development: four users and an admin, ten jobs,
-// seven photos, seven applications, two ratings, one rating of a client,
+// seven photos, three photos of work, seven applications, two ratings, one rating of a client,
 // four conversations, one open report, two invitations, two job alerts and
 // five notifications, with Bosnian text as in real use. Every demo user signs
 // in with the password below.
@@ -31,6 +31,7 @@ import {
 } from '../src/listings/listing-expiry.js';
 import { processPhoto } from '../src/listings/photos/photo-image.js';
 import { photoKeys } from '../src/listings/photos/photo-keys.js';
+import { portfolioKeys } from '../src/portfolio/portfolio-photo.js';
 import { createS3Client, IMMUTABLE_CACHE } from '../src/storage/s3-client.js';
 
 const DEMO_PASSWORD = 'demo-password-123';
@@ -313,6 +314,28 @@ const photos = [
   { id: 'seed-photo-tv', listingId: 'seed-listing-tv', file: 'tv.jpg' },
 ];
 
+// Lejla's gallery of work, from the same files, in this order.
+const portfolioPhotos = [
+  {
+    id: 'seed-work-cleaning',
+    userId: 'seed-user-lejla',
+    file: 'cleaning.jpg',
+    caption: 'Parket nakon generalnog čišćenja',
+  },
+  {
+    id: 'seed-work-living-room',
+    userId: 'seed-user-lejla',
+    file: 'tv.jpg',
+    caption: 'Dnevni boravak spreman za useljenje',
+  },
+  {
+    id: 'seed-work-car',
+    userId: 'seed-user-lejla',
+    file: 'car.jpg',
+    caption: null,
+  },
+];
+
 // Ratings for accepted applications on closed jobs. The lawn job is still
 // open, so Amra can close it and rate Kenan herself.
 const ratings = [
@@ -464,12 +487,51 @@ const conversations: {
 // Uploads the photos that are not in the database yet, as the API would.
 // Returns how many it added, or null when the storage is not reachable.
 async function seedPhotos(prisma: PrismaClient): Promise<number | null> {
-  const seeded = await prisma.listingPhoto.findMany({
-    where: { id: { in: photos.map((photo) => photo.id) } },
-    select: { id: true },
-  });
-  const done = new Set(seeded.map((photo) => photo.id));
-  const missing = photos.filter((photo) => !done.has(photo.id));
+  const [seeded, seededWork] = await Promise.all([
+    prisma.listingPhoto.findMany({
+      where: { id: { in: photos.map((photo) => photo.id) } },
+      select: { id: true },
+    }),
+    prisma.portfolioPhoto.findMany({
+      where: { id: { in: portfolioPhotos.map((photo) => photo.id) } },
+      select: { id: true },
+    }),
+  ]);
+  const done = new Set([...seeded, ...seededWork].map((photo) => photo.id));
+
+  type Size = { width: number; height: number };
+  // Each missing photo: its file, where its two versions go, and its row.
+  const missing = [
+    ...photos.map((photo) => ({
+      ...photo,
+      keys: photoKeys(photo.listingId, photo.id),
+      create: (size: Size) =>
+        prisma.listingPhoto.create({
+          data: {
+            id: photo.id,
+            listingId: photo.listingId,
+            position: photos
+              .filter((other) => other.listingId === photo.listingId)
+              .indexOf(photo),
+            ...size,
+          },
+        }),
+    })),
+    ...portfolioPhotos.map((photo, position) => ({
+      ...photo,
+      keys: portfolioKeys(photo.userId, photo.id),
+      create: (size: Size) =>
+        prisma.portfolioPhoto.create({
+          data: {
+            id: photo.id,
+            userId: photo.userId,
+            position,
+            caption: photo.caption,
+            ...size,
+          },
+        }),
+    })),
+  ].filter((photo) => !done.has(photo.id));
   if (missing.length === 0) return 0;
 
   const storage = validateStorage(process.env, false);
@@ -487,10 +549,9 @@ async function seedPhotos(prisma: PrismaClient): Promise<number | null> {
         new URL(`seed-photos/${photo.file}`, import.meta.url),
       );
       const { large, thumbnail } = await processPhoto(input);
-      const keys = photoKeys(photo.listingId, photo.id);
       for (const [Key, Body] of [
-        [keys.large, large.data],
-        [keys.thumbnail, thumbnail],
+        [photo.keys.large, large.data],
+        [photo.keys.thumbnail, thumbnail],
       ] as const) {
         await client.send(
           new PutObjectCommand({
@@ -502,17 +563,7 @@ async function seedPhotos(prisma: PrismaClient): Promise<number | null> {
           }),
         );
       }
-      await prisma.listingPhoto.create({
-        data: {
-          id: photo.id,
-          listingId: photo.listingId,
-          position: photos
-            .filter((other) => other.listingId === photo.listingId)
-            .indexOf(photo),
-          width: large.width,
-          height: large.height,
-        },
-      });
+      await photo.create({ width: large.width, height: large.height });
     }
     return missing.length;
   } finally {
@@ -782,7 +833,7 @@ async function main() {
     }
 
     console.log(
-      `Seeded ${users.length} users, ${listings.length} jobs, ${addedPhotos === null ? 0 : photos.length} photos, ${applications.length} applications, ${ratings.length} ratings of executors, ${clientRatings.length} of clients, ${conversations.length} conversations, 1 report, ${invitations.length} invitations, ${jobAlerts.length} job alerts and ${notifications.length} notifications.`,
+      `Seeded ${users.length} users, ${listings.length} jobs, ${addedPhotos === null ? 0 : photos.length} photos, ${addedPhotos === null ? 0 : portfolioPhotos.length} photos of work, ${applications.length} applications, ${ratings.length} ratings of executors, ${clientRatings.length} of clients, ${conversations.length} conversations, 1 report, ${invitations.length} invitations, ${jobAlerts.length} job alerts and ${notifications.length} notifications.`,
     );
     console.log(`Sign in as amra@example.com with ${DEMO_PASSWORD}.`);
     console.log('Sign in as admin@example.com to handle reports.');

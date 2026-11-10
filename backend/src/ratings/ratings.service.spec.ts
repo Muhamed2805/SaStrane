@@ -394,6 +394,9 @@ describe('RatingsService', () => {
         skills: ['ASSEMBLY'],
         location: 'ILIDZA',
         createdAt,
+        portfolioPhotos: [
+          { id: 'photo-1', width: 800, height: 600, caption: 'Ormar' },
+        ],
       });
       ratingRepository.aggregate.mockResolvedValue({
         _avg: { score: null },
@@ -411,6 +414,17 @@ describe('RatingsService', () => {
         rating: { average: null, count: 0 },
         clientRating: { average: null, count: 0 },
         stats: { completedJobs: 0, responseMinutes: null },
+        portfolio: [
+          {
+            id: 'photo-1',
+            url: 'https://files.test/portfolio/user-1/photo-1.webp',
+            thumbnailUrl:
+              'https://files.test/portfolio/user-1/photo-1-thumb.webp',
+            width: 800,
+            height: 600,
+            caption: 'Ormar',
+          },
+        ],
       });
       expect(userRepository.findUnique).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -422,6 +436,14 @@ describe('RatingsService', () => {
             skills: true,
             location: true,
             createdAt: true,
+            portfolioPhotos: {
+              orderBy: [
+                { position: 'asc' },
+                { createdAt: 'asc' },
+                { id: 'asc' },
+              ],
+              select: { id: true, width: true, height: true, caption: true },
+            },
           },
         }),
       );
@@ -436,6 +458,7 @@ describe('RatingsService', () => {
         skills: [],
         location: null,
         createdAt: new Date(),
+        portfolioPhotos: [],
       });
       ratingRepository.aggregate.mockResolvedValue({
         _avg: { score: null },
@@ -444,6 +467,7 @@ describe('RatingsService', () => {
 
       await expect(service.getProfile('user-1')).resolves.toMatchObject({
         avatarUrl: null,
+        portfolio: [],
       });
     });
 

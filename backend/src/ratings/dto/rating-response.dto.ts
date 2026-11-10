@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { PageDto } from '../../common/dto/page.dto.js';
+import { PortfolioPhotoDto } from '../../portfolio/dto/portfolio-photo.dto.js';
 import {
   ListingCategory,
   ListingLocation,
@@ -90,7 +91,8 @@ export class ClientRatingsPageDto extends PageDto {
 }
 
 // What anyone can see about a user. The email stays private.
-export class UserProfileDto {
+// A user in the list of executors.
+export class ExecutorDto {
   id!: string;
 
   fullName!: string;
@@ -129,7 +131,13 @@ export class UserProfileDto {
   stats!: UserStatsDto;
 }
 
+// A public profile: the list fields and the gallery of work.
+export class UserProfileDto extends ExecutorDto {
+  /** Photos of work the user has done, in the user's order. At most 8. */
+  portfolio!: PortfolioPhotoDto[];
+}
+
 // The best rated first. See RatingsService.getExecutors.
 export class ExecutorsPageDto extends PageDto {
-  items!: UserProfileDto[];
+  items!: ExecutorDto[];
 }

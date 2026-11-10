@@ -14,6 +14,7 @@ import { ModerationModule } from './moderation/moderation.module.js';
 import { InvitationsModule } from './invitations/invitations.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { JobAlertsModule } from './job-alerts/job-alerts.module.js';
+import { PortfolioModule } from './portfolio/portfolio.module.js';
 import { validateEnvironment } from './config/environment.js';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter.js';
 
@@ -31,6 +32,7 @@ import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter.
     InvitationsModule,
     NotificationsModule,
     JobAlertsModule,
+    PortfolioModule,
   ],
   controllers: [AppController],
   providers: [

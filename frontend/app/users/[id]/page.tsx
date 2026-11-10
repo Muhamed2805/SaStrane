@@ -16,6 +16,7 @@ import {
   LOCATION_LABELS,
 } from '@/features/listings/constants';
 import { ReportButton } from '@/features/moderation/components/report-button';
+import { PortfolioGallery } from '@/features/portfolio/components/portfolio-gallery';
 import { ratingsApi } from '@/features/ratings/api';
 import {
   RatingStars,
@@ -220,6 +221,8 @@ export default async function UserProfilePage({ params }: PageProps) {
             subject={profile.fullName}
           />
         </div>
+
+        <PortfolioGallery userId={profile.id} />
 
         <section aria-labelledby="ratings-title" className="space-y-3">
           <h2 id="ratings-title" className="text-lg font-bold">

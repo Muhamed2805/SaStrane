@@ -46,7 +46,8 @@ export function ListingPhotosEditor({
       }
       return failures;
     },
-    onSuccess: (failures) => setErrors(failures),
+    // Added to the reasons files were left out when they were picked.
+    onSuccess: (failures) => setErrors((picked) => [...picked, ...failures]),
     onSettled: () => setPendingCount(0),
   });
 

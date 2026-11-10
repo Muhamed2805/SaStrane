@@ -5816,6 +5816,280 @@
           "invitations"
         ]
       }
+    },
+    "/api/auth/me/portfolio": {
+      "post": {
+        "description": "Send the file as `photo` in a multipart form, up to 5 MB, as\nJPG, PNG, WebP or AVIF, with an optional `caption` of up to 120\ncharacters. The API stores two WebP versions without the EXIF data. A\nprofile takes up to eight photos.",
+        "operationId": "portfolio_add",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "photo"
+                ],
+                "properties": {
+                  "photo": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "caption": {
+                    "type": "string",
+                    "maxLength": 120
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioPhotoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The file is missing, it is not a JPG, PNG, WebP or AVIF image (INVALID_IMAGE), or the caption is too long.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The profile has eight photos already (PORTFOLIO_LIMIT_REACHED).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The file is larger than 5 MB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database or the photo storage is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Adds a photo of work to the signed-in user's profile.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/me/portfolio/{photoId}": {
+      "patch": {
+        "operationId": "portfolio_updateCaption",
+        "parameters": [
+          {
+            "name": "photoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortfolioCaptionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioPhotoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The caption is too long.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The photo does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Changes the caption of a photo in the signed-in user's gallery.",
+        "tags": [
+          "auth"
+        ]
+      },
+      "delete": {
+        "operationId": "portfolio_remove",
+        "parameters": [
+          {
+            "name": "photoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The photo does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Deletes a photo from the signed-in user's gallery.",
+        "tags": [
+          "auth"
+        ]
+      }
     }
   },
   "info": {
@@ -7456,7 +7730,7 @@
           "responseMinutes"
         ]
       },
-      "UserProfileDto": {
+      "ExecutorDto": {
         "type": "object",
         "properties": {
           "skills": {
@@ -7535,7 +7809,7 @@
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/UserProfileDto"
+              "$ref": "#/components/schemas/ExecutorDto"
             }
           },
           "total": {
@@ -7561,6 +7835,123 @@
           "page",
           "limit",
           "totalPages"
+        ]
+      },
+      "PortfolioPhotoDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "description": "At most 1600 pixels on the longest side."
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "description": "At most 640 pixels on the longest side, for the gallery grid."
+          },
+          "width": {
+            "type": "number",
+            "description": "The size of the image at `url`, in pixels."
+          },
+          "height": {
+            "type": "number"
+          },
+          "caption": {
+            "type": "string",
+            "nullable": true,
+            "description": "What the photo shows, in the user's words."
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "thumbnailUrl",
+          "width",
+          "height",
+          "caption"
+        ]
+      },
+      "UserProfileDto": {
+        "type": "object",
+        "properties": {
+          "skills": {
+            "type": "array",
+            "description": "The kinds of jobs the user does.",
+            "items": {
+              "$ref": "#/components/schemas/ListingCategory"
+            }
+          },
+          "location": {
+            "nullable": true,
+            "description": "Where the user does jobs.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListingLocation"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "A square WebP image of 256 pixels. Null without a profile photo."
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true,
+            "description": "A short introduction written by the user."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the user signed up."
+          },
+          "rating": {
+            "description": "Ratings received as an executor.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RatingSummaryDto"
+              }
+            ]
+          },
+          "clientRating": {
+            "description": "Ratings received as a client, from the executors they hired.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RatingSummaryDto"
+              }
+            ]
+          },
+          "stats": {
+            "$ref": "#/components/schemas/UserStatsDto"
+          },
+          "portfolio": {
+            "description": "Photos of work the user has done, in the user's order. At most 8.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortfolioPhotoDto"
+            }
+          }
+        },
+        "required": [
+          "skills",
+          "location",
+          "id",
+          "fullName",
+          "avatarUrl",
+          "bio",
+          "createdAt",
+          "rating",
+          "clientRating",
+          "stats",
+          "portfolio"
         ]
       },
       "RatingsPageDto": {
@@ -8545,6 +8936,16 @@
           "listingId",
           "title"
         ]
+      },
+      "PortfolioCaptionDto": {
+        "type": "object",
+        "properties": {
+          "caption": {
+            "type": "string",
+            "description": "What the photo shows, up to 120 characters. Empty removes it.",
+            "maxLength": 120
+          }
+        }
       }
     }
   }
