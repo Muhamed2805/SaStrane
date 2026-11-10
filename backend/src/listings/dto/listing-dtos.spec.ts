@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { CreateListingDto } from './create-listing.dto.js';
+import { ListingsQueryDto } from './listings-query.dto.js';
 import { UpdateListingDto } from './update-listing.dto.js';
 
 const validListing = {
@@ -16,6 +17,31 @@ async function invalidFields(dto: object) {
 }
 
 describe('Listing DTOs', () => {
+  it('reads the budget range and the sort from the query string', async () => {
+    const dto = plainToInstance(ListingsQueryDto, {
+      minBudget: '50',
+      maxBudget: '200',
+      sort: 'BUDGET_LOW',
+    });
+
+    await expect(validate(dto)).resolves.toHaveLength(0);
+    expect(dto).toMatchObject({ minBudget: 50, maxBudget: 200 });
+  });
+
+  it('rejects an unknown sort and budgets out of range', async () => {
+    const dto = plainToInstance(ListingsQueryDto, {
+      minBudget: '-1',
+      maxBudget: '100001',
+      sort: 'PRICE',
+    });
+
+    await expect(invalidFields(dto)).resolves.toEqual([
+      'minBudget',
+      'maxBudget',
+      'sort',
+    ]);
+  });
+
   it('trims listing text before validation', async () => {
     const dto = plainToInstance(CreateListingDto, {
       ...validListing,

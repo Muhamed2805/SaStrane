@@ -267,10 +267,11 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Lists jobs, newest first.
+         * Lists jobs, newest first or by budget.
          * @description `q` searches the title and the description without regard to
-         *     case. The other filters must match exactly. The job list on the site
-         *     asks for OPEN jobs only.
+         *     case. The budget filters leave out jobs with the price agreed later. The
+         *     other filters must match exactly. The job list on the site asks for OPEN
+         *     jobs only.
          */
         get: operations["listings_getAll"];
         put?: never;
@@ -1267,6 +1268,8 @@ export interface components {
         };
         /** @enum {string} */
         ListingStatus: "OPEN" | "CLOSED";
+        /** @enum {string} */
+        ListingSort: "NEWEST" | "BUDGET_HIGH" | "BUDGET_LOW";
         ListingPhotoDto: {
             id: string;
             /** @description At most 1600 pixels on the longest side. */
@@ -2733,10 +2736,25 @@ export interface operations {
                 location?: components["schemas"]["ListingLocation"];
                 /** @description Leave it out for jobs in any status. */
                 status?: components["schemas"]["ListingStatus"];
+                /**
+                 * @description The newest first by default. By budget, the jobs with the price agreed
+                 *     later come last.
+                 */
+                sort?: components["schemas"]["ListingSort"];
                 page?: number;
                 limit?: number;
                 clientId?: string;
                 q?: string;
+                /**
+                 * @description Only jobs with a budget of at least this many KM. Jobs with the price
+                 *     agreed later are left out.
+                 */
+                minBudget?: number;
+                /**
+                 * @description Only jobs with a budget of at most this many KM. Jobs with the price
+                 *     agreed later are left out.
+                 */
+                maxBudget?: number;
             };
             header?: never;
             path?: never;
@@ -2752,7 +2770,7 @@ export interface operations {
                     "application/json": components["schemas"]["ListingsPageDto"];
                 };
             };
-            /** @description A query parameter is invalid. */
+            /** @description A query parameter is invalid, or `minBudget` is above `maxBudget`: `INVALID_BUDGET_RANGE`. */
             400: {
                 headers: {
                     [name: string]: unknown;

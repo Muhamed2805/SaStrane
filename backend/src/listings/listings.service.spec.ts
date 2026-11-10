@@ -105,6 +105,61 @@ describe('ListingsService', () => {
       expect(listingRepository.count).toHaveBeenCalledWith({ where });
     });
 
+    it('sorts by budget and filters a budget range', async () => {
+      listingRepository.findMany.mockResolvedValue([]);
+      listingRepository.count.mockResolvedValue(0);
+
+      await service.getAll({
+        minBudget: 50,
+        maxBudget: 200,
+        sort: 'BUDGET_HIGH',
+      });
+
+      const where = { budget: { not: null, gte: 50, lte: 200 } };
+      expect(listingRepository.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where,
+          orderBy: [
+            { budget: { sort: 'desc', nulls: 'last' } },
+            { createdAt: 'desc' },
+            { id: 'desc' },
+          ],
+        }),
+      );
+      expect(listingRepository.count).toHaveBeenCalledWith({ where });
+    });
+
+    it('lists the newest first by default and leaves the budget alone', async () => {
+      listingRepository.findMany.mockResolvedValue([]);
+      listingRepository.count.mockResolvedValue(0);
+
+      await service.getAll({ sort: 'BUDGET_LOW' });
+      expect(listingRepository.findMany.mock.calls[0][0]).toMatchObject({
+        where: {},
+        orderBy: [
+          { budget: { sort: 'asc', nulls: 'last' } },
+          { createdAt: 'desc' },
+          { id: 'desc' },
+        ],
+      });
+
+      await service.getAll({ maxBudget: 0 });
+      expect(listingRepository.findMany.mock.calls[1][0]).toMatchObject({
+        where: { budget: { not: null, lte: 0 } },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      });
+    });
+
+    it('refuses a minimum above the maximum', async () => {
+      await expect(
+        service.getAll({ minBudget: 300, maxBudget: 100 }),
+      ).rejects.toMatchObject({
+        status: 400,
+        response: { code: 'INVALID_BUDGET_RANGE' },
+      });
+      expect(listingRepository.findMany).not.toHaveBeenCalled();
+    });
+
     it('turns the first photo into the cover with public URLs', async () => {
       listingRepository.findMany.mockResolvedValue([
         { id: 'listing-1', title: 'Košenje', client, photos: [photo] },

@@ -967,7 +967,7 @@
     },
     "/api/listings": {
       "get": {
-        "description": "`q` searches the title and the description without regard to\ncase. The other filters must match exactly. The job list on the site\nasks for OPEN jobs only.",
+        "description": "`q` searches the title and the description without regard to\ncase. The budget filters leave out jobs with the price agreed later. The\nother filters must match exactly. The job list on the site asks for OPEN\njobs only.",
         "operationId": "listings_getAll",
         "parameters": [
           {
@@ -993,6 +993,15 @@
             "description": "Leave it out for jobs in any status.",
             "schema": {
               "$ref": "#/components/schemas/ListingStatus"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "The newest first by default. By budget, the jobs with the price agreed\nlater come last.",
+            "schema": {
+              "$ref": "#/components/schemas/ListingSort"
             }
           },
           {
@@ -1033,6 +1042,28 @@
               "maxLength": 120,
               "type": "string"
             }
+          },
+          {
+            "name": "minBudget",
+            "required": false,
+            "in": "query",
+            "description": "Only jobs with a budget of at least this many KM. Jobs with the price\nagreed later are left out.",
+            "schema": {
+              "minimum": 0,
+              "maximum": 100000,
+              "type": "number"
+            }
+          },
+          {
+            "name": "maxBudget",
+            "required": false,
+            "in": "query",
+            "description": "Only jobs with a budget of at most this many KM. Jobs with the price\nagreed later are left out.",
+            "schema": {
+              "minimum": 0,
+              "maximum": 100000,
+              "type": "number"
+            }
           }
         ],
         "responses": {
@@ -1047,7 +1078,7 @@
             }
           },
           "400": {
-            "description": "A query parameter is invalid.",
+            "description": "A query parameter is invalid, or `minBudget` is above `maxBudget`: `INVALID_BUDGET_RANGE`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1077,7 +1108,7 @@
             }
           }
         },
-        "summary": "Lists jobs, newest first.",
+        "summary": "Lists jobs, newest first or by budget.",
         "tags": [
           "listings"
         ]
@@ -6254,6 +6285,14 @@
         "enum": [
           "OPEN",
           "CLOSED"
+        ]
+      },
+      "ListingSort": {
+        "type": "string",
+        "enum": [
+          "NEWEST",
+          "BUDGET_HIGH",
+          "BUDGET_LOW"
         ]
       },
       "ListingPhotoDto": {

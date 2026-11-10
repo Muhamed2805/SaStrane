@@ -17,6 +17,7 @@ export type UpdateListingPayload = Schemas["UpdateListingDto"];
 export type ListingCategory = Schemas["ListingCategory"];
 export type ListingLocation = Schemas["ListingLocation"];
 export type ListingStatus = Schemas["ListingStatus"];
+export type ListingSort = Schemas["ListingSort"];
 export type ListingPhoto = Schemas["ListingPhotoDto"];
 
 export const listingsApi = {
@@ -29,6 +30,13 @@ export const listingsApi = {
     if (params.category) searchParams.set("category", params.category);
     if (params.location) searchParams.set("location", params.location);
     if (params.status) searchParams.set("status", params.status);
+    if (params.minBudget !== undefined) {
+      searchParams.set("minBudget", String(params.minBudget));
+    }
+    if (params.maxBudget !== undefined) {
+      searchParams.set("maxBudget", String(params.maxBudget));
+    }
+    if (params.sort) searchParams.set("sort", params.sort);
     const query = searchParams.toString();
     return apiRequest<ListingsPage>(`/listings${query ? `?${query}` : ""}`, {
       signal,

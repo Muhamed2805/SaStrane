@@ -167,7 +167,7 @@ admin, or the route returns 403.
 | `DELETE` | `/api/auth/me` | Bearer | Checks the password and deletes the account with its jobs, photos, applications, conversations and ratings. Returns 204. |
 | `POST` | `/api/auth/forgot-password` | | Emails a password reset code. |
 | `POST` | `/api/auth/reset-password` | | Sets a new password and revokes all sessions. |
-| `GET` | `/api/listings` | | Lists jobs. Filters: `q` (title and description), `category`, `location`, `status`, `clientId`. Paging: `page`, `limit` (max 100). |
+| `GET` | `/api/listings` | | Lists jobs, the newest first. Filters: `q` (title and description), `category`, `location`, `status`, `clientId`, `minBudget` and `maxBudget` in KM (these leave out jobs with the price agreed later; a minimum above the maximum returns 400 `INVALID_BUDGET_RANGE`). `sort`: `NEWEST`, `BUDGET_HIGH` or `BUDGET_LOW`, with the agreed-later jobs last. Paging: `page`, `limit` (max 100). |
 | `GET` | `/api/listings/:id` | | Returns one job. |
 | `POST` | `/api/listings` | Bearer | Creates a job and returns it like `GET /api/listings/:id`. |
 | `PATCH` | `/api/listings/:id` | Owner | Updates a job. |

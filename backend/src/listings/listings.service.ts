@@ -12,7 +12,7 @@ import { JobAlertsService } from '../job-alerts/job-alerts.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { CreateListingDto } from './dto/create-listing.dto.js';
-import { ListingsQueryDto } from './dto/listings-query.dto.js';
+import { ListingSort, ListingsQueryDto } from './dto/listings-query.dto.js';
 import { SavedListingsQueryDto } from './dto/saved-listings-query.dto.js';
 import { UpdateListingDto } from './dto/update-listing.dto.js';
 import { UpdateListingStatusDto } from './dto/update-listing-status.dto.js';
@@ -42,6 +42,21 @@ const LISTING_SELECT = {
   description: true,
   photos: { select: PHOTO_FIELDS, orderBy: PHOTO_ORDER },
 } satisfies Prisma.ListingSelect;
+
+// Equal values keep the newest first, and the id makes the pages stable.
+const NEWEST: Prisma.ListingOrderByWithRelationInput[] = [
+  { createdAt: 'desc' },
+  { id: 'desc' },
+];
+
+const LISTING_ORDER: Record<
+  ListingSort,
+  Prisma.ListingOrderByWithRelationInput[]
+> = {
+  NEWEST,
+  BUDGET_HIGH: [{ budget: { sort: 'desc', nulls: 'last' } }, ...NEWEST],
+  BUDGET_LOW: [{ budget: { sort: 'asc', nulls: 'last' } }, ...NEWEST],
+};
 
 type SummaryRow = Prisma.ListingGetPayload<{
   select: typeof LISTING_SUMMARY_SELECT;
@@ -83,11 +98,30 @@ export class ListingsService {
   async getAll(query: ListingsQueryDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
+    const { minBudget, maxBudget } = query;
+    if (
+      minBudget !== undefined &&
+      maxBudget !== undefined &&
+      minBudget > maxBudget
+    ) {
+      throw new BadRequestException({
+        code: 'INVALID_BUDGET_RANGE',
+        message: 'Najmanji budžet ne može biti veći od najvećeg.',
+      });
+    }
+    const hasBudgetFilter = minBudget !== undefined || maxBudget !== undefined;
     const where: Prisma.ListingWhereInput = {
       ...(query.clientId && { clientId: query.clientId }),
       ...(query.category && { category: query.category }),
       ...(query.location && { location: query.location }),
       ...(query.status && { status: query.status }),
+      ...(hasBudgetFilter && {
+        budget: {
+          not: null,
+          ...(minBudget !== undefined && { gte: minBudget }),
+          ...(maxBudget !== undefined && { lte: maxBudget }),
+        },
+      }),
       ...(query.q && {
         OR: [
           { title: { contains: query.q, mode: 'insensitive' } },
@@ -99,7 +133,7 @@ export class ListingsService {
     const [items, total] = await Promise.all([
       this.prisma.listing.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: LISTING_ORDER[query.sort ?? 'NEWEST'],
         skip: (page - 1) * limit,
         take: limit,
         select: LISTING_SUMMARY_SELECT,

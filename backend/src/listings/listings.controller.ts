@@ -34,13 +34,16 @@ export class ListingsController {
   constructor(private readonly listings: ListingsService) {}
 
   /**
-   * Lists jobs, newest first.
+   * Lists jobs, newest first or by budget.
    *
    * @remarks `q` searches the title and the description without regard to
-   * case. The other filters must match exactly. The job list on the site
-   * asks for OPEN jobs only.
+   * case. The budget filters leave out jobs with the price agreed later. The
+   * other filters must match exactly. The job list on the site asks for OPEN
+   * jobs only.
    */
-  @ApiErrors({ 400: 'A query parameter is invalid.' })
+  @ApiErrors({
+    400: 'A query parameter is invalid, or `minBudget` is above `maxBudget`: `INVALID_BUDGET_RANGE`.',
+  })
   @Get()
   getAll(@Query() query: ListingsQueryDto): Promise<ListingsPageDto> {
     return this.listings.getAll(query);

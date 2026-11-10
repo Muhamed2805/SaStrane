@@ -2275,6 +2275,54 @@ describe('App (e2e)', () => {
     });
   });
 
+  describe('listing sort and budget', () => {
+    it('sorts by budget and filters a budget range', async () => {
+      const client = await signedInUser();
+      for (const [title, budget] of [
+        ['Agreed later', null],
+        ['Small job', 20],
+        ['Middle job', 80],
+        ['Big job', 300],
+      ] as const) {
+        await postListing(client.auth, { ...listingInput, title, budget });
+      }
+
+      async function titles(query: string) {
+        const response = await http().get(`/api/listings?${query}`).expect(200);
+        return (response.body as { items: { title: string }[] }).items.map(
+          (item) => item.title,
+        );
+      }
+
+      await expect(titles('sort=BUDGET_HIGH')).resolves.toEqual([
+        'Big job',
+        'Middle job',
+        'Small job',
+        'Agreed later',
+      ]);
+      await expect(titles('sort=BUDGET_LOW')).resolves.toEqual([
+        'Small job',
+        'Middle job',
+        'Big job',
+        'Agreed later',
+      ]);
+      await expect(titles('minBudget=50&maxBudget=300')).resolves.toEqual([
+        'Big job',
+        'Middle job',
+      ]);
+      await expect(titles('maxBudget=80&sort=BUDGET_HIGH')).resolves.toEqual([
+        'Middle job',
+        'Small job',
+      ]);
+
+      const reversed = await http()
+        .get('/api/listings?minBudget=300&maxBudget=50')
+        .expect(400);
+      expect(reversed.body).toMatchObject({ code: 'INVALID_BUDGET_RANGE' });
+      await http().get('/api/listings?sort=PRICE').expect(400);
+    });
+  });
+
   describe('listing expiry', () => {
     const DAY_MS = 24 * 60 * 60_000;
 

@@ -37,9 +37,10 @@ A **client** posts a job. An **executor** applies to do it. One account can
 be both.
 
 **Jobs**
-- Browse open jobs with text search and category and location filters.
-  The search, filters and page are part of the URL, so a shared link or a
-  reload shows the same results.
+- Browse open jobs with text search, category and location filters and a
+  budget range, the newest first or by budget. The search, filters, order
+  and page are part of the URL, so a shared link or a reload shows the same
+  results.
 - Post, edit and delete your own jobs with a title, category, location,
   budget and description. Prices are whole KM, or agreed later.
 - Add up to five photos to a job. The first is the cover on job cards, and

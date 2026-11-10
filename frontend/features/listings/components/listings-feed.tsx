@@ -4,6 +4,8 @@ import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
+  ArrowDownUp,
+  Banknote,
   ChevronRight,
   MapPin,
   Search,
@@ -23,9 +25,13 @@ import {
 } from '@/features/listings/constants';
 import { listingsQuery } from '../queries';
 import {
+  budgetRange,
   feedRequestParams,
+  LISTING_SORTS,
   listingFiltersQuery,
+  parseBudget,
   parseListingFilters,
+  SORT_LABELS,
   type ListingFilters,
 } from '../search-params';
 import { ListingCard } from './listing-card';
@@ -58,7 +64,8 @@ export function ListingsFeed() {
     () => parseListingFilters(searchParams),
     [searchParams],
   );
-  const { q, category, location, page } = filters;
+  const { q, category, location, minBudget, maxBudget, sort, page } = filters;
+  const hasBudgetFilter = minBudget !== undefined || maxBudget !== undefined;
 
   // The search box updates the URL after a short pause in typing.
   const [searchText, setSearchText] = useState(q);
@@ -94,7 +101,10 @@ export function ListingsFeed() {
   const isLoading = isPending && !error;
   const isRefreshing = isPlaceholderData || isTyping;
   const hasActiveFilters =
-    Boolean(searchText.trim()) || Boolean(category) || Boolean(location);
+    Boolean(searchText.trim()) ||
+    Boolean(category) ||
+    Boolean(location) ||
+    hasBudgetFilter;
 
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     setSearchText(event.target.value);
@@ -124,9 +134,40 @@ export function ListingsFeed() {
     );
   };
 
+  // A budget field applies when it loses focus or on Enter. A value the API
+  // would reject clears it.
+  const applyBudget = (
+    field: 'minBudget' | 'maxBudget',
+    event: { currentTarget: HTMLInputElement },
+  ) => {
+    const input = event.currentTarget;
+    const value = parseBudget(input.value);
+    if (value === undefined) input.value = '';
+    const next = budgetRange(
+      field === 'minBudget' ? value : minBudget,
+      field === 'maxBudget' ? value : maxBudget,
+    );
+    if (next.minBudget === minBudget && next.maxBudget === maxBudget) return;
+    showFilters({ ...filters, ...next, page: 1 }, 'push');
+  };
+
+  const handleSortChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value;
+    showFilters(
+      {
+        ...filters,
+        sort:
+          value === 'BUDGET_HIGH' || value === 'BUDGET_LOW' ? value : undefined,
+        page: 1,
+      },
+      'push',
+    );
+  };
+
+  // The sort is not a filter, so it stays.
   const clearFilters = () => {
     setSearchText('');
-    showFilters({ q: '', page: 1 }, 'push');
+    showFilters({ q: '', sort, page: 1 }, 'push');
   };
 
   const changePage = (nextPage: number) => {
@@ -172,7 +213,7 @@ export function ListingsFeed() {
           ) : null}
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto]">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_auto]">
           <label className="relative">
             <span className="sr-only">Kategorija</span>
             <SlidersHorizontal
@@ -223,6 +264,51 @@ export function ListingsFeed() {
             />
           </label>
 
+          <fieldset className="flex items-center gap-2">
+            <legend className="sr-only">Budžet u KM</legend>
+            {(
+              [
+                ['minBudget', minBudget, 'od', 'Najmanji budžet u KM'],
+                ['maxBudget', maxBudget, 'do', 'Najveći budžet u KM'],
+              ] as const
+            ).map(([field, value, prefix, label], index) => (
+              <label key={field} className="relative min-w-0 flex-1">
+                <span
+                  className={`pointer-events-none absolute top-1/2 flex -translate-y-1/2 items-center gap-2 text-xs font-semibold text-muted-foreground ${
+                    index === 0 ? 'left-4' : 'left-3'
+                  }`}
+                  aria-hidden="true"
+                >
+                  {index === 0 ? (
+                    <Banknote className="size-4 text-primary" />
+                  ) : null}
+                  {prefix}
+                </span>
+                <input
+                  // A new value in the URL, from Back or the clear button,
+                  // resets the field.
+                  key={`${field}-${value ?? ''}`}
+                  aria-label={label}
+                  inputMode="numeric"
+                  defaultValue={value ?? ''}
+                  onBlur={(event) => applyBudget(field, event)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') applyBudget(field, event);
+                  }}
+                  className={`h-11 w-full rounded-lg border bg-background pr-10 text-sm outline-none transition-colors focus:border-primary focus:ring-3 focus:ring-primary/10 ${
+                    index === 0 ? 'pl-[3.75rem]' : 'pl-9'
+                  }`}
+                />
+                <span
+                  className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs font-semibold text-muted-foreground"
+                  aria-hidden="true"
+                >
+                  KM
+                </span>
+              </label>
+            ))}
+          </fieldset>
+
           <button
             type="button"
             onClick={clearFilters}
@@ -236,17 +322,47 @@ export function ListingsFeed() {
       </section>
 
       <div className="flex min-h-9 flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <p className="text-sm font-semibold" aria-live="polite">
             {isLoading ? 'Učitavanje oglasa...' : resultsLabel(total)}
           </p>
+          {hasBudgetFilter ? (
+            <p className="text-xs text-muted-foreground">
+              Bez oglasa s cijenom po dogovoru
+            </p>
+          ) : null}
           {isRefreshing && !isLoading ? (
             <p className="text-xs text-muted-foreground" aria-live="polite">
               Ažuriranje rezultata...
             </p>
           ) : null}
         </div>
-        <JobAlertButton category={category} location={location} />
+        <div className="flex flex-wrap items-center gap-3">
+          <JobAlertButton category={category} location={location} />
+          <label className="relative">
+            <span className="sr-only">Sortiraj oglase</span>
+            <ArrowDownUp
+              className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-primary"
+              aria-hidden="true"
+            />
+            <select
+              aria-label="Sortiraj oglase"
+              className="h-9 appearance-none rounded-lg border bg-white pr-8 pl-8 text-xs font-semibold outline-none transition-colors focus:border-primary focus:ring-3 focus:ring-primary/10"
+              value={sort ?? 'NEWEST'}
+              onChange={handleSortChange}
+            >
+              {LISTING_SORTS.map((item) => (
+                <option key={item} value={item}>
+                  {SORT_LABELS[item]}
+                </option>
+              ))}
+            </select>
+            <ChevronRight
+              className="pointer-events-none absolute top-1/2 right-2.5 size-3.5 -translate-y-1/2 rotate-90 text-muted-foreground"
+              aria-hidden="true"
+            />
+          </label>
+        </div>
       </div>
 
       {isLoading ? (
@@ -276,7 +392,8 @@ export function ListingsFeed() {
               </span>
               <h2 className="mt-5 text-lg font-semibold">Nema rezultata</h2>
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-                Pokušaj promijeniti pojam pretrage, kategoriju ili lokaciju.
+                Pokušaj promijeniti pojam pretrage, kategoriju, lokaciju ili
+                budžet.
               </p>
               {hasActiveFilters ? (
                 <button

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  budgetRange,
   feedRequestParams,
   listingFiltersQuery,
+  parseBudget,
   parseListingFilters,
 } from './search-params';
 
@@ -38,6 +40,56 @@ describe('parseListingFilters', () => {
       ),
     ).toEqual({ q: '', category: undefined, location: undefined, page: 1 });
     expect(parseListingFilters({ page: '1.5' }).page).toBe(1);
+  });
+});
+
+describe('budget and sort', () => {
+  it('reads the budget range and the sort', () => {
+    expect(
+      parseListingFilters(
+        new URLSearchParams('minBudget=50&maxBudget=200&sort=BUDGET_HIGH'),
+      ),
+    ).toMatchObject({ minBudget: 50, maxBudget: 200, sort: 'BUDGET_HIGH' });
+  });
+
+  it('swaps a reversed range and drops values the API would reject', () => {
+    expect(
+      parseListingFilters(new URLSearchParams('minBudget=300&maxBudget=50')),
+    ).toMatchObject({ minBudget: 50, maxBudget: 300 });
+    expect(
+      parseListingFilters(
+        new URLSearchParams('minBudget=-5&maxBudget=100001&sort=NEWEST'),
+      ),
+    ).toMatchObject({
+      minBudget: undefined,
+      maxBudget: undefined,
+      sort: undefined,
+    });
+    expect(parseBudget(' 80 ')).toBe(80);
+    expect(parseBudget('1.5')).toBeUndefined();
+    expect(parseBudget('')).toBeUndefined();
+    expect(budgetRange(undefined, 0)).toEqual({
+      minBudget: undefined,
+      maxBudget: 0,
+    });
+  });
+
+  it('writes them to the URL and the request', () => {
+    const filters = {
+      q: '',
+      minBudget: 0,
+      maxBudget: 150,
+      sort: 'BUDGET_LOW' as const,
+      page: 1,
+    };
+    expect(listingFiltersQuery(filters)).toBe(
+      'minBudget=0&maxBudget=150&sort=BUDGET_LOW',
+    );
+    expect(feedRequestParams(filters)).toMatchObject({
+      minBudget: 0,
+      maxBudget: 150,
+      sort: 'BUDGET_LOW',
+    });
   });
 });
 
