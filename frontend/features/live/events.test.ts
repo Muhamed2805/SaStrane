@@ -7,11 +7,16 @@ describe('takeLiveEvents', () => {
       takeLiveEvents(
         'id: 1\ndata: {"type":"ready"}\n\n' +
           'id: 2\ndata: {"type":"message","conversationId":"c-1"}\n\n' +
-          'id: 3\ndata: {"type":"notif',
+          'id: 3\ndata: {"type":"read","conversationId":"c-2"}\n\n' +
+          'id: 4\ndata: {"type":"notif',
       ),
     ).toEqual({
-      events: [{ type: 'ready' }, { type: 'message', conversationId: 'c-1' }],
-      rest: 'id: 3\ndata: {"type":"notif',
+      events: [
+        { type: 'ready' },
+        { type: 'message', conversationId: 'c-1' },
+        { type: 'read', conversationId: 'c-2' },
+      ],
+      rest: 'id: 4\ndata: {"type":"notif',
     });
   });
 

@@ -306,20 +306,31 @@ export class ConversationsService {
       return message;
     });
 
-    // Only after the message is saved: the other side loads it at once.
-    this.live.emit(
-      role === 'CLIENT' ? conversation.executorId : conversation.clientId,
-      { type: 'message', conversationId: id },
-    );
+    // Only after the message is saved: the other side loads it at once,
+    // and so do the sender's other tabs.
+    for (const side of [conversation.clientId, conversation.executorId]) {
+      this.live.emit(side, { type: 'message', conversationId: id });
+    }
     return sent;
   }
 
   async markRead(id: string, userId: string) {
-    const role = roleOf(await this.findForUser(id, userId), userId);
+    const conversation = await this.findForUser(id, userId);
+    const role = roleOf(conversation, userId);
     await this.prisma.conversation.update({
       where: { id },
       data: role === 'CLIENT' ? READ_BY_CLIENT : READ_BY_EXECUTOR,
     });
+
+    // The user's other tabs drop the unread count. Reading what was
+    // already read changes nothing for them.
+    const unread =
+      role === 'CLIENT'
+        ? conversation.clientUnread
+        : conversation.executorUnread;
+    if (unread > 0) {
+      this.live.emit(userId, { type: 'read', conversationId: id });
+    }
   }
 
   private async findForUser(id: string, userId: string) {

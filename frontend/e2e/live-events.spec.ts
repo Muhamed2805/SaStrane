@@ -60,8 +60,14 @@ test('shows a new message and a new notification without waiting for a poll', as
   await page.route(apiRoute('/notifications/unread-count$'), (route) =>
     route.fulfill(count(1)),
   );
-  await page.route(apiRoute('/(listings|applications|invitations)'), (route) =>
-    route.fulfill(json(emptyPage)),
+  // What the workspace asked for again after the stream spoke.
+  const reloaded = new Set<string>();
+  await page.route(
+    apiRoute('/(listings|applications|invitations)'),
+    (route) => {
+      if (told) reloaded.add(new URL(route.request().url()).pathname);
+      return route.fulfill(json(emptyPage));
+    },
   );
   await page.route(apiRoute('/live$'), async (route) => {
     streams += 1;
@@ -90,4 +96,16 @@ test('shows a new message and a new notification without waiting for a poll', as
   await expect(
     page.getByRole('button', { name: 'Obavijesti, 1 nepročitanih' }),
   ).toBeVisible();
+
+  // A notification is about something the workspace lists.
+  await expect
+    .poll(() => [...reloaded].sort())
+    .toEqual(
+      expect.arrayContaining([
+        '/api/applications/my',
+        '/api/applications/received',
+        '/api/invitations',
+        '/api/listings',
+      ]),
+    );
 });

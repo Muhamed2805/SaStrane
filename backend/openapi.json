@@ -35,7 +35,7 @@
     },
     "/api/live": {
       "get": {
-        "description": "Each event's data is JSON with a `type`: `ready` when the\nstream opens, `ping` every 15 seconds, `message` with a `conversationId`\nwhen someone wrote to the user, and `notification` for a new\nnotification. Events carry no content: load it from the usual\nendpoints. The stream ends after 10 minutes; open a new one.",
+        "description": "Each event's data is JSON with a `type`: `ready` when the\nstream opens, `ping` every 15 seconds, `message` with a `conversationId`\nfor a new message that the user got or sent, `read` with a\n`conversationId` when the user read a conversation, and `notification`\nfor a new notification. Events carry no content: load it from the\nusual endpoints. The stream ends after 10 minutes; open a new one.",
         "operationId": "live_stream",
         "parameters": [],
         "responses": {

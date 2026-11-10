@@ -311,12 +311,12 @@ describe('ConversationsService', () => {
         where: { id: 'conversation-1', clientUnreadSince: null },
         data: { clientUnreadSince: message.createdAt },
       });
-      // The other side's open tabs hear about it, the sender's do not.
-      expect(live.emit).toHaveBeenCalledTimes(1);
-      expect(live.emit).toHaveBeenCalledWith('client-1', {
-        type: 'message',
-        conversationId: 'conversation-1',
-      });
+      // The open tabs of both sides hear about it.
+      const event = { type: 'message', conversationId: 'conversation-1' };
+      expect(live.emit.mock.calls).toEqual([
+        ['client-1', event],
+        ['executor-1', event],
+      ]);
     });
 
     it('tells nobody about a message that was not saved', async () => {
@@ -342,6 +342,18 @@ describe('ConversationsService', () => {
           clientEmailedAt: null,
         },
       });
+      // The client had two unread messages: their other tabs hear it.
+      expect(live.emit.mock.calls).toEqual([
+        ['client-1', { type: 'read', conversationId: 'conversation-1' }],
+      ]);
+    });
+
+    it('tells nobody when there was nothing unread', async () => {
+      conversationRepository.findUnique.mockResolvedValue(row);
+
+      await service.markRead('conversation-1', 'executor-1');
+
+      expect(live.emit).not.toHaveBeenCalled();
     });
   });
 });

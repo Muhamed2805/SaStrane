@@ -1392,12 +1392,29 @@ describe('App (e2e)', () => {
           conversationId: id,
         });
 
-        // The executor hears only what is theirs: the client's answer.
+        // The sender's own tabs hear it too. The executor heard nothing
+        // of the client's notification.
+        const message = { type: 'message', conversationId: id };
+        expect(await executorStream.next()).toEqual(message);
+
         await send(client.auth, id, 'Benzinska.').expect(201);
+        expect(await clientStream.next()).toEqual(message);
+        expect(await executorStream.next()).toEqual(message);
+
+        // Reading tells the reader's tabs, once.
+        const markRead = () =>
+          http()
+            .post(`/api/conversations/${id}/read`)
+            .set('Authorization', executor.auth)
+            .expect(204);
+        await markRead();
         expect(await executorStream.next()).toEqual({
-          type: 'message',
+          type: 'read',
           conversationId: id,
         });
+        await markRead();
+        await send(client.auth, id, 'Stara je dvije godine.').expect(201);
+        expect(await executorStream.next()).toEqual(message);
       } finally {
         clientStream.close();
         executorStream.close();

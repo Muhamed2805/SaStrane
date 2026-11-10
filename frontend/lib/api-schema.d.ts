@@ -32,9 +32,10 @@ export interface paths {
          * Streams the user's events as server-sent events.
          * @description Each event's data is JSON with a `type`: `ready` when the
          *     stream opens, `ping` every 15 seconds, `message` with a `conversationId`
-         *     when someone wrote to the user, and `notification` for a new
-         *     notification. Events carry no content: load it from the usual
-         *     endpoints. The stream ends after 10 minutes; open a new one.
+         *     for a new message that the user got or sent, `read` with a
+         *     `conversationId` when the user read a conversation, and `notification`
+         *     for a new notification. Events carry no content: load it from the
+         *     usual endpoints. The stream ends after 10 minutes; open a new one.
          */
         get: operations["live_stream"];
         put?: never;

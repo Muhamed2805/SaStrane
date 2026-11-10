@@ -8,8 +8,11 @@ export type LiveEvent =
   | { type: 'ready' }
   // Keeps proxies from closing a quiet stream.
   | { type: 'ping' }
-  // Someone wrote to the user in this conversation.
+  // A new message in this conversation, from the other side or from the
+  // user in another tab.
   | { type: 'message'; conversationId: string }
+  // The user read this conversation, here or in another tab.
+  | { type: 'read'; conversationId: string }
   // The user has a new notification.
   | { type: 'notification' };
 

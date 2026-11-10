@@ -79,8 +79,10 @@ be both.
   closes, but a closed job takes no new conversations.
 - The navbar shows the number of unread messages. A new message shows at
   once in the open conversation, the list and the navbar: the server tells
-  the signed-in browser over an event stream. Without the stream, the site
-  checks for news every few seconds.
+  the signed-in browser over an event stream. The user's other tabs and
+  devices follow: a sent message shows there and a read conversation
+  leaves the count. A notification also reloads the workspace list it is
+  about. Without the stream, the site checks for news every few seconds.
 - Messages left unread for 10 minutes trigger one email per conversation,
   until the user reads it.
 

@@ -4,6 +4,7 @@ export type LiveEvent =
   | { type: 'ready' }
   | { type: 'ping' }
   | { type: 'message'; conversationId: string }
+  | { type: 'read'; conversationId: string }
   | { type: 'notification' };
 
 function parseEvent(block: string): LiveEvent | null {
@@ -25,8 +26,9 @@ function parseEvent(block: string): LiveEvent | null {
       case 'notification':
         return { type: event.type };
       case 'message':
+      case 'read':
         return typeof event.conversationId === 'string'
-          ? { type: 'message', conversationId: event.conversationId }
+          ? { type: event.type, conversationId: event.conversationId }
           : null;
       default:
         // An event of a newer server.

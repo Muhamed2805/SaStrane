@@ -208,7 +208,7 @@ admin, or the route returns 403.
 | `GET` | `/api/conversations/:id/messages` | Member | Lists the messages, newest first. Paging: `before` (a cursor), `limit` (max 100). |
 | `POST` | `/api/conversations/:id/messages` | Member | Sends a message. |
 | `POST` | `/api/conversations/:id/read` | Member | Marks the conversation as read. Returns 204. |
-| `GET` | `/api/live` | Bearer | Streams your events as server-sent events. Each event's data is JSON with a `type`: `ready` when the stream opens, `ping` every 15 seconds, `message` with a `conversationId` when someone wrote to you, `notification` for a new notification. Events carry no content. The stream ends after 10 minutes; open a new one. A user has at most 5 streams; one more ends the oldest. |
+| `GET` | `/api/live` | Bearer | Streams your events as server-sent events. Each event's data is JSON with a `type`: `ready` when the stream opens, `ping` every 15 seconds, `message` with a `conversationId` for a new message you got or sent, `read` with a `conversationId` when you read a conversation, `notification` for a new notification. Events carry no content. The stream ends after 10 minutes; open a new one. A user has at most 5 streams; one more ends the oldest. |
 | `POST` | `/api/ratings` | Owner | Rates the executor of an accepted application to a closed job. |
 | `POST` | `/api/client-ratings` | Executor | Rates the client of a closed job through your accepted application. Once per application, and final. |
 | `GET` | `/api/users` | | Lists the users who do jobs, the best rated first, each with the profile fields and `stats`. Only confirmed, not suspended users with at least one skill. Filters: `q` (name or introduction), `skill`, `location`. Paging: `page`, `limit` (max 50, default 12). |
