@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { connection } from 'next/server';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { Toaster } from 'sonner';
@@ -35,7 +35,13 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
   // The title and description fill in the preview of every page.
   openGraph: { ...BASE_OPEN_GRAPH, type: 'website' },
+  // The large picture of app/opengraph-image.tsx, or a job's cover photo.
+  twitter: { card: 'summary_large_image' },
+  // The address is in a link, not a phone number to call.
+  formatDetection: { telephone: false },
 };
+
+export const viewport: Viewport = { themeColor: '#0f9f91' };
 
 export default async function RootLayout({
   children,

@@ -9,6 +9,7 @@ import {
   MapPin,
   Star,
 } from 'lucide-react';
+import { JsonLd } from '@/components/json-ld';
 import { UserAvatar } from '@/components/user-avatar';
 import { InviteButton } from '@/features/invitations/components/invite-button';
 import {
@@ -40,6 +41,7 @@ import {
 import { ApiError } from '@/lib/api-client';
 import { formatDate } from '@/lib/format-date';
 import { getQueryClient } from '@/lib/query-client';
+import { absoluteUrl, breadcrumbJsonLd } from '@/lib/seo';
 import { BASE_OPEN_GRAPH } from '@/lib/site';
 
 type PageProps = {
@@ -60,10 +62,16 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const profile = await getProfile((await params).id);
-  const description =
+  const jobs = profile.skills.map((skill) => CATEGORY_LABELS[skill]);
+  const description = [
     profile.rating.average === null
       ? `${profile.fullName} na SaStrane. Još nema ocjena.`
-      : `${profile.fullName} na SaStrane: ${formatAverage(profile.rating.average)} od 5, ${ratingCountLabel(profile.rating.count)}.`;
+      : `${profile.fullName} na SaStrane: ${formatAverage(profile.rating.average)} od 5, ${ratingCountLabel(profile.rating.count)}.`,
+    jobs.length > 0 ? `Poslovi: ${jobs.join(', ')}.` : null,
+    profile.location ? `${LOCATION_LABELS[profile.location]}.` : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return {
     title: profile.fullName,
@@ -75,7 +83,12 @@ export async function generateMetadata({
       title: profile.fullName,
       description,
       url: `/users/${profile.id}`,
+      // The profile photo is small and square: it shows beside the text.
+      ...(profile.avatarUrl
+        ? { images: [{ url: profile.avatarUrl, width: 256, height: 256 }] }
+        : {}),
     },
+    ...(profile.avatarUrl ? { twitter: { card: 'summary' } } : {}),
   };
 }
 
@@ -101,6 +114,43 @@ export default async function UserProfilePage({ params }: PageProps) {
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <div className="mx-auto max-w-3xl space-y-6">
+        <JsonLd
+          data={{
+            '@context': 'https://schema.org',
+            '@type': 'ProfilePage',
+            dateCreated: profile.createdAt,
+            mainEntity: {
+              '@type': 'Person',
+              name: profile.fullName,
+              url: absoluteUrl(`/users/${profile.id}`),
+              ...(profile.avatarUrl ? { image: profile.avatarUrl } : {}),
+              ...(profile.bio ? { description: profile.bio } : {}),
+              ...(profile.skills.length > 0
+                ? {
+                    knowsAbout: profile.skills.map(
+                      (skill) => CATEGORY_LABELS[skill],
+                    ),
+                  }
+                : {}),
+              ...(profile.location
+                ? {
+                    address: {
+                      '@type': 'PostalAddress',
+                      addressLocality: LOCATION_LABELS[profile.location],
+                      addressCountry: 'BA',
+                    },
+                  }
+                : {}),
+            },
+          }}
+        />
+        <JsonLd
+          data={breadcrumbJsonLd([
+            { name: 'Početna', path: '/' },
+            { name: 'Izvođači', path: '/executors' },
+            { name: profile.fullName, path: `/users/${profile.id}` },
+          ])}
+        />
         <section className="rounded-2xl border bg-white p-6 shadow-sm sm:p-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
             <UserAvatar

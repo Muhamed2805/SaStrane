@@ -7,18 +7,21 @@ import {
   parseListingFilters,
 } from '@/features/listings/search-params';
 import { getQueryClient } from '@/lib/query-client';
+import { listMetadata, listingsSeo } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'Oglasi',
-  description:
-    'Lokalni poslovi po Bosni i Hercegovini: košenje trave, selidbe, čišćenje, čuvanje djece i još mnogo toga. Pronađi posao i pošalji prijavu.',
+type PageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function ListingsPage({
+// Each kind of job and each place has a title, a description and an
+// address of its own.
+export async function generateMetadata({
   searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+}: PageProps): Promise<Metadata> {
+  return listMetadata(listingsSeo(parseListingFilters(await searchParams)));
+}
+
+export default async function ListingsPage({ searchParams }: PageProps) {
   const filters = parseListingFilters(await searchParams);
   // The feed asks for the same query, so the first results come from here.
   // A failed request is left out and the browser tries again.

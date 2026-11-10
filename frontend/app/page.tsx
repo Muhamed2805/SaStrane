@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -24,6 +25,47 @@ import { HeroSearch } from '@/features/landing/components/hero-search';
 import { LatestListings } from '@/features/landing/components/latest-listings';
 import type { ListingCategory } from '@/features/listings/api';
 import { CATEGORY_LABELS } from '@/features/listings/constants';
+import { JsonLd } from '@/components/json-ld';
+import { absoluteUrl } from '@/lib/seo';
+import { BASE_OPEN_GRAPH, SITE_NAME } from '@/lib/site';
+
+// The title and description come from the root layout.
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+  openGraph: { ...BASE_OPEN_GRAPH, type: 'website', url: '/' },
+};
+
+// The site and its search box, for search engines.
+const siteJsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': absoluteUrl('/#website'),
+      name: SITE_NAME,
+      url: absoluteUrl('/'),
+      inLanguage: 'bs',
+      description:
+        'Lokalni poslovi u tvojoj blizini: objavi posao ili zaradi sa strane.',
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: {
+          '@type': 'EntryPoint',
+          urlTemplate: `${absoluteUrl('/listings')}?q={search_term_string}`,
+        },
+        'query-input': 'required name=search_term_string',
+      },
+    },
+    {
+      '@type': 'Organization',
+      '@id': absoluteUrl('/#organization'),
+      name: SITE_NAME,
+      url: absoluteUrl('/'),
+      logo: absoluteUrl('/icon.svg'),
+      areaServed: { '@type': 'Country', name: 'Bosna i Hercegovina' },
+    },
+  ],
+};
 
 const categories: { code: ListingCategory; icon: LucideIcon }[] = [
   { code: 'LAWN_MOWING', icon: Leaf },
@@ -57,6 +99,7 @@ const trustPoints = [
 export default function HomePage() {
   return (
     <div className="space-y-24 pb-4 sm:space-y-28">
+      <JsonLd data={siteJsonLd} />
       <section className="grid items-center gap-12 pt-6 lg:grid-cols-[1.05fr_0.95fr] lg:pt-10">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">

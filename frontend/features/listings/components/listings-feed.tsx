@@ -1,6 +1,7 @@
 'use client';
 
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
+import { listingsSeo, tabTitle } from '@/lib/seo';
 import { useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
@@ -66,6 +67,13 @@ export function ListingsFeed() {
   );
   const { q, category, location, minBudget, maxBudget, sort, page } = filters;
   const hasBudgetFilter = minBudget !== undefined || maxBudget !== undefined;
+
+  // The server wrote the title for the first filters. They change without
+  // a new page, so the tab follows them from here.
+  const pageTitle = listingsSeo({ q, category, location, page }).title;
+  useEffect(() => {
+    document.title = tabTitle(pageTitle);
+  }, [pageTitle]);
 
   // The search box updates the URL after a short pause in typing.
   const [searchText, setSearchText] = useState(q);

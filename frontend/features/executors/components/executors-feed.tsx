@@ -1,6 +1,7 @@
 'use client';
 
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
+import { executorsSeo, tabTitle } from '@/lib/seo';
 import { useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
@@ -56,6 +57,18 @@ export function ExecutorsFeed() {
     [searchParams],
   );
   const { q, skill, location, page } = filters;
+
+  // The server wrote the title for the first filters. They change without
+  // a new page, so the tab follows them from here.
+  const pageTitle = executorsSeo({
+    q,
+    category: skill,
+    location,
+    page,
+  }).title;
+  useEffect(() => {
+    document.title = tabTitle(pageTitle);
+  }, [pageTitle]);
 
   // The search box updates the URL after a short pause in typing.
   const [searchText, setSearchText] = useState(q);

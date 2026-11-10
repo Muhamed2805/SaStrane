@@ -11,8 +11,9 @@ import {
   Tag,
   UserRound,
 } from 'lucide-react';
+import { JsonLd } from '@/components/json-ld';
 import { UserAvatar } from '@/components/user-avatar';
-import { listingsApi } from '@/features/listings/api';
+import { listingsApi, type Listing } from '@/features/listings/api';
 import { ClosedBadge } from '@/features/listings/components/closed-badge';
 import { ListingActions } from '@/features/listings/components/listing-actions';
 import { ListingCard } from '@/features/listings/components/listing-card';
@@ -30,6 +31,7 @@ import { formatDate } from '@/lib/format-date';
 import { formatPrice } from '@/lib/format-price';
 import { ApiError } from '@/lib/api-client';
 import { getQueryClient } from '@/lib/query-client';
+import { absoluteUrl, breadcrumbJsonLd } from '@/lib/seo';
 import { BASE_OPEN_GRAPH } from '@/lib/site';
 
 type PageProps = {
@@ -52,6 +54,59 @@ function summary(text: string) {
   const clean = text.replace(/\s+/g, ' ').trim();
   if (clean.length <= DESCRIPTION_LENGTH) return clean;
   return `${clean.slice(0, DESCRIPTION_LENGTH - 1).trimEnd()}…`;
+}
+
+// The job as search engines read it. Only an open job is an offer.
+function jobPostingJsonLd(listing: Listing) {
+  const isOpen =
+    listing.status === 'OPEN' &&
+    (!listing.expiresAt || new Date(listing.expiresAt) > new Date());
+  if (!isOpen) return null;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'JobPosting',
+    title: listing.title,
+    description:
+      listing.description?.trim() ||
+      `${CATEGORY_LABELS[listing.category]}, ${LOCATION_LABELS[listing.location]}.`,
+    url: absoluteUrl(`/listings/${listing.id}`),
+    datePosted: listing.createdAt,
+    ...(listing.expiresAt ? { validThrough: listing.expiresAt } : {}),
+    employmentType: 'CONTRACTOR',
+    occupationalCategory: CATEGORY_LABELS[listing.category],
+    // A person posts the job, not a company.
+    hiringOrganization: {
+      '@type': 'Person',
+      name: listing.client.fullName,
+      url: absoluteUrl(`/users/${listing.client.id}`),
+    },
+    jobLocation: {
+      '@type': 'Place',
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: LOCATION_LABELS[listing.location],
+        addressCountry: 'BA',
+      },
+    },
+    // The whole job has one price. Without it the price is agreed later.
+    ...(listing.budget != null
+      ? {
+          baseSalary: {
+            '@type': 'MonetaryAmount',
+            currency: 'BAM',
+            value: {
+              '@type': 'QuantitativeValue',
+              value: listing.budget,
+              unitText: 'TOTAL',
+            },
+          },
+        }
+      : {}),
+    ...(listing.photos.length > 0
+      ? { image: listing.photos.map((photo) => photo.url) }
+      : {}),
+  };
 }
 
 export async function generateMetadata({
@@ -102,6 +157,8 @@ export default async function ListingDetailsPage({ params }: PageProps) {
   const queryClient = getQueryClient();
   queryClient.setQueryData(listingKeys.detail(listing.id), listing);
 
+  const jobPosting = jobPostingJsonLd(listing);
+
   // How executors rated the client. Without it the page still shows.
   const [relatedListings, clientProfile] = await Promise.all([
     listingsApi
@@ -116,7 +173,22 @@ export default async function ListingDetailsPage({ params }: PageProps) {
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <div className="space-y-12">
-        <nav className="flex items-center gap-2 text-sm text-muted-foreground">
+        <JsonLd
+          data={breadcrumbJsonLd([
+            { name: 'Početna', path: '/' },
+            { name: 'Oglasi', path: '/listings' },
+            {
+              name: CATEGORY_LABELS[listing.category],
+              path: `/listings?category=${listing.category}`,
+            },
+            { name: listing.title, path: `/listings/${listing.id}` },
+          ])}
+        />
+        {jobPosting ? <JsonLd data={jobPosting} /> : null}
+        <nav
+          aria-label="Putanja"
+          className="flex items-center gap-2 text-sm text-muted-foreground"
+        >
           <Link href="/" className="transition-colors hover:text-primary">
             Početna
           </Link>

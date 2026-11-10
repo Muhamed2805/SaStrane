@@ -76,6 +76,14 @@ of date.
 - **Metadata.** The root layout sets the title template and link previews.
   The job detail page builds its title and description from the job. Pages
   with private data are `noindex`.
+- **Search engines.** `lib/seo.ts` gives the job list and the executor list
+  a title, a description and a canonical address per kind of job and per
+  place; a text search is `noindex`. `app/robots.ts` keeps the private
+  pages out, and `app/sitemap.ts` lists the public pages, the open jobs and
+  the executors on each request. The home page, a job and a profile carry
+  structured data (`WebSite`, `JobPosting`, `ProfilePage`, breadcrumbs).
+  `app/opengraph-image.tsx` draws the picture of a shared link, and
+  `app/icon.svg`, `app/apple-icon.tsx` and `app/manifest.ts` are the icons.
 
 ## Structure
 
