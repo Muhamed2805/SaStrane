@@ -7,6 +7,7 @@ import {
 import { Prisma } from '../generated/prisma/client.js';
 import { ListingStatus } from '../generated/prisma/enums.js';
 import { avatarUrl } from '../auth/avatar.js';
+import { LiveService } from '../live/live.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import type { ConversationRole } from './dto/conversation-response.dto.js';
@@ -113,6 +114,7 @@ export class ConversationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly live: LiveService,
   ) {}
 
   // Returns the conversation about the job, and creates it the first time.
@@ -268,9 +270,10 @@ export class ConversationsService {
   }
 
   async send(id: string, dto: SendMessageDto, userId: string) {
-    const role = roleOf(await this.findForUser(id, userId), userId);
+    const conversation = await this.findForUser(id, userId);
+    const role = roleOf(conversation, userId);
 
-    return this.prisma.$transaction(async (tx) => {
+    const sent = await this.prisma.$transaction(async (tx) => {
       const message = await tx.message.create({
         data: { conversationId: id, senderId: userId, body: dto.body },
         select: MESSAGE_SELECT,
@@ -302,6 +305,13 @@ export class ConversationsService {
       await tx.conversation.updateMany(firstUnread);
       return message;
     });
+
+    // Only after the message is saved: the other side loads it at once.
+    this.live.emit(
+      role === 'CLIENT' ? conversation.executorId : conversation.clientId,
+      { type: 'message', conversationId: id },
+    );
+    return sent;
   }
 
   async markRead(id: string, userId: string) {

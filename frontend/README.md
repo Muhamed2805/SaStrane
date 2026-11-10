@@ -93,6 +93,7 @@ of date.
 | `features/job-alerts/` | The alert button on the job list and the alerts in the settings |
 | `features/portfolio/` | The gallery of work: its editor in the settings and the photos on a profile |
 | `features/notifications/` | The bell in the navbar with the unread count and the notifications |
+| `features/live/` | The event stream (`GET /api/live`): keeps it open while a user is signed in and loads again what the server says has changed. While it is open, polling slows to once a minute |
 | `features/moderation/` | The report button and dialog, and the admin pages: overview, reports, users and jobs |
 | `features/landing/` | Home page sections |
 | `components/` | Navbar, footer, auth provider and UI primitives |

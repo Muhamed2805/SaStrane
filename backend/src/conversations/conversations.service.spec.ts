@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { LiveService } from '../live/live.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { ConversationsService } from './conversations.service.js';
 
@@ -37,9 +38,12 @@ describe('ConversationsService', () => {
 
   const storage = { url: (key: string) => `https://files.test/${key}` };
 
+  const live = { emit: vi.fn() };
+
   const service = new ConversationsService(
     prisma as unknown as PrismaService,
     storage as unknown as StorageService,
+    live as unknown as LiveService,
   );
 
   const row = {
@@ -307,6 +311,22 @@ describe('ConversationsService', () => {
         where: { id: 'conversation-1', clientUnreadSince: null },
         data: { clientUnreadSince: message.createdAt },
       });
+      // The other side's open tabs hear about it, the sender's do not.
+      expect(live.emit).toHaveBeenCalledTimes(1);
+      expect(live.emit).toHaveBeenCalledWith('client-1', {
+        type: 'message',
+        conversationId: 'conversation-1',
+      });
+    });
+
+    it('tells nobody about a message that was not saved', async () => {
+      conversationRepository.findUnique.mockResolvedValue(row);
+      messageRepository.create.mockRejectedValue(new Error('db down'));
+
+      await expect(
+        service.send('conversation-1', { body: 'Halo' }, 'client-1'),
+      ).rejects.toThrow('db down');
+      expect(live.emit).not.toHaveBeenCalled();
     });
 
     it('marks the conversation as read for the side who asks', async () => {

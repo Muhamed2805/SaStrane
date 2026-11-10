@@ -21,6 +21,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Streams the user's events as server-sent events.
+         * @description Each event's data is JSON with a `type`: `ready` when the
+         *     stream opens, `ping` every 15 seconds, `message` with a `conversationId`
+         *     when someone wrote to the user, and `notification` for a new
+         *     notification. Events carry no content: load it from the usual
+         *     endpoints. The stream ends after 10 minutes; open a new one.
+         */
+        get: operations["live_stream"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/register": {
         parameters: {
             query?: never;
@@ -2059,6 +2083,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthUnavailableDto"];
+                };
+            };
+        };
+    };
+    live_stream: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The event stream. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            /** @description The access token is missing or expired, or its session has ended. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description Too many requests from this IP address. Try again in a minute. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description A service the route needs is unavailable: the database, email or photo storage. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
         };

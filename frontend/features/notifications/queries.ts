@@ -1,5 +1,5 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
-import { POLL_MS } from '@/features/messages/queries';
+import { POLL_MS, pollEvery } from '@/features/messages/queries';
 import { nextPageParam, WORKSPACE_PAGE_SIZE } from '@/lib/paging';
 import { USER_SCOPE } from '@/lib/query-client';
 import { notificationsApi } from './api';
@@ -32,6 +32,6 @@ export function unreadNotificationsQuery(userId: string) {
     queryKey: notificationKeys.unreadCount(userId),
     queryFn: () => notificationsApi.getUnreadCount(),
     select: toCount,
-    refetchInterval: POLL_MS.unreadCount,
+    refetchInterval: pollEvery(POLL_MS.unreadCount),
   });
 }

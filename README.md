@@ -77,8 +77,10 @@ be both.
   applying. The client can message anyone who applied to their job.
 - Each job has one conversation per executor. It stays open after the job
   closes, but a closed job takes no new conversations.
-- The navbar shows the number of unread messages. Open conversations check
-  for new messages every few seconds.
+- The navbar shows the number of unread messages. A new message shows at
+  once in the open conversation, the list and the navbar: the server tells
+  the signed-in browser over an event stream. Without the stream, the site
+  checks for news every few seconds.
 - Messages left unread for 10 minutes trigger one email per conversation,
   until the user reads it.
 
@@ -456,6 +458,7 @@ SaStrane/
 │   │   ├── storage/         S3 photo storage
 │   │   ├── applications/    Applications to jobs
 │   │   ├── conversations/   Messages between clients and executors
+│   │   ├── live/            The event stream that tells open tabs about news
 │   │   ├── ratings/         Ratings and public user profiles
 │   │   ├── moderation/      Reports and the admin routes
 │   │   ├── common/          Error filters and transforms

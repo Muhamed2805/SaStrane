@@ -15,6 +15,7 @@ import { InvitationsModule } from './invitations/invitations.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { JobAlertsModule } from './job-alerts/job-alerts.module.js';
 import { PortfolioModule } from './portfolio/portfolio.module.js';
+import { LiveModule } from './live/live.module.js';
 import { validateEnvironment } from './config/environment.js';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter.js';
 
@@ -23,6 +24,7 @@ import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter.
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 30 }]),
     PrismaModule,
+    LiveModule,
     AuthModule,
     ListingsModule,
     ApplicationsModule,

@@ -1,4 +1,5 @@
 import { ApiError, apiRequest, statusError } from '@/lib/api-client';
+import { API_URL } from '@/lib/api-url';
 import { authApi, type AuthResponse, type AuthUser } from './api';
 
 // The signed-in session in this tab.
@@ -217,4 +218,35 @@ export async function authRequest<T>(
   if (!nextToken) throw statusError(401);
 
   return apiRequest<T>(path, withAccessToken(options, nextToken));
+}
+
+// Opens a response that stays open, such as the event stream, for the
+// signed-in user. Like authRequest, it refreshes an expired access token
+// once. The caller reads the body.
+export async function authStream(
+  path: string,
+  signal: AbortSignal,
+): Promise<Response> {
+  let token =
+    accessToken ?? (readSignedInHint() ? await refreshSession() : null);
+
+  for (let attempt = 0; token; attempt += 1) {
+    const response = await fetch(
+      `${API_URL}${path}`,
+      withAccessToken({ signal, cache: 'no-store' }, token),
+    );
+    if (response.ok && response.body) return response;
+
+    await response.body?.cancel();
+    if (response.status !== 401 || attempt > 0) {
+      throw statusError(response.status);
+    }
+    // Another request may have refreshed the token in the meantime.
+    token =
+      accessToken !== null && accessToken !== token
+        ? accessToken
+        : await refreshSession();
+  }
+
+  throw statusError(401);
 }

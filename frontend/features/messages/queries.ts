@@ -4,18 +4,28 @@ import {
   type InfiniteData,
   type QueryClient,
 } from '@tanstack/react-query';
+import { isLive } from '@/lib/live-status';
 import { nextPageParam } from '@/lib/paging';
 import { USER_SCOPE } from '@/lib/query-client';
 import { messagesApi, type Message, type MessagesPage } from './api';
 
 const CONVERSATIONS_PAGE_SIZE = 20;
 
-// How often the site asks for news. Polling stops while the tab is hidden.
+// How often the site asks for news while the event stream is closed.
+// Polling stops while the tab is hidden.
 export const POLL_MS = {
   thread: 5_000,
   list: 15_000,
   unreadCount: 30_000,
 };
+
+// With the stream open (see features/live), news arrive by themselves.
+// A slow poll still catches an event that was lost on the way.
+const LIVE_POLL_MS = 60_000;
+
+export function pollEvery(ms: number) {
+  return () => (isLive() ? LIVE_POLL_MS : ms);
+}
 
 // Every conversation query belongs to the signed-in user.
 export const messageKeys = {
@@ -36,7 +46,7 @@ export function conversationsQuery(userId: string) {
       messagesApi.getAll(pageParam, CONVERSATIONS_PAGE_SIZE),
     initialPageParam: 1,
     getNextPageParam: nextPageParam,
-    refetchInterval: POLL_MS.list,
+    refetchInterval: pollEvery(POLL_MS.list),
   });
 }
 
@@ -47,7 +57,7 @@ export function unreadCountQuery(userId: string) {
     queryKey: messageKeys.unreadCount(userId),
     queryFn: () => messagesApi.getUnreadCount(),
     select: toCount,
-    refetchInterval: POLL_MS.unreadCount,
+    refetchInterval: pollEvery(POLL_MS.unreadCount),
   });
 }
 
@@ -67,7 +77,7 @@ export function messagesQuery(userId: string, id: string) {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage: MessagesPage) =>
       lastPage.nextCursor ?? undefined,
-    refetchInterval: POLL_MS.thread,
+    refetchInterval: pollEvery(POLL_MS.thread),
   });
 }
 

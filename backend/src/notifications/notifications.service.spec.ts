@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
+import { LiveService } from '../live/live.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { NotificationsService } from './notifications.service.js';
 
@@ -13,9 +14,12 @@ describe('NotificationsService', () => {
     updateMany: vi.fn(),
   };
 
-  const service = new NotificationsService({
-    notification: notificationRepository,
-  } as unknown as PrismaService);
+  const live = { emit: vi.fn() };
+
+  const service = new NotificationsService(
+    { notification: notificationRepository } as unknown as PrismaService,
+    live as unknown as LiveService,
+  );
 
   const notification = {
     userId: 'user-1',
@@ -38,12 +42,16 @@ describe('NotificationsService', () => {
       expect(notificationRepository.create).toHaveBeenCalledWith({
         data: notification,
       });
+      expect(live.emit).toHaveBeenCalledWith('user-1', {
+        type: 'notification',
+      });
     });
 
     it('does not fail the request when saving fails', async () => {
       notificationRepository.create.mockRejectedValue(new Error('db down'));
 
       await expect(service.notify(notification)).resolves.toBeUndefined();
+      expect(live.emit).not.toHaveBeenCalled();
     });
   });
 
@@ -66,6 +74,10 @@ describe('NotificationsService', () => {
           { ...shared, userId: 'b' },
         ],
       });
+      expect(live.emit.mock.calls).toEqual([
+        ['a', { type: 'notification' }],
+        ['b', { type: 'notification' }],
+      ]);
     });
 
     it('asks nothing for no users and never throws', async () => {

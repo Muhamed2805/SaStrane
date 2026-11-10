@@ -33,6 +33,64 @@
         ]
       }
     },
+    "/api/live": {
+      "get": {
+        "description": "Each event's data is JSON with a `type`: `ready` when the\nstream opens, `ping` every 15 seconds, `message` with a `conversationId`\nwhen someone wrote to the user, and `notification` for a new\nnotification. Events carry no content: load it from the usual\nendpoints. The stream ends after 10 minutes; open a new one.",
+        "operationId": "live_stream",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The event stream.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access token is missing or expired, or its session has ended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this IP address. Try again in a minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service the route needs is unavailable: the database, email or photo storage.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Streams the user's events as server-sent events.",
+        "tags": [
+          "live"
+        ]
+      }
+    },
     "/api/auth/register": {
       "post": {
         "description": "The account can sign in after POST /api/auth/verify-email.",

@@ -5,6 +5,7 @@ import './globals.css';
 import { Navbar } from '@/components/navbar';
 import { AuthModal } from '@/features/auth/components/auth-modal';
 import { ApplyModal } from '@/features/applications/components/apply-modal';
+import { LiveEvents } from '@/features/live/components/live-events';
 import { AuthProvider } from '@/components/auth-provider';
 import { QueryProvider } from '@/components/query-provider';
 import { Footer } from '@/components/footer';
@@ -47,6 +48,7 @@ export default function RootLayout({
       >
         <QueryProvider>
           <AuthProvider>
+            <LiveEvents />
             <Navbar />
             <AuthModal />
             <ApplyModal />

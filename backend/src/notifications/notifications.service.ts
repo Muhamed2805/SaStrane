@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { NotificationType } from '../generated/prisma/enums.js';
+import { LiveService } from '../live/live.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { NotificationsQueryDto } from './dto/notifications-query.dto.js';
 
@@ -25,13 +26,17 @@ export type NewNotification = {
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly live: LiveService,
+  ) {}
 
   // Called after the event is saved. A failure is logged and does not fail
   // the request that caused it.
   async notify(notification: NewNotification) {
     try {
       await this.prisma.notification.create({ data: notification });
+      this.live.emit(notification.userId, { type: 'notification' });
     } catch (error) {
       this.logger.error(
         `${notification.type} notification for ${notification.userId} failed: ${(error as Error).message}`,
@@ -50,6 +55,9 @@ export class NotificationsService {
       await this.prisma.notification.createMany({
         data: userIds.map((userId) => ({ ...notification, userId })),
       });
+      for (const userId of userIds) {
+        this.live.emit(userId, { type: 'notification' });
+      }
     } catch (error) {
       this.logger.error(
         `${notification.type} notifications for ${userIds.length} users failed: ${(error as Error).message}`,

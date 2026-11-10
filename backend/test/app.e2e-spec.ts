@@ -7,6 +7,7 @@ import {
   expect,
   it,
 } from 'vitest';
+import type { AddressInfo } from 'node:net';
 import { JwtService } from '@nestjs/jwt';
 import sharp from 'sharp';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -1317,6 +1318,91 @@ describe('App (e2e)', () => {
         .expect(200);
       return (response.body as { count: number }).count;
     }
+
+    // Opens the user's event stream and hands out its events, without
+    // the pings.
+    async function openLive(auth: string) {
+      const server = app.getHttpServer();
+      if (!server.listening) {
+        await new Promise<void>((resolve) =>
+          server.listen(0, '127.0.0.1', resolve),
+        );
+      }
+      const { port } = server.address() as AddressInfo;
+      const abort = new AbortController();
+      const response = await fetch(`http://127.0.0.1:${port}/api/live`, {
+        headers: { Authorization: auth },
+        signal: abort.signal,
+      });
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toContain(
+        'text/event-stream',
+      );
+      const reader = response
+        .body!.pipeThrough(new TextDecoderStream())
+        .getReader();
+      let buffer = '';
+
+      async function next(): Promise<{ type: string }> {
+        for (;;) {
+          const end = buffer.indexOf('\n\n');
+          if (end === -1) {
+            const { value, done } = await reader.read();
+            if (done) throw new Error('The event stream ended');
+            buffer += value;
+            continue;
+          }
+          const block = buffer.slice(0, end);
+          buffer = buffer.slice(end + 2);
+          const data = block
+            .split('\n')
+            .find((line) => line.startsWith('data: '));
+          if (!data) continue;
+          const event = JSON.parse(data.slice(6)) as { type: string };
+          if (event.type !== 'ping') return event;
+        }
+      }
+
+      return { next, close: () => abort.abort() };
+    }
+
+    it('opens the event stream only for a signed-in user', async () => {
+      await http().get('/api/live').expect(401);
+    });
+
+    it('tells the other side at once about an application and a message', async () => {
+      const { client, executor, listingId } = await openJob();
+      const clientStream = await openLive(client.auth);
+      const executorStream = await openLive(executor.auth);
+      try {
+        expect(await clientStream.next()).toEqual({ type: 'ready' });
+        expect(await executorStream.next()).toEqual({ type: 'ready' });
+
+        await http()
+          .post('/api/applications')
+          .set('Authorization', executor.auth)
+          .send({ listingId, message: 'Mogu doći sutra poslijepodne.' })
+          .expect(201);
+        expect(await clientStream.next()).toEqual({ type: 'notification' });
+
+        const id = await startAs(executor.auth, listingId);
+        await send(executor.auth, id, question).expect(201);
+        expect(await clientStream.next()).toEqual({
+          type: 'message',
+          conversationId: id,
+        });
+
+        // The executor hears only what is theirs: the client's answer.
+        await send(client.auth, id, 'Benzinska.').expect(201);
+        expect(await executorStream.next()).toEqual({
+          type: 'message',
+          conversationId: id,
+        });
+      } finally {
+        clientStream.close();
+        executorStream.close();
+      }
+    });
 
     it('emails a user once about messages left unread', async () => {
       const { client, executor, listingId } = await openJob();
