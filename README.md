@@ -16,14 +16,13 @@ mowing, moving help or IT support, and people nearby apply to do them.
 
 ![SaStrane home page](docs/screenshots/home.png)
 
-The interface is in Bosnian. The screenshots use the demo data from the
-seed. Its photos are public domain (CC0), listed in
-[`backend/prisma/seed-photos/SOURCES.md`](backend/prisma/seed-photos/SOURCES.md).
+The interface is in Bosnian. Every screen, from the job list to the admin
+pages, is in [`docs/screenshots`](docs/screenshots/README.md).
 
 ## Contents
 
 - [Features](#features)
-- [Screenshots](#screenshots)
+- [Screenshots](docs/screenshots/README.md)
 - [Architecture](#architecture)
 - [Tech stack](#tech-stack)
 - [Project structure](#project-structure)
@@ -136,107 +135,6 @@ be both.
   or dismissed, close, reopen or delete jobs, and suspend accounts. A suspended account is
   signed out, its open jobs close, and it cannot sign in until an admin
   lifts the suspension.
-
-## Screenshots
-
-<table>
-  <tr>
-    <td width="50%">
-      <img src="docs/screenshots/listings.png" alt="Job list with search, filters and cover photos">
-      <p align="center"><sub><b>Find a job</b>: search, filters and cover photos</sub></p>
-    </td>
-    <td width="50%">
-      <img src="docs/screenshots/listing-detail.png" alt="Job detail page with a photo gallery">
-      <p align="center"><sub><b>Job detail</b>: photo gallery, budget and client</sub></p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="docs/screenshots/create-listing.png" alt="Form for a new job with a photo">
-      <p align="center"><sub><b>Post a job</b>: up to five photos, the first is the cover</sub></p>
-    </td>
-    <td width="50%">
-      <img src="docs/screenshots/inbox.png" alt="Workspace with received applications">
-      <p align="center"><sub><b>Workspace</b>: received applications and their status</sub></p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="docs/screenshots/messages.png" alt="Conversation between a client and an executor">
-      <p align="center"><sub><b>Messages</b>: one conversation per job and executor</sub></p>
-    </td>
-    <td width="50%">
-      <img src="docs/screenshots/user-profile.png" alt="Public profile with a bio, skills, location and ratings">
-      <p align="center"><sub><b>Public profile</b>: bio, skills and ratings from clients</sub></p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="docs/screenshots/executors.png" alt="List of executors with ratings, skills and locations">
-      <p align="center"><sub><b>Find an executor</b>: by job, location or name, the best rated first</sub></p>
-    </td>
-    <td width="50%">
-      <img src="docs/screenshots/invite.png" alt="Dialog to invite an executor to one of the client's open jobs">
-      <p align="center"><sub><b>Invite</b>: pick one of your open jobs for an executor</sub></p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="docs/screenshots/invitations.png" alt="Workspace tab with an invitation to a job">
-      <p align="center"><sub><b>Invitations</b>: apply to the job or decline</sub></p>
-    </td>
-    <td width="50%">
-      <img src="docs/screenshots/notifications.png" alt="Notifications opened under the bell in the navbar">
-      <p align="center"><sub><b>Notifications</b>: invitations, applications, decisions and ratings</sub></p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="docs/screenshots/saved.png" alt="Workspace tab with saved jobs">
-      <p align="center"><sub><b>Saved jobs</b>: one click on a job card</sub></p>
-    </td>
-    <td width="50%">
-      <img src="docs/screenshots/settings.png" alt="Account settings with a profile photo">
-      <p align="center"><sub><b>Settings</b>: photo, profile, notices, password</sub></p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="docs/screenshots/sign-up.png" alt="Sign-up dialog with role choice">
-      <p align="center"><sub><b>Sign up</b>: choose to post jobs, do jobs or both</sub></p>
-    </td>
-    <td width="50%">
-      <img src="docs/screenshots/profile.png" alt="Profile page with activity counts">
-      <p align="center"><sub><b>Profile</b>: activity at a glance</sub></p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="docs/screenshots/report-dialog.png" alt="Dialog for reporting a job">
-      <p align="center"><sub><b>Report</b>: a job or a user, seen only by admins</sub></p>
-    </td>
-    <td width="50%">
-      <img src="docs/screenshots/admin-reports.png" alt="Admin page with an open report">
-      <p align="center"><sub><b>Reports</b>: resolve, dismiss, delete the job or suspend</sub></p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="docs/screenshots/admin.png" alt="Admin overview with platform totals">
-      <p align="center"><sub><b>Admin overview</b>: platform totals</sub></p>
-    </td>
-    <td width="50%">
-      <img src="docs/screenshots/admin-users.png" alt="Admin list of every user">
-      <p align="center"><sub><b>Users</b>: search, filters and suspension</sub></p>
-    </td>
-  </tr>
-</table>
-
-<p align="center">
-  <img src="docs/screenshots/mobile-listings.png" alt="Job list on a phone" width="280">
-  <br>
-  <sub><b>On a phone</b></sub>
-</p>
 
 ## Architecture
 
@@ -478,7 +376,7 @@ SaStrane/
 │   ├── lib/                 API and query clients, generated API types, formatting
 │   └── e2e/                 Playwright tests
 ├── docker/                  Local storage settings
-├── docs/screenshots/
+├── docs/                    Deploy guide and screenshots
 └── docker-compose.yml       Local PostgreSQL and photo storage
 ```
 
