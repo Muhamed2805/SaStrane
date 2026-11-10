@@ -70,7 +70,7 @@
             }
           },
           "409": {
-            "description": "The email is registered (EMAIL_ALREADY_REGISTERED) or waits for verification (EMAIL_VERIFICATION_PENDING).",
+            "description": "The email is registered (EMAIL_ALREADY_REGISTERED).",
             "content": {
               "application/json": {
                 "schema": {
@@ -80,7 +80,7 @@
             }
           },
           "429": {
-            "description": "Too many requests from this IP address. Try again in a minute.",
+            "description": "Too many requests, or a registration for this email started less than a minute ago.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6188,7 +6188,7 @@
           },
           "code": {
             "type": "string",
-            "description": "Set when the client needs to tell this error apart from others with the\nsame status: EMAIL_NOT_VERIFIED, EMAIL_ALREADY_REGISTERED,\nEMAIL_VERIFICATION_PENDING, LISTING_CLOSED,\nAPPLICATION_ALREADY_DECIDED, INVALID_IMAGE, PHOTO_LIMIT_REACHED or\nWRONG_PASSWORD. The other codes of a route are listed with its errors."
+            "description": "Set when the client needs to tell this error apart from others with the\nsame status: EMAIL_NOT_VERIFIED, EMAIL_ALREADY_REGISTERED, LISTING_CLOSED,\nAPPLICATION_ALREADY_DECIDED, INVALID_IMAGE, PHOTO_LIMIT_REACHED or\nWRONG_PASSWORD. The other codes of a route are listed with its errors."
           }
         },
         "required": [

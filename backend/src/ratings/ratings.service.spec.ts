@@ -394,6 +394,7 @@ describe('RatingsService', () => {
         skills: ['ASSEMBLY'],
         location: 'ILIDZA',
         createdAt,
+        suspendedAt: null,
         portfolioPhotos: [
           { id: 'photo-1', width: 800, height: 600, caption: 'Ormar' },
         ],
@@ -436,6 +437,7 @@ describe('RatingsService', () => {
             skills: true,
             location: true,
             createdAt: true,
+            suspendedAt: true,
             portfolioPhotos: {
               orderBy: [
                 { position: 'asc' },
@@ -458,6 +460,7 @@ describe('RatingsService', () => {
         skills: [],
         location: null,
         createdAt: new Date(),
+        suspendedAt: null,
         portfolioPhotos: [],
       });
       ratingRepository.aggregate.mockResolvedValue({
@@ -468,6 +471,35 @@ describe('RatingsService', () => {
       await expect(service.getProfile('user-1')).resolves.toMatchObject({
         avatarUrl: null,
         portfolio: [],
+      });
+    });
+
+    it('hides what a suspended user wrote and uploaded', async () => {
+      userRepository.findUnique.mockResolvedValue({
+        id: 'user-1',
+        fullName: 'Kenan',
+        avatarId: 'avatar-1',
+        bio: 'Tekst',
+        skills: ['ASSEMBLY'],
+        location: 'ILIDZA',
+        createdAt: new Date(),
+        suspendedAt: new Date(),
+        portfolioPhotos: [
+          { id: 'photo-1', width: 800, height: 600, caption: 'Ormar' },
+        ],
+      });
+      ratingRepository.aggregate.mockResolvedValue({
+        _avg: { score: 5 },
+        _count: { _all: 1 },
+      });
+
+      await expect(service.getProfile('user-1')).resolves.toMatchObject({
+        fullName: 'Kenan',
+        avatarUrl: null,
+        bio: null,
+        skills: [],
+        portfolio: [],
+        rating: { average: 5, count: 1 },
       });
     });
 

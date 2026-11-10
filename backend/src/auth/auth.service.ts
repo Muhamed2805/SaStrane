@@ -172,43 +172,59 @@ export class AuthService {
 
     const existing = await this.prisma.user.findUnique({
       where: { email },
-      select: { id: true, emailVerifiedAt: true },
+      select: {
+        id: true,
+        emailVerifiedAt: true,
+        emailVerificationSentAt: true,
+      },
     });
 
-    if (existing) {
+    if (existing?.emailVerifiedAt) {
       throw new ConflictException({
-        code: existing.emailVerifiedAt
-          ? 'EMAIL_ALREADY_REGISTERED'
-          : 'EMAIL_VERIFICATION_PENDING',
-        message: existing.emailVerifiedAt
-          ? 'Email je već registrovan.'
-          : 'Email čeka potvrdu. Zatraži novi kod.',
+        code: 'EMAIL_ALREADY_REGISTERED',
+        message: 'Email je već registrovan.',
       });
+    }
+
+    const now = new Date();
+    // An account that was never confirmed may have been made by someone who
+    // does not own the address. A new registration replaces its password,
+    // name and role and ends its code, so the account that the owner of the
+    // address confirms is never one with a stranger's password. Not more
+    // often than a code is sent, so the address is not flooded.
+    if (
+      existing?.emailVerificationSentAt &&
+      now.getTime() - existing.emailVerificationSentAt.getTime() <
+        VERIFICATION_RESEND_COOLDOWN_MS
+    ) {
+      throw new HttpException(
+        'Registracija za ovaj email je upravo započeta. Pokušaj ponovo za minutu.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const code = this.createVerificationCode();
-    const now = new Date();
+    const data = {
+      passwordHash,
+      fullName: dto.fullName,
+      role: dto.role,
+      emailVerificationCodeHash: this.hashVerificationCode(email, code),
+      emailVerificationExpiresAt: new Date(
+        now.getTime() + VERIFICATION_CODE_TTL_MS,
+      ),
+      emailVerificationSentAt: now,
+      emailVerificationAttempts: 0,
+    };
+    const select = { id: true, email: true, fullName: true };
 
-    const user = await this.prisma.user.create({
-      data: {
-        email,
-        passwordHash,
-        fullName: dto.fullName,
-        role: dto.role,
-        emailVerificationCodeHash: this.hashVerificationCode(email, code),
-        emailVerificationExpiresAt: new Date(
-          now.getTime() + VERIFICATION_CODE_TTL_MS,
-        ),
-        emailVerificationSentAt: now,
-        emailVerificationAttempts: 0,
-      },
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-      },
-    });
+    const user = existing
+      ? await this.prisma.user.update({
+          where: { id: existing.id },
+          data,
+          select,
+        })
+      : await this.prisma.user.create({ data: { email, ...data }, select });
 
     try {
       await this.emailService.sendVerificationCode({
@@ -217,7 +233,10 @@ export class AuthService {
         code,
       });
     } catch (error) {
-      await this.prisma.user.delete({ where: { id: user.id } });
+      // Nobody can confirm an account whose code was not delivered.
+      await this.prisma.user.deleteMany({
+        where: { id: user.id, emailVerifiedAt: null },
+      });
       throw error;
     }
 

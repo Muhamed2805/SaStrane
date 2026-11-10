@@ -209,6 +209,41 @@ describe('App (e2e)', () => {
       await login(email);
     });
 
+    it('gives an unconfirmed account to the next sign-up, not the first', async () => {
+      const email = 'new.user@example.com';
+      // A stranger registers the address with a password of their own.
+      await http()
+        .post('/api/auth/register')
+        .send({ ...registration, password: 'stranger-password-1' })
+        .expect(201);
+      const strangerCode = emails.lastCode('verification', email);
+
+      // At once, the address is not taken over again.
+      await http().post('/api/auth/register').send(registration).expect(429);
+
+      await prisma.user.update({
+        where: { email },
+        data: { emailVerificationSentAt: new Date(Date.now() - 61_000) },
+      });
+      await http().post('/api/auth/register').send(registration).expect(201);
+      expect(await prisma.user.count()).toBe(1);
+
+      await http()
+        .post('/api/auth/verify-email')
+        .send({ email, code: strangerCode })
+        .expect(400);
+      await http()
+        .post('/api/auth/verify-email')
+        .send({ email, code: emails.lastCode('verification', email) })
+        .expect(200);
+
+      await http()
+        .post('/api/auth/login')
+        .send({ email, password: 'stranger-password-1' })
+        .expect(401);
+      await login(email);
+    });
+
     it('creates one account when two sign-ups with one email race', async () => {
       const statuses = await Promise.all(
         [1, 2].map(async () => {

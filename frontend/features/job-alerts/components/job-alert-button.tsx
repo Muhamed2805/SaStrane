@@ -17,6 +17,7 @@ type JobAlertButtonProps = {
 // or turns that alert off. Without a filter there is nothing to watch.
 export function JobAlertButton({ category, location }: JobAlertButtonProps) {
   const userId = useAuthStore((state) => state.user?.id);
+  const status = useAuthStore((state) => state.status);
   const openAuthModal = useAuthStore((state) => state.openAuthModal);
   const alerts = useQuery({
     ...jobAlertsQuery(userId ?? ''),
@@ -26,6 +27,9 @@ export function JobAlertButton({ category, location }: JobAlertButtonProps) {
   const { remove, removingId } = useRemoveJobAlert(userId ?? '');
 
   if (!category && !location) return null;
+  // Until the session is known, a click must not ask a signed-in user to
+  // sign in.
+  if (status === 'loading') return null;
 
   const buttonClass =
     'inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors disabled:opacity-60';

@@ -59,14 +59,18 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   verificationEmail: null,
   passwordResetEmail: null,
 
-  openAuthModal: () =>
+  // While the session is still being restored, the user may be signed in:
+  // a click on a button that needs an account must not ask them to sign in.
+  openAuthModal: () => {
+    if (get().status === 'loading') return;
     set({
       isAuthModalOpen: true,
       authModalTab: 'login',
       verificationEmail: null,
       passwordResetEmail: null,
       error: null,
-    }),
+    });
+  },
   openRegistrationModal: () =>
     set({
       isAuthModalOpen: true,
@@ -115,18 +119,6 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         isLoading: false,
       });
     } catch (err) {
-      if (
-        err instanceof ApiError &&
-        err.code === 'EMAIL_VERIFICATION_PENDING'
-      ) {
-        set({
-          authModalTab: 'verify',
-          verificationEmail: payload.email.trim().toLowerCase(),
-          error: null,
-          isLoading: false,
-        });
-        return;
-      }
       set({ error: authErrorMessage(err), isLoading: false });
     }
   },

@@ -153,7 +153,7 @@ admin, or the route returns 403.
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
 | `GET` | `/health` | | Checks the API and the database. Returns 503 when the database does not answer. |
-| `POST` | `/api/auth/register` | | Creates an account and emails a verification code. |
+| `POST` | `/api/auth/register` | | Creates an account and emails a verification code. For an address that was registered but never confirmed, it replaces that account's password, name and role and sends a new code, at most once a minute (429 before that), so the owner of the address never confirms an account with someone else's password. |
 | `POST` | `/api/auth/verify-email` | | Confirms the code and signs in. |
 | `POST` | `/api/auth/resend-verification` | | Sends a new verification code. |
 | `POST` | `/api/auth/login` | | Signs in a verified account. |
@@ -368,6 +368,8 @@ admin, or the route returns 403.
 - Suspending an account signs it out everywhere, closes its open jobs and
   resolves the open reports about it. A suspended user cannot sign in or
   confirm the email: both return 403 with the code `ACCOUNT_SUSPENDED`.
+  Their public profile keeps the name and the ratings; the photo, the
+  introduction, the skills and the gallery are not shown.
   Admins cannot be suspended. Reopening a suspended client's job returns
   409 with the code `CLIENT_SUSPENDED`.
 - `isAdmin` on the user is set with `npm run admin -- <email>`. It is part

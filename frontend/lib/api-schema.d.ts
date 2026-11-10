@@ -1192,8 +1192,7 @@ export interface components {
             error?: string;
             /**
              * @description Set when the client needs to tell this error apart from others with the
-             *     same status: EMAIL_NOT_VERIFIED, EMAIL_ALREADY_REGISTERED,
-             *     EMAIL_VERIFICATION_PENDING, LISTING_CLOSED,
+             *     same status: EMAIL_NOT_VERIFIED, EMAIL_ALREADY_REGISTERED, LISTING_CLOSED,
              *     APPLICATION_ALREADY_DECIDED, INVALID_IMAGE, PHOTO_LIMIT_REACHED or
              *     WRONG_PASSWORD. The other codes of a route are listed with its errors.
              */
@@ -2093,7 +2092,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description The email is registered (EMAIL_ALREADY_REGISTERED) or waits for verification (EMAIL_VERIFICATION_PENDING). */
+            /** @description The email is registered (EMAIL_ALREADY_REGISTERED). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2102,7 +2101,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description Too many requests from this IP address. Try again in a minute. */
+            /** @description Too many requests, or a registration for this email started less than a minute ago. */
             429: {
                 headers: {
                     [name: string]: unknown;

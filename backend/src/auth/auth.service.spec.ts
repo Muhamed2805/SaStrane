@@ -49,6 +49,7 @@ describe('AuthService', () => {
   const userRepository = {
     create: vi.fn<(input: unknown) => Promise<unknown>>(),
     delete: vi.fn<(input: unknown) => Promise<unknown>>(),
+    deleteMany: vi.fn<(input: unknown) => Promise<{ count: number }>>(),
     findUnique: vi.fn<(input: unknown) => Promise<unknown>>(),
     update: vi.fn<(input: unknown) => Promise<unknown>>(),
     updateMany: vi.fn<(input: unknown) => Promise<{ count: number }>>(),
@@ -201,7 +202,11 @@ describe('AuthService', () => {
 
       expect(userRepository.findUnique).toHaveBeenCalledWith({
         where: { email: 'user@example.com' },
-        select: { id: true, emailVerifiedAt: true },
+        select: {
+          id: true,
+          emailVerifiedAt: true,
+          emailVerificationSentAt: true,
+        },
       });
       expect(bcrypt.hash).toHaveBeenCalledWith('secure-password', 12);
       // Mock call arguments are typed as `unknown`; narrow them immediately.
@@ -272,7 +277,7 @@ describe('AuthService', () => {
       emailService.sendVerificationCode.mockRejectedValue(
         new Error('email provider unavailable'),
       );
-      userRepository.delete.mockResolvedValue(user);
+      userRepository.deleteMany.mockResolvedValue({ count: 1 });
 
       await expect(
         service.register({
@@ -283,9 +288,73 @@ describe('AuthService', () => {
         }),
       ).rejects.toThrow('email provider unavailable');
 
-      expect(userRepository.delete).toHaveBeenCalledWith({
-        where: { id: user.id },
+      expect(userRepository.deleteMany).toHaveBeenCalledWith({
+        where: { id: user.id, emailVerifiedAt: null },
       });
+    });
+
+    // Someone else may have registered the address first, with a password
+    // its owner does not know.
+    it('replaces the password, name and code of an unconfirmed account', async () => {
+      userRepository.findUnique.mockResolvedValue({
+        id: user.id,
+        emailVerifiedAt: null,
+        emailVerificationSentAt: new Date(Date.now() - 61_000),
+      });
+      hashMock.mockResolvedValue('owner-password-hash');
+      userRepository.update.mockResolvedValue(user);
+      emailService.sendVerificationCode.mockResolvedValue(undefined);
+
+      await expect(
+        service.register({
+          email: user.email,
+          password: 'owner-password',
+          fullName: 'Pravi Vlasnik',
+          role: UserRole.CLIENT,
+        }),
+      ).resolves.toMatchObject({ verificationRequired: true });
+
+      expect(userRepository.create).not.toHaveBeenCalled();
+      const update = userRepository.update.mock.calls[0][0] as {
+        where: unknown;
+        data: Record<string, unknown>;
+      };
+      expect(update.where).toEqual({ id: user.id });
+      expect(update.data).toMatchObject({
+        passwordHash: 'owner-password-hash',
+        fullName: 'Pravi Vlasnik',
+        role: UserRole.CLIENT,
+        emailVerificationAttempts: 0,
+      });
+      const sent = emailService.sendVerificationCode.mock.calls[0][0] as {
+        code: string;
+      };
+      expect(update.data.emailVerificationCodeHash).toBe(
+        createHmac('sha256', 'verification-secret')
+          .update(`user@example.com:${sent.code}`)
+          .digest('hex'),
+      );
+    });
+
+    it('waits a minute before replacing an unconfirmed account again', async () => {
+      userRepository.findUnique.mockResolvedValue({
+        id: user.id,
+        emailVerifiedAt: null,
+        emailVerificationSentAt: new Date(Date.now() - 30_000),
+      });
+
+      await expect(
+        service.register({
+          email: user.email,
+          password: 'other-password',
+          fullName: 'Neko Drugi',
+          role: UserRole.CLIENT,
+        }),
+      ).rejects.toMatchObject({ status: 429 });
+
+      expect(bcrypt.hash).not.toHaveBeenCalled();
+      expect(userRepository.update).not.toHaveBeenCalled();
+      expect(emailService.sendVerificationCode).not.toHaveBeenCalled();
     });
   });
 

@@ -84,7 +84,8 @@ export class AuthController {
   // brute-force / credential-stuffing / signup-spam targets.
   @ApiErrors({
     400: 'A field is missing or invalid.',
-    409: 'The email is registered (EMAIL_ALREADY_REGISTERED) or waits for verification (EMAIL_VERIFICATION_PENDING).',
+    409: 'The email is registered (EMAIL_ALREADY_REGISTERED).',
+    429: 'Too many requests, or a registration for this email started less than a minute ago.',
   })
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('register')

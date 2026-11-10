@@ -358,6 +358,7 @@ export class RatingsService {
         where: { id: userId },
         select: {
           ...PROFILE_SELECT,
+          suspendedAt: true,
           portfolioPhotos: {
             orderBy: PORTFOLIO_ORDER,
             select: PORTFOLIO_PHOTO_SELECT,
@@ -374,20 +375,25 @@ export class RatingsService {
     ]);
 
     if (!user) throw new NotFoundException('User not found');
+    // A suspended user keeps the name and the ratings, which other pages
+    // link to. What they wrote and uploaded is no longer shown.
+    const hidden = user.suspendedAt !== null;
     return {
       id: user.id,
       fullName: user.fullName,
-      avatarUrl: avatarUrl(this.storage, user),
-      bio: user.bio,
-      skills: user.skills,
+      avatarUrl: hidden ? null : avatarUrl(this.storage, user),
+      bio: hidden ? null : user.bio,
+      skills: hidden ? [] : user.skills,
       location: user.location,
       createdAt: user.createdAt,
       rating: toSummary(aggregate._avg.score, aggregate._count._all),
       clientRating: clientSummaries.get(userId)!,
       stats: stats.get(userId)!,
-      portfolio: user.portfolioPhotos.map((photo) =>
-        toPortfolioPhotoDto(this.storage, userId, photo),
-      ),
+      portfolio: hidden
+        ? []
+        : user.portfolioPhotos.map((photo) =>
+            toPortfolioPhotoDto(this.storage, userId, photo),
+          ),
     };
   }
 
