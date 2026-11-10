@@ -98,7 +98,11 @@ export class AuthController {
    *
    * @remarks Sets the refresh cookie.
    */
-  @ApiErrors({ 400: WRONG_CODE, 429: TOO_MANY_WRONG_CODES })
+  @ApiErrors({
+    400: WRONG_CODE,
+    409: 'The code is right, but the password is not the one of the newest registration for this email (REGISTRATION_REPLACED).',
+    429: TOO_MANY_WRONG_CODES,
+  })
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @Post('verify-email')

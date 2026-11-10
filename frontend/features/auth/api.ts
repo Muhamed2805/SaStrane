@@ -12,6 +12,7 @@ export type AuthResponse = Schemas['AuthSessionDto'];
 export type RegisterResponse = Schemas['RegistrationDto'];
 export type RegisterPayload = Schemas['RegisterDto'];
 export type LoginPayload = Schemas['LoginDto'];
+type VerifyEmailPayload = Schemas['VerifyEmailDto'];
 type Success = Schemas['SuccessDto'];
 
 export const authApi = {
@@ -27,10 +28,10 @@ export const authApi = {
       body: JSON.stringify(payload),
     }),
 
-  verifyEmail: (email: string, code: string) =>
+  verifyEmail: (payload: VerifyEmailPayload) =>
     apiRequest<AuthResponse>('/auth/verify-email', {
       method: 'POST',
-      body: JSON.stringify({ email, code }),
+      body: JSON.stringify(payload),
     }),
 
   resendVerification: (email: string) =>

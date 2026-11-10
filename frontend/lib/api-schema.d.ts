@@ -1224,6 +1224,7 @@ export interface components {
             /** Format: email */
             email: string;
             code: string;
+            password: string;
         };
         /**
          * @description The kinds of jobs the user does.
@@ -2144,6 +2145,15 @@ export interface operations {
             };
             /** @description A field is invalid, or the code is wrong or has expired. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description The code is right, but the password is not the one of the newest registration for this email (REGISTRATION_REPLACED). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

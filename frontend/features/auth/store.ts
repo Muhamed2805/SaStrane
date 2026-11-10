@@ -32,6 +32,9 @@ type AuthState = {
   isAuthModalOpen: boolean;
   authModalTab: AuthModalTab;
   verificationEmail: string | null;
+  // The password typed at sign-up or sign-in, kept in memory only until
+  // the code is confirmed: the server checks both together.
+  verificationPassword: string | null;
   passwordResetEmail: string | null;
 
   openAuthModal: () => void;
@@ -57,6 +60,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   isAuthModalOpen: false,
   authModalTab: 'login',
   verificationEmail: null,
+  verificationPassword: null,
   passwordResetEmail: null,
 
   // While the session is still being restored, the user may be signed in:
@@ -67,6 +71,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       isAuthModalOpen: true,
       authModalTab: 'login',
       verificationEmail: null,
+      verificationPassword: null,
       passwordResetEmail: null,
       error: null,
     });
@@ -76,6 +81,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       isAuthModalOpen: true,
       authModalTab: 'register',
       verificationEmail: null,
+      verificationPassword: null,
       passwordResetEmail: null,
       error: null,
     }),
@@ -84,11 +90,13 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       isAuthModalOpen: false,
       authModalTab: 'login',
       verificationEmail: null,
+      verificationPassword: null,
       passwordResetEmail: null,
       error: null,
     }),
   clearError: () => set({ error: null }),
-  setAuthModalTab: (authModalTab) => set({ authModalTab, error: null }),
+  setAuthModalTab: (authModalTab) =>
+    set({ authModalTab, verificationPassword: null, error: null }),
 
   login: async (payload) => {
     set({ isLoading: true, error: null });
@@ -100,6 +108,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         set({
           authModalTab: 'verify',
           verificationEmail: payload.email.trim().toLowerCase(),
+          verificationPassword: payload.password,
           error: null,
           isLoading: false,
         });
@@ -116,6 +125,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       set({
         authModalTab: 'verify',
         verificationEmail: response.email,
+        verificationPassword: payload.password,
         isLoading: false,
       });
     } catch (err) {
@@ -124,17 +134,18 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   },
 
   verifyEmail: async (code) => {
-    const email = get().verificationEmail;
-    if (!email) return false;
+    const { verificationEmail: email, verificationPassword: password } = get();
+    if (!email || !password) return false;
 
     set({ isLoading: true, error: null });
     try {
-      startSession(await authApi.verifyEmail(email, code));
+      startSession(await authApi.verifyEmail({ email, code, password }));
       set({
         isLoading: false,
         isAuthModalOpen: false,
         authModalTab: 'login',
         verificationEmail: null,
+        verificationPassword: null,
       });
       return true;
     } catch (err) {

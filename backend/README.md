@@ -154,7 +154,7 @@ admin, or the route returns 403.
 | --- | --- | --- | --- |
 | `GET` | `/health` | | Checks the API and the database. Returns 503 when the database does not answer. |
 | `POST` | `/api/auth/register` | | Creates an account and emails a verification code. For an address that was registered but never confirmed, it replaces that account's password, name and role and sends a new code, at most once a minute (429 before that), so the owner of the address never confirms an account with someone else's password. |
-| `POST` | `/api/auth/verify-email` | | Confirms the code and signs in. |
+| `POST` | `/api/auth/verify-email` | | Confirms the code and signs in. Takes the registration's password too; a code of a newer registration by someone else returns `409 REGISTRATION_REPLACED`. |
 | `POST` | `/api/auth/resend-verification` | | Sends a new verification code. |
 | `POST` | `/api/auth/login` | | Signs in a verified account. |
 | `POST` | `/api/auth/refresh` | Cookie | Rotates the refresh token and returns a new access token. |

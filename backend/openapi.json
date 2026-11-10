@@ -142,6 +142,16 @@
               }
             }
           },
+          "409": {
+            "description": "The code is right, but the password is not the one of the newest registration for this email (REGISTRATION_REPLACED).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
           "429": {
             "description": "Too many requests, or too many wrong codes for this one. Request a new code.",
             "content": {
@@ -6273,11 +6283,17 @@
             "minLength": 6,
             "maxLength": 6,
             "pattern": "^\\d{6}$"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
           }
         },
         "required": [
           "email",
-          "code"
+          "code",
+          "password"
         ]
       },
       "ListingCategory": {

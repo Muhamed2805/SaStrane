@@ -196,12 +196,16 @@ describe('App (e2e)', () => {
 
       await http()
         .post('/api/auth/verify-email')
-        .send({ email, code: '000000' })
+        .send({ email, code: '000000', password: PASSWORD })
         .expect(400);
 
       const verified = await http()
         .post('/api/auth/verify-email')
-        .send({ email, code: emails.lastCode('verification', email) })
+        .send({
+          email,
+          code: emails.lastCode('verification', email),
+          password: PASSWORD,
+        })
         .expect(200);
       expect(verified.body).toMatchObject({ user: { email } });
       setCookieHeader(verified);
@@ -230,11 +234,43 @@ describe('App (e2e)', () => {
 
       await http()
         .post('/api/auth/verify-email')
-        .send({ email, code: strangerCode })
+        .send({ email, code: strangerCode, password: 'stranger-password-1' })
         .expect(400);
+
+      // The stranger registers once more before the owner enters the code:
+      // the owner now reads a code of an account with the stranger's
+      // password, and it must not confirm that account.
+      await prisma.user.update({
+        where: { email },
+        data: { emailVerificationSentAt: new Date(Date.now() - 61_000) },
+      });
+      await http()
+        .post('/api/auth/register')
+        .send({ ...registration, password: 'stranger-password-1' })
+        .expect(201);
+      const replaced = await http()
+        .post('/api/auth/verify-email')
+        .send({
+          email,
+          code: emails.lastCode('verification', email),
+          password: PASSWORD,
+        })
+        .expect(409);
+      expect(replaced.body).toMatchObject({ code: 'REGISTRATION_REPLACED' });
+
+      // The owner registers again, as the message says, and gets in.
+      await prisma.user.update({
+        where: { email },
+        data: { emailVerificationSentAt: new Date(Date.now() - 61_000) },
+      });
+      await http().post('/api/auth/register').send(registration).expect(201);
       await http()
         .post('/api/auth/verify-email')
-        .send({ email, code: emails.lastCode('verification', email) })
+        .send({
+          email,
+          code: emails.lastCode('verification', email),
+          password: PASSWORD,
+        })
         .expect(200);
 
       await http()

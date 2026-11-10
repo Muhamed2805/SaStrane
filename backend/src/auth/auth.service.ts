@@ -319,6 +319,22 @@ export class AuthService {
       throw new BadRequestException('Kod nije ispravan ili je istekao.');
     }
 
+    // The code proves the address, the password proves the registration.
+    // Someone else may have registered this address again after its owner
+    // did: the newest code then belongs to an account with their password,
+    // and the owner must not confirm that account.
+    if (!(await bcrypt.compare(dto.password, user.passwordHash))) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { emailVerificationAttempts: { increment: 1 } },
+      });
+      throw new ConflictException({
+        code: 'REGISTRATION_REPLACED',
+        message:
+          'Ovaj kod pripada drugoj registraciji za isti email. Registruj se ponovo.',
+      });
+    }
+
     const verifiedUser = await this.prisma.user.update({
       where: { id: user.id },
       data: {

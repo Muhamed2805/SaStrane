@@ -477,8 +477,18 @@ describe('AuthService', () => {
       userRepository.findUnique.mockResolvedValue(pendingUser);
       userRepository.update.mockResolvedValue(publicUserRow);
       jwtService.signAsync.mockResolvedValue('access-token');
+      compareMock.mockResolvedValue(true);
 
-      const result = await service.verifyEmail({ email: user.email, code });
+      const result = await service.verifyEmail({
+        email: user.email,
+        code,
+        password: 'secure-password',
+      });
+
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        'secure-password',
+        user.passwordHash,
+      );
 
       expect(result.user).toEqual(publicUser);
       expect(result.accessToken).toBe('access-token');
@@ -508,14 +518,48 @@ describe('AuthService', () => {
       userRepository.update.mockResolvedValue(user);
 
       await expect(
-        service.verifyEmail({ email: user.email, code: '654321' }),
+        service.verifyEmail({
+          email: user.email,
+          code: '654321',
+          password: 'secure-password',
+        }),
       ).rejects.toThrow(BadRequestException);
 
       expect(userRepository.update).toHaveBeenCalledWith({
         where: { id: user.id },
         data: { emailVerificationAttempts: { increment: 1 } },
       });
+      expect(bcrypt.compare).not.toHaveBeenCalled();
       expect(jwtService.signAsync).not.toHaveBeenCalled();
+      expect(sessionsService.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses the right code with the password of an older registration', async () => {
+      userRepository.findUnique.mockResolvedValue({
+        ...user,
+        emailVerifiedAt: null,
+        emailVerificationCodeHash: codeHash,
+        emailVerificationExpiresAt: new Date(Date.now() + 60_000),
+      });
+      userRepository.update.mockResolvedValue(user);
+      compareMock.mockResolvedValue(false);
+
+      await expect(
+        service.verifyEmail({
+          email: user.email,
+          code,
+          password: 'owner-password',
+        }),
+      ).rejects.toMatchObject({
+        status: 409,
+        response: { code: 'REGISTRATION_REPLACED' },
+      });
+
+      expect(userRepository.update).toHaveBeenCalledTimes(1);
+      expect(userRepository.update).toHaveBeenCalledWith({
+        where: { id: user.id },
+        data: { emailVerificationAttempts: { increment: 1 } },
+      });
       expect(sessionsService.create).not.toHaveBeenCalled();
     });
   });

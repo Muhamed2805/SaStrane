@@ -131,7 +131,9 @@ test('registers, handles an invalid code, resends, and verifies the account', as
       .getByRole('alert')
       .filter({ hasText: 'Kod nije ispravan ili je istekao.' }),
   ).toHaveText('Kod nije ispravan ili je istekao.');
-  expect(requests.verificationPayloads).toEqual([{ email, code: '000000' }]);
+  expect(requests.verificationPayloads).toEqual([
+    { email, code: '000000', password: 'SigurnaLozinka123!' },
+  ]);
 
   await page.clock.fastForward(60_000);
   await page.getByRole('button', { name: 'Pošalji novi kod' }).click();
@@ -152,7 +154,7 @@ test('registers, handles an invalid code, resends, and verifies the account', as
       .getByRole('link', { name: 'Objavi oglas', exact: true }),
   ).toBeVisible();
   expect(requests.verificationPayloads).toEqual([
-    { email, code: '000000' },
-    { email, code: validCode },
+    { email, code: '000000', password: 'SigurnaLozinka123!' },
+    { email, code: validCode, password: 'SigurnaLozinka123!' },
   ]);
 });
