@@ -97,5 +97,6 @@ of date.
 | `features/moderation/` | The report button and dialog, and the admin pages: overview, reports, users and jobs |
 | `features/landing/` | Home page sections |
 | `components/` | Navbar, footer, auth provider and UI primitives |
-| `lib/` | API and query clients, paging helpers, site metadata, generated API types, API URL, and date and price formatting |
+| `lib/` | API and query clients, paging helpers, site metadata, generated API types, API URL, the Content-Security-Policy, and date and price formatting |
+| `proxy.ts` | Gives every page a Content-Security-Policy with a nonce per request. Scripts run only with that nonce, so every page is rendered per request (`connection()` in `app/layout.tsx`); nothing is prerendered. Photos may come from any HTTPS host; a script, font or API on another origin must be added in `lib/csp.ts` |
 | `e2e/` | Playwright tests |

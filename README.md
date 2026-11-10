@@ -223,6 +223,9 @@ sequenceDiagram
   out or resetting the password locks out existing access tokens at once.
 - **Tabs.** Tabs share one refresh through a Web Lock and announce sign-out
   over a `BroadcastChannel`.
+- **Scripts.** Every page has a Content-Security-Policy with a nonce of
+  its own: only the site's scripts run, so injected markup cannot read
+  the access token. Pages are rendered per request for that.
 
 ### Data model
 

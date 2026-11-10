@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { connection } from 'next/server';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { Toaster } from 'sonner';
 import './globals.css';
@@ -36,11 +37,16 @@ export const metadata: Metadata = {
   openGraph: { ...BASE_OPEN_GRAPH, type: 'website' },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Every page is rendered for its request: only then can its scripts carry
+  // the nonce of that request's Content-Security-Policy (see proxy.ts). A
+  // page built ahead of time would have scripts the browser refuses.
+  await connection();
+
   return (
     <html lang="bs">
       <body

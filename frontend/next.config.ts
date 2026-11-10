@@ -15,16 +15,10 @@ function getLanDevOrigins() {
     .map((address) => address.address);
 }
 
-// Sent with every page. The site is never shown inside another site's
-// frame, which stops clickjacking, and a page cannot be given another base
-// address or post its forms elsewhere. Scripts are not restricted here:
-// that needs a nonce on every request.
+// Sent with every response. The site is never shown inside another site's
+// frame, which stops clickjacking. The Content-Security-Policy of the
+// pages needs a nonce per request, so proxy.ts sets it.
 const SECURITY_HEADERS = [
-  {
-    key: 'Content-Security-Policy',
-    value:
-      "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
-  },
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
